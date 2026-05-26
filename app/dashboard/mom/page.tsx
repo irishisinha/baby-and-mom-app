@@ -1,33 +1,33 @@
-'use client'
-import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
-import { MotherEvent } from '@/lib/types'
+'use client';
 
-export default function MomTab() {
-  const [events, setEvents] = useState<MotherEvent[]>([])
-  const [loading, setLoading] = useState(true)
+import { useEffect, useState } from 'react';
+import { supabase } from '@/lib/supabase';
+
+export default function PostpartumWellness() {
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const load = async () => {
-      const { data } = await supabase.from('mother_events').select('*').order('occurred_at', { ascending: false }).limit(20)
-      setEvents(data || [])
-      setLoading(false)
-    }
-    load()
-  }, [])
+    const checkAuth = async () => {
+      const { data: { user }, error } = await supabase.auth.getUser();
+      if (error || !user) {
+        window.location.href = '/login';
+        return;
+      }
+      setLoading(false);
+    };
 
-  if (loading) return <div className="p-8">Loading...</div>
-  
+    checkAuth();
+  }, []);
+
+  if (loading) return <div className="p-4">Loading...</div>;
+
   return (
-    <div className="p-8">
-      <h2 className="text-3xl font-bold mb-6">Postpartum Wellness</h2>
-      <div className="bg-purple-50 border border-purple-200 rounded p-4 mb-6">
-        <p className="text-sm text-purple-900">Your health data is private and only visible to you and family admins</p>
+    <div className="p-4">
+      <h1 className="text-2xl font-bold mb-4">Postpartum Wellness</h1>
+      <div className="bg-blue-50 border border-blue-200 rounded p-3 mb-4">
+        <p className="text-sm text-blue-800">🔒 <strong>Private:</strong> Only you and the family admin can see this data.</p>
       </div>
-      <div className="bg-white rounded shadow">
-        <div className="p-4 border-b font-semibold">Wellness Timeline</div>
-        <div className="divide-y">{events.length === 0 ? <div className="p-4 text-gray-500">No entries yet</div> : events.map(e => <div key={e.id} className="p-4"><div className="flex justify-between"><span className="font-semibold">{e.type}</span><span className="text-sm text-gray-500">{new Date(e.occurred_at).toLocaleString()}</span></div></div>)}</div>
-      </div>
+      <p className="text-gray-600">Track mood, sleep, hydration, and recovery</p>
     </div>
-  )
+  );
 }

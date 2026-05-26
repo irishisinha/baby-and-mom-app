@@ -1,46 +1,48 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { supabase } from '@/lib/supabase'
+import { useState } from 'react';
+import { supabase } from '@/lib/supabase';
+import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [message, setMessage] = useState('')
+  const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
+  const router = useRouter();
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setMessage('')
+  const handleSignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setMessage('');
 
     try {
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`,
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
         },
-      })
+      });
 
       if (error) {
-        setMessage(`Error: ${error.message}`)
+        setMessage(`Error: ${error.message}`);
       } else {
-        setMessage('Check your email for the login link!')
-        setEmail('')
+        setMessage('Check your email for a login link!');
+        setEmail('');
       }
     } catch (err) {
-      setMessage('An error occurred. Please try again.')
+      setMessage('An error occurred. Please try again.');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-pink-50 to-purple-50 p-4">
-      <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full">
-        <h1 className="text-3xl font-bold mb-2 text-gray-900">Welcome</h1>
-        <p className="text-gray-600 mb-6">Baby & Mom Care Tracker</p>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+      <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md">
+        <h1 className="text-3xl font-bold text-center mb-2">👶 Baby & Mom Care</h1>
+        <p className="text-center text-gray-600 mb-8">Track feeds, sleep, wellness & more</p>
 
-        <form onSubmit={handleLogin} className="space-y-4">
+        <form onSubmit={handleSignIn} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Email Address
@@ -49,29 +51,31 @@ export default function LoginPage() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
+              placeholder="mom@example.com"
               required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-pink-500 hover:bg-pink-600 disabled:bg-gray-400 text-white font-medium py-2 rounded-lg transition"
+            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-semibold py-2 rounded-lg transition"
           >
-            {loading ? 'Sending...' : 'Send Magic Link'}
+            {loading ? 'Sending...' : 'Get Started'}
           </button>
         </form>
 
         {message && (
-          <div className={`mt-4 p-3 rounded text-sm ${
-            message.includes('Error') ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
-          }`}>
+          <p className={`mt-4 text-center text-sm ${message.includes('Error') ? 'text-red-600' : 'text-green-600'}`}>
             {message}
-          </div>
+          </p>
         )}
+
+        <p className="text-center text-xs text-gray-500 mt-8">
+          🔒 Secure magic link login. No password needed.
+        </p>
       </div>
     </div>
-  )
+  );
 }
