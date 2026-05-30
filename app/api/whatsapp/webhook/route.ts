@@ -20,6 +20,8 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
+    console.log('Webhook received:', JSON.stringify(body, null, 2))
+    
     const entry = body.entry?.[0]
     const changes = entry?.changes?.[0]
     const value = changes?.value
@@ -29,11 +31,13 @@ export async function POST(req: NextRequest) {
     }
 
     const message = value.messages[0]
-    const senderPhone = value.contacts[0].wa_id
+    let senderPhone = value.contacts[0].wa_id
     const messageId = message.id
 
+    console.log('Processing message from:', senderPhone, 'Content:', message.text?.body)
+
     // Store raw message
-    await supabaseAdmin.from('whatsapp_messages').insert({
+    const { error: insertError } = await supabaseAdmin.from('whatsapp_messages').insert({
       phone_number: senderPhone,
       direction: 'inbound',
       message_type: message.type,
@@ -43,16 +47,33 @@ export async function POST(req: NextRequest) {
       status: 'received',
     })
 
-    // Find family by phone number
-    const { data: member } = await supabaseAdmin
+    if (insertError) {
+      console.error('Insert error:', insertError)
+      return NextResponse.json({ status: 'insert_error', error: insertError }, { status: 400 })
+    }
+
+    console.log('Message stored successfully')
+
+    // Find family by phone number (try with and without +)
+    const phoneWithPlus = senderPhone.startsWith('+') ? senderPhone : '+' + senderPhone
+    const phoneWithoutPlus = senderPhone.replace('+', '')
+
+    console.log('Looking for member with phone:', phoneWithPlus, 'or', phoneWithoutPlus)
+
+    const { data: member, error: memberError } = await supabaseAdmin
       .from('family_members')
       .select('family_id, user_id')
-      .eq('whatsapp_number', senderPhone)
+      .or(`whatsapp_number.eq.${phoneWithPlus},whatsapp_number.eq.${phoneWithoutPlus}`)
       .single()
 
+    console.log('Member lookup result:', member, memberError)
+
     if (!member) {
-      return NextResponse.json({ status: 'no_family' }, { status: 400 })
+      console.log('No family member found for phone:', senderPhone)
+      return NextResponse.json({ status: 'ok' })
     }
+
+    console.log('Found member in family:', member.family_id)
 
     // Parse message
     const parsed = await parseMessage(
@@ -60,6 +81,8 @@ export async function POST(req: NextRequest) {
       senderPhone,
       member.family_id
     )
+
+    console.log('Parsed result:', parsed)
 
     // Log event based on parsed result
     if (parsed.confidence > 0.8) {
@@ -92,49 +115,11 @@ export async function POST(req: NextRequest) {
           raw_input: parsed.raw_input,
         })
       }
-
-      // Send confirmation
-      await sendWhatsAppMessage(senderPhone, `✓ Logged: ${parsed.type}`)
-    } else if (parsed.confidence > 0.5) {
-      // Ask for clarification
-      await sendWhatsAppMessage(
-        senderPhone,
-        parsed.clarification || 'Could you rephrase? Example: "baby ate 120ml"'
-      )
     }
 
     return NextResponse.json({ status: 'ok' })
-  } catch (error) {
-    console.error('Webhook error:', error)
-    return NextResponse.json({ error: 'Internal error' }, { status: 500 })
-  }
-}
-
-async function sendWhatsAppMessage(phone: string, message: string) {
-  const accessToken = process.env.WHATSAPP_API_TOKEN
-  const phoneNumberId = process.env.WHATSAPP_BUSINESS_PHONE_ID
-
-  if (!accessToken || !phoneNumberId) {
-    console.error('Missing WhatsApp credentials')
-    return
-  }
-
-  try {
-    await fetch(`https://graph.facebook.com/v18.0/${phoneNumberId}/messages`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify({
-        messaging_product: 'whatsapp',
-        recipient_type: 'individual',
-        to: phone,
-        type: 'text',
-        text: { body: message },
-      }),
-    })
   } catch (err) {
-    console.error('Failed to send WhatsApp message:', err)
+    console.error('Webhook error:', err)
+    return NextResponse.json({ status: 'error', error: String(err) }, { status: 500 })
   }
 }
