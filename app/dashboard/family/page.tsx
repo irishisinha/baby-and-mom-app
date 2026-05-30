@@ -231,6 +231,9 @@ export default function FamilyManagement() {
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
                     <p className="font-semibold text-gray-900">{member.email || 'No email'}</p>
+                    {member.relation && (
+                      <p className="text-sm text-blue-600 font-medium mt-1">{member.relation}</p>
+                    )}
                     <p className="text-sm text-gray-600 mt-1">Role: <span className="capitalize">{member.role}</span></p>
                     {member.whatsapp_number && (
                       <p className="text-sm text-gray-600 mt-1">WhatsApp: {member.whatsapp_number}</p>
