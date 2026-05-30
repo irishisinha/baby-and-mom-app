@@ -227,8 +227,16 @@ export default function FamilyManagement() {
         ) : (
           <div className="space-y-3">
             {members.map((member) => (
-              <div key={member.id} className="border rounded p-4">
-                <p className="font-semibold capitalize">{member.role}</p>
+              <div key={member.id} className="border rounded p-4 bg-gray-50">
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <p className="font-semibold text-gray-900">{member.email || 'No email'}</p>
+                    <p className="text-sm text-gray-600 mt-1">Role: <span className="capitalize">{member.role}</span></p>
+                    {member.whatsapp_number && (
+                      <p className="text-sm text-gray-600 mt-1">WhatsApp: {member.whatsapp_number}</p>
+                    )}
+                  </div>
+                </div>
               </div>
             ))}
           </div>
