@@ -111,8 +111,8 @@ export async function POST(req: NextRequest) {
 }
 
 async function sendWhatsAppMessage(phone: string, message: string) {
-  const accessToken = process.env.WHATSAPP_ACCESS_TOKEN
-  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID
+  const accessToken = process.env.WHATSAPP_API_TOKEN
+  const phoneNumberId = process.env.WHATSAPP_BUSINESS_PHONE_ID
 
   if (!accessToken || !phoneNumberId) {
     console.error('Missing WhatsApp credentials')
@@ -120,7 +120,7 @@ async function sendWhatsAppMessage(phone: string, message: string) {
   }
 
   try {
-    await fetch(`https://graph.instagram.com/v18.0/${phoneNumberId}/messages`, {
+    await fetch(`https://graph.facebook.com/v18.0/${phoneNumberId}/messages`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
