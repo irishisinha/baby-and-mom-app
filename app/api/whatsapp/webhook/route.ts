@@ -32,27 +32,9 @@ export async function POST(req: NextRequest) {
 
     const message = value.messages[0]
     let senderPhone = value.contacts[0].wa_id
-    const messageId = message.id
+    const messageText = message.text?.body || ''
 
-    console.log('Processing message from:', senderPhone, 'Content:', message.text?.body)
-
-    // Store raw message
-    const { error: insertError } = await supabaseAdmin.from('whatsapp_messages').insert({
-      phone_number: senderPhone,
-      direction: 'inbound',
-      message_type: message.type,
-      content: message.text?.body || null,
-      media_url: message.image?.link || message.audio?.link || null,
-      message_id: messageId,
-      status: 'received',
-    })
-
-    if (insertError) {
-      console.error('Insert error:', insertError)
-      return NextResponse.json({ status: 'insert_error', error: insertError }, { status: 400 })
-    }
-
-    console.log('Message stored successfully')
+    console.log('Processing message from:', senderPhone, 'Content:', messageText)
 
     // Find family by phone number (try with and without +)
     const phoneWithPlus = senderPhone.startsWith('+') ? senderPhone : '+' + senderPhone
@@ -75,9 +57,23 @@ export async function POST(req: NextRequest) {
 
     console.log('Found member in family:', member.family_id)
 
+    // Store message with family_id
+    const { error: insertError } = await supabaseAdmin.from('whatsapp_messages').insert({
+      phone_number: senderPhone,
+      message_text: messageText,
+      family_id: member.family_id,
+    })
+
+    if (insertError) {
+      console.error('Insert error:', insertError)
+      return NextResponse.json({ status: 'insert_error', error: insertError }, { status: 400 })
+    }
+
+    console.log('Message stored successfully')
+
     // Parse message
     const parsed = await parseMessage(
-      message.text?.body || '',
+      messageText,
       senderPhone,
       member.family_id
     )
