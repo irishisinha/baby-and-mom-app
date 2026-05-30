@@ -15,7 +15,8 @@
     "openai": "^4.52.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "recharts": "^2.12.0"
+    "recharts": "^2.12.0",
+    "twilio": "^6.0.2"
   },
   "devDependencies": {
     "@netlify/plugin-nextjs": "^5.15.11",
