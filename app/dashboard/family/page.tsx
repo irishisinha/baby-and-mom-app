@@ -21,21 +21,43 @@ export default function FamilyManagement() {
     const fetchData = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
-        console.log('Current user:', user?.id);
+        console.log('Current user:', user?.id, 'Email:', user?.email);
         
         if (!user) {
           window.location.href = '/login';
           return;
         }
 
-        const { data: familyData, error: familyError } = await supabase
+        // First try: families created by this user
+        let { data: familyData, error: familyError } = await supabase
           .from('families')
           .select('*')
           .eq('created_by', user.id)
           .single();
 
-        console.log('Family data:', familyData);
-        console.log('Family error:', familyError);
+        console.log('Family by created_by:', familyData, familyError);
+
+        // If not found, try: families where user is a member (by email)
+        if (!familyData && user.email) {
+          const { data: memberData } = await supabase
+            .from('family_members')
+            .select('family_id')
+            .eq('email', user.email)
+            .single();
+
+          console.log('Member data:', memberData);
+
+          if (memberData) {
+            const { data: foundFamily } = await supabase
+              .from('families')
+              .select('*')
+              .eq('id', memberData.family_id)
+              .single();
+
+            familyData = foundFamily;
+            console.log('Family by member email:', familyData);
+          }
+        }
 
         if (familyData) {
           setFamily(familyData);
@@ -50,12 +72,13 @@ export default function FamilyManagement() {
 
           console.log('Members data:', membersData);
           console.log('Members error:', membersError);
-          console.log('Members count:', membersData?.length);
 
           if (membersData) {
             setMembers(membersData);
             console.log('Set members:', membersData);
           }
+        } else {
+          console.log('No family found for this user');
         }
 
         setLoading(false);
