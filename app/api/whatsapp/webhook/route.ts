@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { parseMessage } from '@/lib/parser'
 
 const WEBHOOK_VERIFY_TOKEN = process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN || ''
 
@@ -44,31 +45,74 @@ export async function POST(req: NextRequest) {
       .or(`whatsapp_number.eq.${phoneWithPlus},whatsapp_number.eq.${phoneWithoutPlus}`)
       .single()
 
-    console.log('Member:', member, memberError)
-
     if (!member) {
-      console.log('No member found')
+      console.log('No member found for phone:', senderPhone)
       return NextResponse.json({ status: 'ok' })
     }
 
-    // Store message
-    const { error: insertError, data } = await supabaseAdmin
+    // Store message first
+    const { error: insertError } = await supabaseAdmin
       .from('whatsapp_messages')
       .insert({
         phone_number: senderPhone,
         message_text: messageText,
         family_id: member.family_id,
       })
-      .select()
-
-    console.log('Insert result:', { data, insertError })
 
     if (insertError) {
-      console.error('Insert error:', insertError)
+      console.error('Message insert error:', insertError)
       return NextResponse.json({ status: 'error', error: insertError }, { status: 500 })
     }
 
-    console.log('Message saved successfully')
+    console.log('Message saved, now parsing...')
+
+    // Parse message
+    try {
+      const parsed = await parseMessage(
+        messageText,
+        senderPhone,
+        member.family_id
+      )
+
+      console.log('Parsed result:', parsed)
+
+      // Log event based on parsed result
+      if (parsed.confidence > 0.8) {
+        if (parsed.subject === 'baby' && parsed.baby_id) {
+          const { error: eventError } = await supabaseAdmin.from('baby_events').insert({
+            baby_id: parsed.baby_id,
+            family_id: member.family_id,
+            type: parsed.type,
+            value: parsed.value,
+            unit: parsed.unit,
+            occurred_at: parsed.occurred_at,
+            created_by: member.user_id,
+          })
+          if (eventError) console.error('Baby event error:', eventError)
+          else console.log('Baby event logged')
+        } else if (parsed.subject === 'mother' && parsed.mother_id) {
+          const { error: eventError } = await supabaseAdmin.from('mother_events').insert({
+            mother_id: parsed.mother_id,
+            family_id: member.family_id,
+            type: parsed.type,
+            value: parsed.value,
+            unit: parsed.unit,
+            occurred_at: parsed.occurred_at,
+            created_by: member.user_id,
+          })
+          if (eventError) console.error('Mother event error:', eventError)
+          else console.log('Mother event logged')
+        } else {
+          console.log('No baby_id or mother_id found in parsed data')
+        }
+      } else {
+        console.log('Confidence too low:', parsed.confidence, '- clarification needed:', parsed.clarification)
+      }
+    } catch (parseErr) {
+      console.error('Parse error:', parseErr)
+      return NextResponse.json({ status: 'parse_error', error: String(parseErr) }, { status: 500 })
+    }
+
     return NextResponse.json({ status: 'ok' })
   } catch (err) {
     console.error('Webhook error:', err)
