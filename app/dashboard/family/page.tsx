@@ -67,15 +67,19 @@ export default function FamilyManagement() {
     if (!family) return;
 
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('family_members')
         .insert([{
           family_id: family.id,
+          email: formData.memberEmail,
+          whatsapp_number: formData.whatsappNumber,
           role: formData.role,
           user_id: null
-        }]);
+        }])
+        .select();
 
-      if (!error) {
+      if (!error && data) {
+        setMembers([...members, data[0]]);
         setSubmitted(true);
         setFormData({ memberEmail: '', whatsappNumber: '', role: 'member' });
         setTimeout(() => setSubmitted(false), 3000);
