@@ -21,16 +21,21 @@ export default function FamilyManagement() {
     const fetchData = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
+        console.log('Current user:', user?.id);
+        
         if (!user) {
           window.location.href = '/login';
           return;
         }
 
-        const { data: familyData } = await supabase
+        const { data: familyData, error: familyError } = await supabase
           .from('families')
           .select('*')
           .eq('created_by', user.id)
           .single();
+
+        console.log('Family data:', familyData);
+        console.log('Family error:', familyError);
 
         if (familyData) {
           setFamily(familyData);
@@ -38,12 +43,19 @@ export default function FamilyManagement() {
           const token = btoa(JSON.stringify({ family_id: familyData.id, created_at: new Date().toISOString() }));
           setInviteLink(window.location.origin + '/join/' + token);
 
-          const { data: membersData } = await supabase
+          const { data: membersData, error: membersError } = await supabase
             .from('family_members')
             .select('*')
             .eq('family_id', familyData.id);
 
-          if (membersData) setMembers(membersData);
+          console.log('Members data:', membersData);
+          console.log('Members error:', membersError);
+          console.log('Members count:', membersData?.length);
+
+          if (membersData) {
+            setMembers(membersData);
+            console.log('Set members:', membersData);
+          }
         }
 
         setLoading(false);
