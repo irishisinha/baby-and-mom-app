@@ -83,33 +83,27 @@ export async function POST(req: NextRequest) {
     // Log event based on parsed result
     if (parsed.confidence > 0.8) {
       if (parsed.subject === 'baby' && parsed.baby_id) {
-        await supabaseAdmin.from('baby_events').insert({
+        const { error: babyEventError } = await supabaseAdmin.from('baby_events').insert({
           baby_id: parsed.baby_id,
           family_id: member.family_id,
           type: parsed.type,
           value: parsed.value,
           unit: parsed.unit,
-          notes: parsed.notes,
-          logged_by: member.user_id,
           occurred_at: parsed.occurred_at,
-          source: 'whatsapp',
-          parser_confidence: parsed.confidence,
-          raw_input: parsed.raw_input,
+          created_by: member.user_id,
         })
+        console.log('Baby event result:', babyEventError || 'success')
       } else if (parsed.subject === 'mother' && parsed.mother_id) {
-        await supabaseAdmin.from('mother_events').insert({
+        const { error: motherEventError } = await supabaseAdmin.from('mother_events').insert({
           mother_id: parsed.mother_id,
           family_id: member.family_id,
           type: parsed.type,
           value: parsed.value,
           unit: parsed.unit,
-          notes: parsed.notes,
-          logged_by: member.user_id,
           occurred_at: parsed.occurred_at,
-          source: 'whatsapp',
-          parser_confidence: parsed.confidence,
-          raw_input: parsed.raw_input,
+          created_by: member.user_id,
         })
+        console.log('Mother event result:', motherEventError || 'success')
       }
     }
 
