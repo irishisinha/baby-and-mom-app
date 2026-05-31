@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { PILOT_USER_ID } from '@/lib/pilot-user';
+import { PILOT_USER_ID, PILOT_FAMILY_ID } from '@/lib/pilot-user';
 
 const TIMEZONES = ['Europe/London', 'Europe/Paris', 'Asia/Kolkata', 'America/New_York'];
 
@@ -22,7 +22,7 @@ export default function FamilyManagement() {
     const fetch = async () => {
       setUserId(PILOT_USER_ID);
       
-      const { data: b } = await supabase.from('babies').select('*').eq('user_id', PILOT_USER_ID);
+      const { data: b } = await supabase.from('babies').select('*').eq('created_by', PILOT_USER_ID);
       setBabies(b || []);
       
       const { data: m } = await supabase.from('family_members').select('*').eq('user_id', PILOT_USER_ID);
@@ -34,7 +34,7 @@ export default function FamilyManagement() {
   const addBaby = async (e: any) => {
     e.preventDefault();
     if (!userId || !babyForm.name) return;
-    const { data } = await supabase.from('babies').insert([{ user_id: userId, name: babyForm.name, date_of_birth: babyForm.dob }]).select();
+    const { data } = await supabase.from('babies').insert([{ created_by: userId, name: babyForm.name, date_of_birth: babyForm.dob, family_id: PILOT_FAMILY_ID }]).select();
     if (data) { setBabies([...babies, data[0]]); setBabyForm({ name: '', dob: '' }); }
   };
 
