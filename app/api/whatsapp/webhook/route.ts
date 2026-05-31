@@ -16,7 +16,7 @@ function parseMetric(text: string) {
   const lower = text.toLowerCase().trim();
   
   // Remove time patterns (HH:MM, H.MM, etc)
-  const cleanText = lower.replace(/\d{1,4}[:.]*\d{0,2}\s*(?:am|pm)?\s*[-–]?\s*/gi, '');
+  const cleanText = lower.replace(/^(\d{1,2}[:.]\d{2}|\d{3,4})[\s\-–]*|[\-–]\s*(\d{1,2}[:.]\d{2}|\d{3,4})\s*/gi, '');
   
   if (cleanText.includes('breastmilk') || cleanText.includes('pumped')) {
     const num = cleanText.match(/(\d+)/);
