@@ -10,7 +10,6 @@ export default function AuthCallback() {
   useEffect(() => {
     const handleCallback = async () => {
       try {
-        // Supabase automatically handles the token from URL
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
@@ -20,10 +19,19 @@ export default function AuthCallback() {
         }
 
         if (session) {
-          // User is authenticated, redirect to dashboard
-          router.push('/dashboard');
+          // Check if setup is complete
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('setup_completed')
+            .eq('id', session.user.id)
+            .single();
+
+          if (!profile?.setup_completed) {
+            router.push('/onboarding');
+          } else {
+            router.push('/dashboard');
+          }
         } else {
-          // No session, go back to login
           router.push('/login');
         }
       } catch (err) {
