@@ -338,7 +338,11 @@ async function hasSummaryBeenShared(phoneNumber: string, summaryType: string) {
 async function sendTwilioMessage(fromPhone: string, body: string) {
   try {
     console.log(`[TWILIO] Sending to ${fromPhone}: ${body.substring(0, 50)}`);
-    const result = await sendTwilioMessage(fromPhone, body);
+    const result = await client.messages.create({
+      from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
+      to: fromPhone,
+      body: body,
+    });
     console.log(`[TWILIO] OK - SID: ${result.sid}`);
     return result;
   } catch (error: any) {
