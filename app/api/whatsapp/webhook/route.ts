@@ -230,7 +230,8 @@ async function buildWeeklySummary() {
     const todayVal = today['breastmilk'] || 0;
     const avgVal = parseFloat(dailyAvgs['breastmilk'] || 0);
     const diffVal = todayVal - avgVal;
-    const arrow = diffVal > 0 ? '↑' : diff < 0 ? '↓' : '=';
+    const arrow = diffVal > 0 ? '↑' : diffVal < 0 ? '↓' : '=';
+    const diff = diffVal.toFixed(1);
     summary += `🍼 BREASTMILK:\n   Today: ${todayVal}ml\n   Daily Avg: ${avgVal}ml/day\n   ${arrow} ${diffVal > 0 ? '+' : ''}${diff}ml\n\n`;
   }
 
@@ -238,7 +239,8 @@ async function buildWeeklySummary() {
     const todayVal = today['formula'] || 0;
     const avgVal = parseFloat(dailyAvgs['formula'] || 0);
     const diffVal = todayVal - avgVal;
-    const arrow = diffVal > 0 ? '↑' : diff < 0 ? '↓' : '=';
+    const arrow = diffVal > 0 ? '↑' : diffVal < 0 ? '↓' : '=';
+    const diff = diffVal.toFixed(1);
     summary += `🍼 FORMULA:\n   Today: ${todayVal}ml\n   Daily Avg: ${avgVal}ml/day\n   ${arrow} ${diffVal > 0 ? '+' : ''}${diff}ml\n\n`;
   }
 
@@ -246,7 +248,8 @@ async function buildWeeklySummary() {
     const todayVal = today['potty'] || 0;
     const avgVal = parseFloat(dailyAvgs['potty'] || 0);
     const diffVal = todayVal - avgVal;
-    const arrow = diffVal > 0 ? '↑' : diff < 0 ? '↓' : '=';
+    const arrow = diffVal > 0 ? '↑' : diffVal < 0 ? '↓' : '=';
+    const diff = diffVal.toFixed(1);
     summary += `💧 POTTY:\n   Today: ${todayVal}\n   Daily Avg: ${avgVal}/day\n   ${arrow} ${diffVal > 0 ? '+' : ''}${diff}\n\n`;
   }
 
@@ -254,7 +257,8 @@ async function buildWeeklySummary() {
     const todayVal = today['diaper'] || 0;
     const avgVal = parseFloat(dailyAvgs['diaper'] || 0);
     const diffVal = todayVal - avgVal;
-    const arrow = diffVal > 0 ? '↑' : diff < 0 ? '↓' : '=';
+    const arrow = diffVal > 0 ? '↑' : diffVal < 0 ? '↓' : '=';
+    const diff = diffVal.toFixed(1);
     summary += `🧻 DIAPER:\n   Today: ${todayVal}\n   Daily Avg: ${avgVal}/day\n   ${arrow} ${diffVal > 0 ? '+' : ''}${diff}\n\n`;
   }
 
@@ -274,7 +278,8 @@ async function buildWeeklySummary() {
     const todayVal = today['sleep'] || 0;
     const avgVal = parseFloat(dailyAvgs['sleep'] || 0);
     const diffVal = todayVal - avgVal;
-    const arrow = diffVal > 0 ? '↑' : diff < 0 ? '↓' : '=';
+    const arrow = diffVal > 0 ? '↑' : diffVal < 0 ? '↓' : '=';
+    const diff = diffVal.toFixed(1);
     summary += `😴 SLEEP:\n   Today: ${todayVal}h\n   Daily Avg: ${avgVal}h/day\n   ${arrow} ${diffVal > 0 ? '+' : ''}${diff}h\n\n`;
   }
 
@@ -283,6 +288,7 @@ async function buildWeeklySummary() {
     const avgVal = parseFloat(dailyAvgs['weight'] || 0);
     const diffVal = todayVal - avgVal;
     const arrow = diffVal > 0 ? '↑' : diffVal < 0 ? '↓' : '=';
+    const diff = diffVal.toFixed(1);
     summary += `⚖️ WEIGHT:\n   Today: ${todayVal}kg\n   Weekly Avg: ${avgVal}kg\n   ${arrow} ${diffVal > 0 ? '+' : ''}${diff}kg\n\n`;
   }
 
