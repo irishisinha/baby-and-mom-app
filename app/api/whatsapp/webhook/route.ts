@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_KEY!
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
 const client = twilio(
@@ -334,11 +334,26 @@ async function hasSummaryBeenShared(phoneNumber: string, summaryType: string) {
   return data && data.length > 0;
 }
 
+
+async function sendTwilioMessage(fromPhone: string, body: string) {
+  try {
+    console.log(`[TWILIO] Sending to ${fromPhone}: ${body.substring(0, 50)}`);
+    const result = await sendTwilioMessage(fromPhone, body);
+    console.log(`[TWILIO] OK - SID: ${result.sid}`);
+    return result;
+  } catch (error: any) {
+    console.error(`[TWILIO] ERROR: ${error.message}`);
+    throw error;
+  }
+}
+
 export async function POST(request: NextRequest) {
   const formData = await request.formData();
   const messageText = formData.get('Body') as string;
   const fromPhone = formData.get('From') as string;
   const phoneNumber = fromPhone?.replace('whatsapp:', '') || '';
+
+  console.log(`[WEBHOOK] Received: ${messageText} from ${phoneNumber}`);
 
   const lower = messageText.toLowerCase().trim();
 
@@ -346,22 +361,14 @@ export async function POST(request: NextRequest) {
     const alreadyShared = await hasSummaryBeenShared(phoneNumber, 'daily');
     
     if (alreadyShared) {
-      await client.messages.create({
-        from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
-        to: fromPhone,
-        body: '⚠️ Daily summary already shared. Request again tomorrow!',
-      });
+      await sendTwilioMessage(fromPhone, '⚠️ Daily summary already shared. Request again tomorrow!');
       return NextResponse.json({ success: true });
     }
 
     const summary = await buildDailySummary();
     await recordSummaryShared(phoneNumber, 'daily');
     
-    await client.messages.create({
-      from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
-      to: fromPhone,
-      body: summary,
-    });
+    await sendTwilioMessage(fromPhone, summary);
     return NextResponse.json({ success: true });
   }
 
@@ -369,22 +376,14 @@ export async function POST(request: NextRequest) {
     const alreadyShared = await hasSummaryBeenShared(phoneNumber, 'weekly');
     
     if (alreadyShared) {
-      await client.messages.create({
-        from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
-        to: fromPhone,
-        body: '⚠️ Weekly summary already shared. Request again tomorrow!',
-      });
+      await sendTwilioMessage(fromPhone, '⚠️ Weekly summary already shared. Request again tomorrow!');
       return NextResponse.json({ success: true });
     }
 
     const summary = await buildWeeklySummary();
     await recordSummaryShared(phoneNumber, 'weekly');
     
-    await client.messages.create({
-      from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
-      to: fromPhone,
-      body: summary,
-    });
+    await sendTwilioMessage(fromPhone, summary);
     return NextResponse.json({ success: true });
   }
 
@@ -406,7 +405,7 @@ export async function POST(request: NextRequest) {
           const { error } = await supabase.from('baby_metrics').update({ value: newValue }).eq('id', latest.id);
           if (!error) {
             successCount++;
-            reply += `REDUCED ${metric.type.toUpperCase()}:\n   From: ${latest.value}${latest.unit}\n   To: ${newValue}${latest.unit}\n`;
+            reply += `REDUCED ${metric.type.toUpperCase()}:\n   From: ${latest.value} ${latest.unit}\n   To: ${newValue} ${latest.unit}\n`;
           }
         } else {
           reply += `No ${metric.type} entry found for today\n`;
@@ -423,7 +422,7 @@ export async function POST(request: NextRequest) {
           const { error } = await supabase.from('baby_metrics').delete().eq('id', latest.id);
           if (!error) {
             successCount++;
-            reply += `DELETED ${metric.type.toUpperCase()}: ${latest.value}${latest.unit}\n`;
+            reply += `DELETED ${metric.type.toUpperCase()}: ${latest.value} ${latest.unit}\n`;
           }
         } else {
           reply += `No ${metric.type} entry found for today\n`;
@@ -440,7 +439,7 @@ export async function POST(request: NextRequest) {
           const { error } = await supabase.from('baby_metrics').update({ value: metric.value, unit: metric.unit }).eq('id', latest.id);
           if (!error) {
             successCount++;
-            reply += `UPDATED ${metric.type.toUpperCase()}:\n   Old: ${latest.value}${latest.unit}\n   New: ${metric.value}${metric.unit}\n`;
+            reply += `UPDATED ${metric.type.toUpperCase()}:\n   Old: ${latest.value} ${latest.unit}\n   New: ${metric.value} ${metric.unit}\n`;
           }
         } else {
           reply += `No ${metric.type} entry found for today\n`;
@@ -461,7 +460,7 @@ export async function POST(request: NextRequest) {
           created_at: timestamp,
         });
         successCount++;
-        reply += `${metric.type.toUpperCase()}: ${metric.value}${metric.unit}`;
+        reply += `${metric.type.toUpperCase()}: ${metric.value} ${metric.unit}`;
         if (dateStr) {
           reply += ` (${dateStr})`;
         } else if (daysOffset > 0) {
@@ -476,11 +475,7 @@ export async function POST(request: NextRequest) {
     ? `LOGGED:\n${reply}\nFrom: ${phoneNumber}`
     : `Format not recognized\n\nFrom: ${phoneNumber}`;
 
-  await client.messages.create({
-    from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
-    to: fromPhone,
-    body: finalReply,
-  });
+  await sendTwilioMessage(fromPhone, finalReply);
 
   return NextResponse.json({ success: true });
 }
