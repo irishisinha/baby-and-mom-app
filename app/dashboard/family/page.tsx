@@ -87,9 +87,9 @@ export default function FamilyManagement() {
             <button type="submit" className="w-full bg-pink-600 text-white font-bold py-2 rounded">+ Add Baby</button>
           </form>
           
-          <div className="space-y-3">
-            {babies.length === 0 ? <p className="text-gray-500">No babies added yet</p> : babies.map(b => (
-              <div key={b.id} className="border rounded p-4 bg-gray-50">
+          <div className="space-y-3 mt-4">
+            {babies.length === 0 ? <p className="text-gray-400 italic">No babies added yet</p> : babies.map(b => (
+              <div key={b.id} className="border-2 border-blue-200 rounded-lg p-4 bg-blue-50 hover:shadow-md transition">
                 {editingBabyId === b.id ? (
                   <div className="space-y-2">
                     <input type="text" value={editBabyData.name} onChange={e => setEditBabyData({...editBabyData, name: e.target.value})} className="w-full px-2 py-1 border rounded text-sm" />
@@ -100,8 +100,11 @@ export default function FamilyManagement() {
                     </div>
                   </div>
                 ) : (
-                  <div className="flex justify-between">
-                    <div><p className="font-bold">{b.name}</p><p className="text-sm text-gray-600">{b.date_of_birth}</p></div>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="text-lg font-bold text-blue-900">{b.name}</p>
+                      <p className="text-sm text-gray-600">📅 DOB: {b.date_of_birth}</p>
+                    </div>
                     <div className="flex gap-2">
                       <button onClick={() => { setEditingBabyId(b.id); setEditBabyData({ name: b.name, dob: b.date_of_birth }); }} className="px-2 py-1 bg-blue-600 text-white rounded text-sm">Edit</button>
                       <button onClick={() => deleteBaby(b.id)} className="px-2 py-1 bg-red-600 text-white rounded text-sm">Delete</button>
@@ -125,9 +128,9 @@ export default function FamilyManagement() {
             <button type="submit" className="w-full bg-blue-600 text-white font-bold py-2 rounded">+ Add Member</button>
           </form>
 
-          <div className="space-y-3">
-            {members.length === 0 ? <p className="text-gray-500">No family members added yet</p> : members.map(m => (
-              <div key={m.id} className="border rounded p-4 bg-gray-50">
+          <div className="space-y-3 mt-4">
+            {members.length === 0 ? <p className="text-gray-400 italic">No family members added yet</p> : members.map(m => (
+              <div key={m.id} className="border-2 border-purple-200 rounded-lg p-4 bg-purple-50 hover:shadow-md transition">
                 {editingMemberId === m.id ? (
                   <div className="space-y-2">
                     <input type="text" value={editMemberData.name} onChange={e => setEditMemberData({...editMemberData, name: e.target.value})} className="w-full px-2 py-1 border rounded text-sm" />
@@ -141,8 +144,12 @@ export default function FamilyManagement() {
                     </div>
                   </div>
                 ) : (
-                  <div className="flex justify-between">
-                    <div><p className="font-bold">{m.name}</p><p className="text-sm text-gray-600">📱 {m.phone}</p><p className="text-sm text-gray-600">🕐 {m.timezone}</p></div>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="text-lg font-bold text-purple-900">{m.name}</p>
+                      <p className="text-sm text-gray-600">📱 {m.phone}</p>
+                      <p className="text-sm text-gray-600">🕐 {m.timezone}</p>
+                    </div>
                     <div className="flex gap-2">
                       <button onClick={() => { setEditingMemberId(m.id); setEditMemberData({ name: m.name, phone: m.phone, timezone: m.timezone }); }} className="px-2 py-1 bg-blue-600 text-white rounded text-sm">Edit</button>
                       <button onClick={() => deleteMember(m.id)} className="px-2 py-1 bg-red-600 text-white rounded text-sm">Delete</button>
