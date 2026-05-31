@@ -80,12 +80,12 @@ export default function ReportsPage() {
   const stats: any = {};
   Object.keys(grouped).forEach(type => {
     const items = grouped[type];
-    const values = items.map(x => parseFloat(x.value)).filter(v => !isNaN(v));
+    const values = items.map((x: any) => parseFloat(x.value)).filter((v: number) => !isNaN(v));
     if (values.length > 0) {
       stats[type] = {
         count: items.length,
-        total: values.reduce((a, b) => a + b, 0),
-        avg: (values.reduce((a, b) => a + b, 0) / values.length).toFixed(1),
+        total: values.reduce((a: number, b: number) => a + b, 0),
+        avg: (values.reduce((a: number, b: number) => a + b, 0) / values.length).toFixed(1),
         min: Math.min(...values).toFixed(1),
         max: Math.max(...values).toFixed(1),
       };

@@ -55,17 +55,23 @@ export default function DashboardLayout({
             </a>
           </li>
           <li>
+            <a href="/dashboard/appointments" className="block px-4 py-2 text-gray-700 hover:bg-pink-50 rounded-lg">
+              📅 Appointments
+            </a>
+          </li>
+          <li>
             <a href="/dashboard/reports" className="block px-4 py-2 text-gray-700 hover:bg-pink-50 rounded-lg">
               📊 Reports
             </a>
           </li>
           <li>
-            <a href="/dashboard/family"
+            <a href="/dashboard/family" className="block px-4 py-2 text-gray-700 hover:bg-pink-50 rounded-lg">
+              👨‍👩‍👧‍👦 Family
+            </a>
           </li>
           <li>
             <a href="/dashboard/metrics" className="block px-4 py-2 text-gray-700 hover:bg-pink-50 rounded-lg">
-              📊 Metrics className="block px-4 py-2 text-gray-700 hover:bg-pink-50 rounded-lg">
-              👨‍👩‍👧‍👦 Family
+              📊 Metrics
             </a>
           </li>
         </ul>

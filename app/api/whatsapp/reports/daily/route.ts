@@ -2,16 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import twilio from 'twilio';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_KEY!
-);
-
-const client = twilio(
-  process.env.TWILIO_ACCOUNT_SID,
-  process.env.TWILIO_AUTH_TOKEN
-);
-
 function getLondonDate(daysAgo = 0) {
   const now = new Date();
   const londonTime = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/London' }));
@@ -28,7 +18,21 @@ function getLondonDate(daysAgo = 0) {
   };
 }
 
-async function getMetrics(dateStr: string) {
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_KEY!
+  );
+}
+
+function getTwilioClient() {
+  return twilio(
+    process.env.TWILIO_ACCOUNT_SID,
+    process.env.TWILIO_AUTH_TOKEN
+  );
+}
+
+async function getMetrics(dateStr: string, supabase: any) {
   const { start, end } = getLondonDate(dateStr === 'yesterday' ? 1 : 0);
   
   const { data, error } = await supabase
@@ -136,9 +140,12 @@ function aggregateMetrics(data: any[]) {
 
 export async function POST(request: NextRequest) {
   try {
+    const supabase = getSupabase();
+    const client = getTwilioClient();
+    
     // Get metrics for today and yesterday
-    const todayData = await getMetrics('today');
-    const yesterdayData = await getMetrics('yesterday');
+    const todayData = await getMetrics('today', supabase);
+    const yesterdayData = await getMetrics('yesterday', supabase);
 
     // Build report
     const report = buildReport(todayData, yesterdayData);
