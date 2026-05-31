@@ -87,15 +87,21 @@ function parseMetric(text: string) {
   return null;
 }
 
+function getLondonTime() {
+  const now = new Date();
+  const londonTime = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/London' }));
+  return londonTime.toISOString();
+}
+
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
     const messageText = formData.get('Body') as string;
     const fromPhone = formData.get('From') as string;
     const phoneNumber = fromPhone?.replace('whatsapp:', '') || '';
+    const londonTimestamp = getLondonTime();
 
-    console.log(`📱 Message from ${phoneNumber}: "${messageText}"`);
-    console.log(`Phone extracted: "${phoneNumber}"`);
+    console.log(`📱 Message from ${phoneNumber} at ${londonTimestamp}: "${messageText}"`);
 
     const lines = messageText.split('\n').filter(l => l.trim());
     const results = [];
@@ -111,7 +117,7 @@ export async function POST(request: NextRequest) {
           value: metric.value,
           unit: metric.unit,
           sent_from_phone: phoneNumber,
-          created_at: new Date().toISOString(),
+          created_at: londonTimestamp,
         });
 
         if (error) {
