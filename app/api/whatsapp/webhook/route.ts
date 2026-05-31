@@ -18,7 +18,7 @@ function parseMetric(text: string) {
   // Remove time patterns (HH:MM, H.MM, etc)
   const cleanText = lower.replace(/\d{1,2}[:.]\d{2}\s*(?:am|pm)?\s*[-–]?\s*/gi, '');
   
-  if (cleanText.includes('breastmilk')) {
+  if (cleanText.includes('breastmilk') || cleanText.includes('pumped')) {
     const num = cleanText.match(/(\d+)/);
     if (num) return { type: 'breastmilk', value: parseInt(num[1]), unit: 'ml' };
   }
