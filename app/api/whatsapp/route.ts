@@ -1,11 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import twilio from 'twilio';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_KEY!
-);
 
 const client = twilio(
   process.env.TWILIO_ACCOUNT_SID,
@@ -17,32 +11,14 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
     const messageText = formData.get('Body') as string;
     const fromPhone = formData.get('From') as string;
-    const phoneNumber = fromPhone?.replace('whatsapp:', '') || '';
 
-    console.log(`Message from ${phoneNumber}: ${messageText}`);
-
-    // Save to Supabase
-    const { error } = await supabase
-      .from('whatsapp_messages')
-      .insert([
-        {
-          phone_number: phoneNumber,
-          message_text: messageText,
-          created_at: new Date().toISOString(),
-        },
-      ]);
-
-    if (error) {
-      console.error('Supabase error:', error);
-    } else {
-      console.log('✅ Message saved to database');
-    }
+    console.log(`Message from ${fromPhone}: ${messageText}`);
 
     // Send reply
     await client.messages.create({
       from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
       to: fromPhone,
-      body: `✅ Logged: "${messageText}"`,
+      body: `✅ Received: "${messageText}"`,
     });
 
     return NextResponse.json({ success: true });
