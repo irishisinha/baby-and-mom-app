@@ -1,3 +1,17 @@
+import { NextRequest, NextResponse } from 'next/server';
+import twilio from 'twilio';
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_KEY!
+);
+
+const client = twilio(
+  process.env.TWILIO_ACCOUNT_SID,
+  process.env.TWILIO_AUTH_TOKEN
+);
+
 function parseMetric(text: string) {
   const lower = text.toLowerCase().trim();
   
@@ -106,4 +120,112 @@ function parseMetric(text: string) {
   }
   
   return null;
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const formData = await request.formData();
+    const messageText = formData.get('Body') as string;
+    const fromPhone = formData.get('From') as string;
+    const phoneNumber = fromPhone?.replace('whatsapp:', '') || '';
+
+    console.log(`📱 Message from ${phoneNumber}: ${messageText}`);
+
+    // Parse metric
+    const metric = parseMetric(messageText);
+
+    if (metric) {
+      // Save to baby_metrics table
+      const { error } = await supabase
+        .from('baby_metrics')
+        .insert([
+          {
+            metric_type: metric.type,
+            value: metric.value,
+            unit: metric.unit,
+            created_at: new Date().toISOString(),
+          },
+        ]);
+
+      if (error) {
+        console.error('❌ Supabase error:', error);
+      } else {
+        console.log(`✅ ${metric.type} logged: ${metric.value}${metric.unit}`);
+      }
+
+      // Send confirmation
+      let confirmMsg = `✅ Logged: `;
+      
+      switch(metric.type) {
+        case 'breastmilk':
+          confirmMsg += `Breastmilk ${metric.value}ml`;
+          break;
+        case 'formula':
+          confirmMsg += `Formula ${metric.value}ml`;
+          break;
+        case 'potty':
+          confirmMsg += `Potty logged`;
+          break;
+        case 'diaper':
+          confirmMsg += `Diaper changed`;
+          break;
+        case 'bath':
+          confirmMsg += `Bath done`;
+          break;
+        case 'oil':
+          confirmMsg += `Oil massage done`;
+          break;
+        case 'weight':
+          confirmMsg += `Weight ${metric.value}${metric.unit}`;
+          break;
+        case 'fever':
+          confirmMsg += `Fever ${metric.value}°${metric.unit.toUpperCase()}`;
+          break;
+        case 'vaccine':
+          confirmMsg += `Vaccine: ${metric.value}`;
+          break;
+        case 'doc_notes':
+          confirmMsg += `Doctor notes saved`;
+          break;
+        case 'next_appointment':
+          confirmMsg += `Appointment: ${metric.value}`;
+          break;
+        default:
+          confirmMsg += `Data recorded`;
+      }
+
+      await client.messages.create({
+        from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
+        to: fromPhone,
+        body: confirmMsg,
+      });
+    } else {
+      // Unknown format - send help message
+      const helpMsg = `📝 I can track:
+
+🍼 Breastmilk 100ml / Formula 150ml
+💧 Potty / Diaper
+🛁 Bath / Oil massage
+⚖️ Weight 5kg
+🌡️ Fever 101f
+💉 Vaccine 9th june
+📝 Doc notes baby is healthy
+📅 Next appt 2nd June 9:00`;
+
+      await client.messages.create({
+        from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
+        to: fromPhone,
+        body: helpMsg,
+      });
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('❌ Error:', error);
+    return NextResponse.json({ error: 'Error' }, { status: 500 });
+  }
+}
+
+export async function GET() {
+  return NextResponse.json({ ok: true });
 }
