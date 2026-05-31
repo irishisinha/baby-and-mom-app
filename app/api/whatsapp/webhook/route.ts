@@ -15,33 +15,36 @@ const client = twilio(
 function parseMetric(text: string) {
   const lower = text.toLowerCase().trim();
   
-  if (lower.includes('breastmilk')) {
-    const num = lower.match(/(\d+)/);
+  // Remove time patterns (HH:MM, H.MM, etc)
+  const cleanText = lower.replace(/\d{1,2}[:.]\d{2}\s*(?:am|pm)?\s*[-–]?\s*/gi, '');
+  
+  if (cleanText.includes('breastmilk')) {
+    const num = cleanText.match(/(\d+)/);
     if (num) return { type: 'breastmilk', value: parseInt(num[1]), unit: 'ml' };
   }
-  if (lower.includes('formula')) {
-    const num = lower.match(/(\d+)/);
+  if (cleanText.includes('formula')) {
+    const num = cleanText.match(/(\d+)/);
     if (num) return { type: 'formula', value: parseInt(num[1]), unit: 'ml' };
   }
-  if (lower.includes('potty')) return { type: 'potty', value: 1, unit: 'count' };
-  if (lower.includes('diaper')) return { type: 'diaper', value: 1, unit: 'count' };
-  if (lower.includes('bath')) return { type: 'bath', value: 1, unit: 'done' };
-  if (lower.includes('oil')) return { type: 'oil', value: 1, unit: 'done' };
-  if (lower.includes('sleep') || lower.includes('nap')) {
-    const num = lower.match(/(\d+\.?\d*)\s*(?:hour|hr|h)?/);
+  if (cleanText.includes('potty')) return { type: 'potty', value: 1, unit: 'count' };
+  if (cleanText.includes('diaper')) return { type: 'diaper', value: 1, unit: 'count' };
+  if (cleanText.includes('bath')) return { type: 'bath', value: 1, unit: 'done' };
+  if (cleanText.includes('oil')) return { type: 'oil', value: 1, unit: 'done' };
+  if (cleanText.includes('sleep') || cleanText.includes('nap')) {
+    const num = cleanText.match(/(\d+\.?\d*)\s*(?:hour|hr|h)?/);
     if (num) return { type: 'sleep', value: parseFloat(num[1]), unit: 'hours' };
   }
-  if (lower.includes('weight') && !lower.includes('next')) {
-    const num = lower.match(/(\d+\.?\d*)\s*kg/);
+  if (cleanText.includes('weight') && !cleanText.includes('next')) {
+    const num = cleanText.match(/(\d+\.?\d*)\s*kg/);
     if (num) return { type: 'weight', value: parseFloat(num[1]), unit: 'kg' };
   }
-  if (lower.includes('fever')) {
-    const num = lower.match(/(\d+\.?\d*)/);
+  if (cleanText.includes('fever')) {
+    const num = cleanText.match(/(\d+\.?\d*)/);
     if (num) return { type: 'fever', value: parseFloat(num[1]), unit: 'f' };
   }
-  if (lower.includes('vaccine')) return { type: 'vaccine', value: 'Vaccine recorded', unit: 'given' };
-  if (lower.includes('doc') || lower.includes('doctor')) return { type: 'doc_notes', value: 'Notes saved', unit: 'notes' };
-  if (lower.includes('next') || lower.includes('appt')) {
+  if (cleanText.includes('vaccine')) return { type: 'vaccine', value: 'Vaccine recorded', unit: 'given' };
+  if (cleanText.includes('doc') || cleanText.includes('doctor')) return { type: 'doc_notes', value: 'Notes saved', unit: 'notes' };
+  if (cleanText.includes('next') || cleanText.includes('appt')) {
     const dateMatch = text.match(/(\d{1,2}(?:st|nd|rd|th)?\s+\w+|\w+\s+\d{1,2})/i);
     const timeMatch = text.match(/(\d{1,2}:\d{2}\s*(?:am|pm)?)/i);
     const details = dateMatch ? dateMatch[0] : '';
