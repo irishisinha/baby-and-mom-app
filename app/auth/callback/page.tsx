@@ -19,14 +19,14 @@ export default function AuthCallback() {
         }
 
         if (session) {
-          // Check if setup is complete
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('setup_completed')
-            .eq('id', session.user.id)
-            .single();
+          // Check if user has set up a family or babies
+          const { data: families } = await supabase
+            .from('families')
+            .select('id')
+            .eq('created_by', session.user.id)
+            .limit(1);
 
-          if (!profile?.setup_completed) {
+          if (!families || families.length === 0) {
             router.push('/onboarding');
           } else {
             router.push('/dashboard');

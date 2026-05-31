@@ -60,15 +60,6 @@ export default function OnboardingPage() {
 
       const { data: { user } } = await supabase.auth.getUser();
 
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .upsert(
-          { id: userId, email: user?.email || '', setup_completed: false },
-          { onConflict: 'id' }
-        );
-
-      if (profileError) throw profileError;
-
       const { error: babyError } = await supabase
         .from('babies')
         .insert({
