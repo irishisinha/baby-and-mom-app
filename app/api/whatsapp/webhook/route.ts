@@ -80,7 +80,7 @@ function parseMetric(text: string) {
   }
   
   // Next appointment
-  if (lower.includes('next') && (lower.includes('appt') || lower.includes('weight') || lower.includes('june'))) {
+  if (lower.includes('next') && (lower.includes('appt') || lower.includes('weight') || lower.includes('june') || lower.includes('may'))) {
     return { type: 'next_appointment', value: 'Appointment set', unit: 'scheduled' };
   }
   
@@ -92,8 +92,9 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
     const messageText = formData.get('Body') as string;
     const fromPhone = formData.get('From') as string;
+    const phoneNumber = fromPhone?.replace('whatsapp:', '') || '';
 
-    console.log(`Message: "${messageText}"`);
+    console.log(`Message from ${phoneNumber}: "${messageText}"`);
 
     const lines = messageText.split('\n').filter(l => l.trim());
     const results = [];
@@ -102,16 +103,21 @@ export async function POST(request: NextRequest) {
       const metric = parseMetric(line);
       
       if (metric) {
-        console.log(`Matched: ${metric.type}`);
+        console.log(`Matched: ${metric.type} from ${phoneNumber}`);
         
-        await supabase.from('baby_metrics').insert({
+        const { error } = await supabase.from('baby_metrics').insert({
           metric_type: metric.type,
           value: metric.value,
           unit: metric.unit,
+          sent_from_phone: phoneNumber,
           created_at: new Date().toISOString(),
         });
-        
-        results.push(`✅ ${metric.type}`);
+
+        if (error) {
+          console.error('DB Error:', error);
+        } else {
+          results.push(`✅ ${metric.type}`);
+        }
       }
     }
 
