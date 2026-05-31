@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import twilio from 'twilio';
 import { createClient } from '@supabase/supabase-js';
+import twilio from 'twilio';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -12,77 +12,177 @@ const client = twilio(
   process.env.TWILIO_AUTH_TOKEN
 );
 
-export async function POST(request: NextRequest) {
-  try {
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
+function getLondonDate(daysAgo = 0) {
+  const now = new Date();
+  const londonTime = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/London' }));
+  londonTime.setDate(londonTime.getDate() - daysAgo);
+  
+  const year = londonTime.getFullYear();
+  const month = String(londonTime.getMonth() + 1).padStart(2, '0');
+  const day = String(londonTime.getDate()).padStart(2, '0');
+  
+  return { 
+    date: `${year}-${month}-${day}`,
+    start: `${year}-${month}-${day}T00:00:00`,
+    end: `${year}-${month}-${day}T23:59:59`
+  };
+}
 
-    // Get today's metrics
-    const { data: todayData } = await supabase
-      .from('baby_metrics')
-      .select('metric_type, value, unit')
-      .gte('created_at', today.toISOString())
-      .lt('created_at', new Date(today.getTime() + 86400000).toISOString());
+async function getMetrics(dateStr: string) {
+  const { start, end } = getLondonDate(dateStr === 'yesterday' ? 1 : 0);
+  
+  const { data, error } = await supabase
+    .from('baby_metrics')
+    .select('*')
+    .gte('created_at', start)
+    .lte('created_at', end);
 
-    // Get yesterday's metrics
-    const { data: yesterdayData } = await supabase
-      .from('baby_metrics')
-      .select('metric_type, value, unit')
-      .gte('created_at', yesterday.toISOString())
-      .lt('created_at', today.toISOString());
-
-    // Calculate totals
-    const todayMetrics = aggregateMetrics(todayData || []);
-    const yesterdayMetrics = aggregateMetrics(yesterdayData || []);
-
-    // Build report
-    const report = buildReport(todayMetrics, yesterdayMetrics, now);
-
-    // Send via WhatsApp (you'll need to store the family phone number)
-    // For now, we'll just log it
-    console.log('📊 Report:', report);
-
-    return NextResponse.json({ 
-      success: true, 
-      report,
-      todayMetrics,
-      yesterdayMetrics
-    });
-  } catch (error) {
-    console.error('Error:', error);
-    return NextResponse.json({ error: 'Error' }, { status: 500 });
+  if (error) {
+    console.error('Error fetching metrics:', error);
+    return [];
   }
+
+  return data || [];
+}
+
+function buildReport(todayData: any[], yesterdayData: any[]) {
+  // Aggregate metrics
+  const today = aggregateMetrics(todayData);
+  const yesterday = aggregateMetrics(yesterdayData);
+  
+  const todayDate = getLondonDate(0).date;
+  const now = new Date();
+  const time = now.toLocaleTimeString('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit' });
+
+  let report = `📊 BABY CARE UPDATE\n${todayDate} at ${time}\n\n`;
+
+  // Milk breakdown
+  const todayBreast = today['breastmilk'] || 0;
+  const todayFormula = today['formula'] || 0;
+  const todayMilk = todayBreast + todayFormula;
+  
+  const yesterdayBreast = yesterday['breastmilk'] || 0;
+  const yesterdayFormula = yesterday['formula'] || 0;
+  const yesterdayMilk = yesterdayBreast + yesterdayFormula;
+
+  report += `🍼 MILK INTAKE:\n`;
+  report += `  Today: ${todayMilk}ml\n`;
+  report += `    • Breastmilk: ${todayBreast}ml\n`;
+  report += `    • Formula: ${todayFormula}ml\n`;
+  report += `  Yesterday: ${yesterdayMilk}ml\n`;
+  const milkDiff = todayMilk - yesterdayMilk;
+  report += `  ${milkDiff > 0 ? '↑' : milkDiff < 0 ? '↓' : '='} ${milkDiff > 0 ? '+' : ''}${milkDiff}ml\n\n`;
+
+  // Other metrics
+  const metrics = [
+    { key: 'potty', label: '💧 POTTY', unit: '' },
+    { key: 'diaper', label: '🧻 DIAPER', unit: '' },
+    { key: 'bath', label: '🛁 BATH', unit: '' },
+    { key: 'oil', label: '🛢️ OIL MASSAGE', unit: '' },
+    { key: 'sleep', label: '😴 SLEEP', unit: 'h' },
+  ];
+
+  for (const metric of metrics) {
+    const todayVal = today[metric.key] || 0;
+    const yesterdayVal = yesterday[metric.key] || 0;
+    const diff = todayVal - yesterdayVal;
+    const arrow = diff > 0 ? '↑' : diff < 0 ? '↓' : '=';
+
+    report += `${metric.label}:\n`;
+    report += `  Today: ${todayVal}${metric.unit}\n`;
+    report += `  Yesterday: ${yesterdayVal}${metric.unit}\n`;
+    report += `  ${arrow} ${diff > 0 ? '+' : ''}${diff}\n\n`;
+  }
+
+  // Weight
+  if (today['weight']) {
+    report += `⚖️ WEIGHT: ${today['weight']}kg\n`;
+  }
+
+  // Fever
+  if (today['fever']) {
+    report += `🌡️ FEVER: ${today['fever']}°F\n`;
+  }
+
+  // Vaccine
+  if (today['vaccine']) {
+    report += `💉 VACCINE: Given\n`;
+  }
+
+  // Appointments
+  if (today['next_appointment']) {
+    report += `📅 NEXT APPOINTMENT: Scheduled\n`;
+  }
+
+  return report;
 }
 
 function aggregateMetrics(data: any[]) {
   const metrics: any = {};
-  data.forEach((item) => {
+  
+  data.forEach(item => {
     if (!metrics[item.metric_type]) {
       metrics[item.metric_type] = 0;
     }
-    metrics[item.metric_type] += item.value || 1;
+    if (typeof item.value === 'number') {
+      metrics[item.metric_type] += item.value;
+    } else {
+      metrics[item.metric_type] = item.value;
+    }
   });
+  
   return metrics;
 }
 
-function buildReport(today: any, yesterday: any, time: Date) {
-  let report = `📊 BABY CARE UPDATE - ${time.toLocaleDateString()}, ${time.toLocaleTimeString()}\n\n`;
+export async function POST(request: NextRequest) {
+  try {
+    // Get metrics for today and yesterday
+    const todayData = await getMetrics('today');
+    const yesterdayData = await getMetrics('yesterday');
 
-  const metricTypes = ['milk', 'potty', 'diaper', 'bath'];
-  
-  metricTypes.forEach((type) => {
-    const todayVal = today[type] || 0;
-    const yesterdayVal = yesterday[type] || 0;
-    const diff = todayVal - yesterdayVal;
-    const arrow = diff > 0 ? '↑' : diff < 0 ? '↓' : '✓';
+    // Build report
+    const report = buildReport(todayData, yesterdayData);
 
-    report += `${type.toUpperCase()}:\n`;
-    report += `  Today: ${todayVal}\n`;
-    report += `  Yesterday: ${yesterdayVal}\n`;
-    report += `  ${arrow} ${diff > 0 ? '+' : ''}${diff}\n\n`;
-  });
+    console.log('📊 Generated report:', report);
 
-  return report;
+    // Get all family phone numbers (comma-separated)
+    const familyPhones = process.env.FAMILY_WHATSAPP_NUMBERS?.split(',').map(p => p.trim()) || [];
+    
+    const sentTo = [];
+
+    // Send to each family member
+    for (const phone of familyPhones) {
+      if (phone) {
+        try {
+          await client.messages.create({
+            from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
+            to: `whatsapp:${phone}`,
+            body: report,
+          });
+          console.log(`✅ Report sent to ${phone}`);
+          sentTo.push(phone);
+        } catch (error) {
+          console.error(`❌ Failed to send to ${phone}:`, error);
+        }
+      }
+    }
+
+    if (sentTo.length === 0) {
+      console.log('⚠️ FAMILY_WHATSAPP_NUMBERS not set, skipping WhatsApp send');
+    }
+
+    return NextResponse.json({ 
+      success: true, 
+      report: report,
+      sentTo: sentTo,
+      totalRecipients: sentTo.length
+    });
+  } catch (error) {
+    console.error('❌ Error generating report:', error);
+    return NextResponse.json({ error: 'Error' }, { status: 500 });
+  }
+}
+
+export async function GET() {
+  return NextResponse.json({ ok: true });
 }
