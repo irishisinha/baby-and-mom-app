@@ -47,9 +47,52 @@ function parseMetric(text: string) {
   return null;
 }
 
-function getLondonTime() {
+function extractDateAndMetric(text: string) {
+  const lower = text.toLowerCase().trim();
+  let dateStr: string | null = null;
+  let metricText = text;
+  let daysOffset = 0;
+
+  if (lower.startsWith('yesterday:')) {
+    daysOffset = 1;
+    metricText = text.substring(9).trim();
+  }
+  else if (lower.startsWith('today:')) {
+    daysOffset = 0;
+    metricText = text.substring(6).trim();
+  }
+  else {
+    const dateMatch = text.match(/^(\d{4}-\d{2}-\d{2}|\d{2}-\d{2}-\d{4}):\s*/i);
+    if (dateMatch) {
+      dateStr = dateMatch[1];
+      metricText = text.substring(dateMatch[0].length);
+    }
+  }
+
+  return { dateStr, metricText, daysOffset };
+}
+
+function getLondonTime(daysOffset = 0, specificDate?: string) {
   const now = new Date();
   const londonTime = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/London' }));
+
+  if (specificDate) {
+    let parts = specificDate.split('-');
+    let year, month, day;
+
+    if (parts[0].length === 4) {
+      [year, month, day] = [parseInt(parts[0]), parseInt(parts[1]), parseInt(parts[2])];
+    } else {
+      [day, month, year] = [parseInt(parts[0]), parseInt(parts[1]), parseInt(parts[2])];
+    }
+
+    londonTime.setFullYear(year);
+    londonTime.setMonth(month - 1);
+    londonTime.setDate(day);
+  } else {
+    londonTime.setDate(londonTime.getDate() - daysOffset);
+  }
+
   return londonTime.toISOString();
 }
 
@@ -69,46 +112,24 @@ function getLondonDate(daysAgo = 0) {
   };
 }
 
-async function getMetricForType(metricType: string, daysAgo = 0) {
-  const { start, end } = getLondonDate(daysAgo);
+async function getLatestMetricForToday(metricType: string) {
+  const { start, end } = getLondonDate(0);
   
   const { data, error } = await supabase
     .from('baby_metrics')
-    .select('value, unit')
+    .select('id, value, unit, created_at')
     .eq('metric_type', metricType)
     .gte('created_at', start)
-    .lte('created_at', end);
+    .lte('created_at', end)
+    .order('created_at', { ascending: false })
+    .limit(1);
 
   if (error) {
     console.error('Error fetching metric:', error);
     return null;
   }
 
-  if (!data || data.length === 0) return null;
-
-  // Sum numeric values, get first string value
-  const firstVal = data[0];
-  if (typeof firstVal.value === 'number') {
-    const total = data.reduce((sum: number, item: any) => sum + (item.value || 0), 0);
-    return { value: total, unit: firstVal.unit };
-  }
-  return firstVal;
-}
-
-function buildComparisonText(metric: any, todayVal: any, yesterdayVal: any) {
-  if (!todayVal) return '';
-
-  let text = `✅ ${metric.type.toUpperCase()}: ${todayVal.value}${todayVal.unit}\n`;
-  
-  if (yesterdayVal) {
-    const diff = todayVal.value - yesterdayVal.value;
-    const arrow = diff > 0 ? '↑' : diff < 0 ? '↓' : '=';
-    text += `   Yesterday: ${yesterdayVal.value}${yesterdayVal.unit} ${arrow}\n`;
-  } else {
-    text += `   Yesterday: N/A (first time)\n`;
-  }
-  
-  return text;
+  return data && data.length > 0 ? data[0] : null;
 }
 
 export async function POST(request: NextRequest) {
@@ -116,45 +137,75 @@ export async function POST(request: NextRequest) {
   const messageText = formData.get('Body') as string;
   const fromPhone = formData.get('From') as string;
   const phoneNumber = fromPhone?.replace('whatsapp:', '') || '';
-  const londonTimestamp = getLondonTime();
 
   const lines = messageText.split('\n').filter(l => l.trim());
   let reply = '';
   let successCount = 0;
 
   for (const line of lines) {
-    const metric = parseMetric(line);
-    if (metric) {
-      // Get today's value for this metric
-      const todayVal = await getMetricForType(metric.type, 0);
-      
-      // Get yesterday's value for comparison
-      const yesterdayVal = await getMetricForType(metric.type, 1);
+    const lower = line.toLowerCase().trim();
 
-      // Insert the new metric
-      await supabase.from('baby_metrics').insert({
-        metric_type: metric.type,
-        value: metric.value,
-        unit: metric.unit,
-        sent_from_phone: phoneNumber,
-        created_at: londonTimestamp,
-      });
+    if (lower.startsWith('edit:') || lower.startsWith('edit ')) {
+      const editText = lower.startsWith('edit:') 
+        ? line.substring(5).trim() 
+        : line.substring(4).trim();
+      
+      const metric = parseMetric(editText);
+      
+      if (metric) {
+        const latest = await getLatestMetricForToday(metric.type);
+        
+        if (latest) {
+          const { error } = await supabase
+            .from('baby_metrics')
+            .update({
+              value: metric.value,
+              unit: metric.unit,
+            })
+            .eq('id', latest.id);
 
-      successCount++;
-      
-      // Build comparison text
-      const newVal = {
-        value: (todayVal?.value || 0) + metric.value,
-        unit: metric.unit
-      };
-      
-      reply += buildComparisonText(metric, newVal, yesterdayVal);
+          if (!error) {
+            successCount++;
+            reply += `UPDATED ${metric.type.toUpperCase()}:\n`;
+            reply += `   Old: ${latest.value}${latest.unit}\n`;
+            reply += `   New: ${metric.value}${metric.unit}\n`;
+          }
+        } else {
+          reply += `No ${metric.type} entry found for today\n`;
+        }
+      }
+    } 
+    else {
+      const { dateStr, metricText, daysOffset } = extractDateAndMetric(line);
+      const metric = parseMetric(metricText);
+
+      if (metric) {
+        const timestamp = getLondonTime(daysOffset, dateStr);
+
+        await supabase.from('baby_metrics').insert({
+          metric_type: metric.type,
+          value: metric.value,
+          unit: metric.unit,
+          sent_from_phone: phoneNumber,
+          created_at: timestamp,
+        });
+
+        successCount++;
+        
+        reply += `${metric.type.toUpperCase()}: ${metric.value}${metric.unit}`;
+        if (dateStr) {
+          reply += ` (${dateStr})`;
+        } else if (daysOffset > 0) {
+          reply += ` (${daysOffset} day${daysOffset > 1 ? 's' : ''} ago)`;
+        }
+        reply += '\n';
+      }
     }
   }
 
   const finalReply = successCount > 0 
-    ? `📊 LOGGED TODAY:\n\n${reply}\nFrom: ${phoneNumber}`
-    : `❌ Not recognized\n\nFrom: ${phoneNumber}`;
+    ? `LOGGED:\n${reply}\nFrom: ${phoneNumber}`
+    : `Format not recognized\n\nFrom: ${phoneNumber}`;
 
   await client.messages.create({
     from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
