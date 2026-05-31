@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { PILOT_USER_ID } from '@/lib/pilot-user';
 
 export default function AppointmentsPage() {
   const [userId, setUserId] = useState<string | null>(null);
@@ -18,14 +19,12 @@ export default function AppointmentsPage() {
 
   useEffect(() => {
     const fetch = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      setUserId(user.id);
+      setUserId(PILOT_USER_ID);
 
       const { data } = await supabase
         .from('appointments')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', PILOT_USER_ID)
         .order('appointment_date', { ascending: true });
 
       setAppointments(data || []);

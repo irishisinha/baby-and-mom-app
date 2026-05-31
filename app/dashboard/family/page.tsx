@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { PILOT_USER_ID } from '@/lib/pilot-user';
 
 const TIMEZONES = ['Europe/London', 'Europe/Paris', 'Asia/Kolkata', 'America/New_York'];
 
@@ -19,14 +20,12 @@ export default function FamilyManagement() {
 
   useEffect(() => {
     const fetch = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      setUserId(user.id);
+      setUserId(PILOT_USER_ID);
       
-      const { data: b } = await supabase.from('babies').select('*').eq('user_id', user.id);
+      const { data: b } = await supabase.from('babies').select('*').eq('user_id', PILOT_USER_ID);
       setBabies(b || []);
       
-      const { data: m } = await supabase.from('family_members').select('*').eq('user_id', user.id);
+      const { data: m } = await supabase.from('family_members').select('*').eq('user_id', PILOT_USER_ID);
       setMembers(m || []);
     };
     fetch();
