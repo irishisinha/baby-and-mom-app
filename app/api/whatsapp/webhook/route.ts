@@ -53,6 +53,14 @@ function parseMetric(text: string) {
     return { type: 'oil', value: 1, unit: 'done' };
   }
   
+  // Sleep
+  if (lower.includes('sleep') || lower.includes('nap')) {
+    const num = lower.match(/(\d+\.?\d*)\s*(?:hour|hr|h)?/);
+    if (num) {
+      return { type: 'sleep', value: parseFloat(num[1]), unit: 'hours' };
+    }
+  }
+  
   // Weight (only if NOT "next")
   if (lower.includes('weight') && !lower.includes('next')) {
     const num = lower.match(/(\d+\.?\d*)\s*kg/);
