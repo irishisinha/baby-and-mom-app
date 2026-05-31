@@ -16,7 +16,7 @@ function parseMetric(text: string) {
   const lower = text.toLowerCase().trim();
   
   // breastmilk variations
-  if (lower.includes('breastmilk') || lower.includes('breast ')) {
+  if (lower.includes('breastmilk') || (lower.includes('breast') && lower.match(/\d+/))) {
     const match = lower.match(/(\d+)\s*ml?/);
     if (match) {
       return { type: 'breastmilk', value: parseInt(match[1]), unit: 'ml' };
@@ -51,10 +51,10 @@ function parseMetric(text: string) {
     return { type: 'oil', value: 1, unit: 'done' };
   }
   
-  // weight - flexible format
-  if (lower.includes('weight')) {
-    const match = lower.match(/(\d+\.?\d*)\s*(kg|g)?/);
-    if (match) {
+  // weight - only if it's a number like "5kg" not an ordinal like "2nd"
+  if (lower.includes('weight') && !lower.includes('next') && !lower.includes('appt')) {
+    const match = lower.match(/weight\s+(\d+\.?\d*)(?![a-z])\s*(kg|g|lbs)?/);
+    if (match && !lower.match(/\d+(?:st|nd|rd|th)/)) {
       return { 
         type: 'weight', 
         value: parseFloat(match[1]), 
@@ -75,15 +75,13 @@ function parseMetric(text: string) {
     }
   }
   
-  // vaccine - flexible format
+  // vaccine - any mention with date
   if (lower.includes('vaccine')) {
-    const dateMatch = lower.match(/(\d{1,2}(?:st|nd|rd|th)?\s*(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|january|february|march|april|june|july|august|september|october|november|december|\d{1,2}\/\d{1,2}))/);
-    const timeMatch = lower.match(/(\d{1,2}:\d{2}|\d{1,2})\s*(?:am|pm)?/);
-    
+    const dateMatch = lower.match(/(\d{1,2}(?:st|nd|rd|th)?)\s*(?:of\s+)?(\w+)?/);
     let value = 'Vaccine recorded';
-    if (dateMatch) value = `${dateMatch[1]}`;
-    if (timeMatch) value += ` ${timeMatch[1]}`;
-    
+    if (dateMatch) {
+      value = `${dateMatch[1]}${dateMatch[2] ? ' ' + dateMatch[2] : ''}`;
+    }
     return { 
       type: 'vaccine', 
       value: value,
@@ -93,8 +91,8 @@ function parseMetric(text: string) {
   
   // doc notes - flexible
   if (lower.includes('doc') || lower.includes('doctor') || lower.includes('notes')) {
-    const notesMatch = lower.match(/(?:doc|doctor|notes)\s+(.+)/);
-    if (notesMatch) {
+    const notesMatch = lower.match(/(?:doc|doctor|notes)?\s*(.+)/);
+    if (notesMatch && notesMatch[1].length > 2) {
       return { 
         type: 'doc_notes', 
         value: notesMatch[1].trim(),
@@ -103,14 +101,18 @@ function parseMetric(text: string) {
     }
   }
   
-  // next appointment - flexible
-  if (lower.includes('next') && (lower.includes('appt') || lower.includes('appointment'))) {
-    const dateMatch = lower.match(/(\d{1,2}(?:st|nd|rd|th)?\s*(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|january|february|march|april|june|july|august|september|october|november|december|\d{1,2}\/\d{1,2}))/);
+  // next appointment/weight - any date/time with month or time
+  if ((lower.includes('next') || lower.includes('weight')) && (lower.match(/\d{1,2}/) && (lower.includes('june') || lower.includes('may') || lower.includes('jun') || lower.includes('appt') || lower.match(/\d+:\d+/)))) {
+    const dateMatch = lower.match(/(\d{1,2}(?:st|nd|rd|th)?)\s*(?:of\s+)?(\w+)?/);
     const timeMatch = lower.match(/(\d{1,2}:\d{2}|\d{1,2})\s*(?:am|pm)?/);
     
     let value = 'Appointment scheduled';
-    if (dateMatch) value = `${dateMatch[1]}`;
-    if (timeMatch) value += ` ${timeMatch[1]}`;
+    if (dateMatch) {
+      value = `${dateMatch[1]}${dateMatch[2] ? ' ' + dateMatch[2] : ''}`;
+    }
+    if (timeMatch) {
+      value += ` ${timeMatch[1]}`;
+    }
     
     return { 
       type: 'next_appointment', 
@@ -131,93 +133,86 @@ export async function POST(request: NextRequest) {
 
     console.log(`📱 Message from ${phoneNumber}: ${messageText}`);
 
-    // Parse metric
-    const metric = parseMetric(messageText);
+    // Split by newlines and process each line
+    const lines = messageText.split('\n').filter(line => line.trim().length > 0);
+    const results = [];
 
-    if (metric) {
-      // Save to baby_metrics table
-      const { error } = await supabase
-        .from('baby_metrics')
-        .insert([
-          {
-            metric_type: metric.type,
-            value: metric.value,
-            unit: metric.unit,
-            created_at: new Date().toISOString(),
-          },
-        ]);
+    for (const line of lines) {
+      const metric = parseMetric(line);
 
-      if (error) {
-        console.error('❌ Supabase error:', error);
-      } else {
-        console.log(`✅ ${metric.type} logged: ${metric.value}${metric.unit}`);
+      if (metric) {
+        // Save to baby_metrics table
+        const { error } = await supabase
+          .from('baby_metrics')
+          .insert([
+            {
+              metric_type: metric.type,
+              value: metric.value,
+              unit: metric.unit,
+              created_at: new Date().toISOString(),
+            },
+          ]);
+
+        if (error) {
+          console.error('❌ Supabase error:', error);
+        } else {
+          console.log(`✅ ${metric.type} logged: ${metric.value}${metric.unit}`);
+          
+          // Build confirmation message
+          let confirmText = '';
+          switch(metric.type) {
+            case 'breastmilk':
+              confirmText = `Breastmilk ${metric.value}ml`;
+              break;
+            case 'formula':
+              confirmText = `Formula ${metric.value}ml`;
+              break;
+            case 'potty':
+              confirmText = `Potty`;
+              break;
+            case 'diaper':
+              confirmText = `Diaper`;
+              break;
+            case 'bath':
+              confirmText = `Bath`;
+              break;
+            case 'oil':
+              confirmText = `Oil massage`;
+              break;
+            case 'weight':
+              confirmText = `Weight ${metric.value}${metric.unit}`;
+              break;
+            case 'fever':
+              confirmText = `Fever ${metric.value}°${metric.unit.toUpperCase()}`;
+              break;
+            case 'vaccine':
+              confirmText = `Vaccine: ${metric.value}`;
+              break;
+            case 'doc_notes':
+              confirmText = `Doc notes saved`;
+              break;
+            case 'next_appointment':
+              confirmText = `Appt: ${metric.value}`;
+              break;
+            default:
+              confirmText = `Logged`;
+          }
+          
+          results.push(`✅ ${confirmText}`);
+        }
       }
-
-      // Send confirmation
-      let confirmMsg = `✅ Logged: `;
-      
-      switch(metric.type) {
-        case 'breastmilk':
-          confirmMsg += `Breastmilk ${metric.value}ml`;
-          break;
-        case 'formula':
-          confirmMsg += `Formula ${metric.value}ml`;
-          break;
-        case 'potty':
-          confirmMsg += `Potty logged`;
-          break;
-        case 'diaper':
-          confirmMsg += `Diaper changed`;
-          break;
-        case 'bath':
-          confirmMsg += `Bath done`;
-          break;
-        case 'oil':
-          confirmMsg += `Oil massage done`;
-          break;
-        case 'weight':
-          confirmMsg += `Weight ${metric.value}${metric.unit}`;
-          break;
-        case 'fever':
-          confirmMsg += `Fever ${metric.value}°${metric.unit.toUpperCase()}`;
-          break;
-        case 'vaccine':
-          confirmMsg += `Vaccine: ${metric.value}`;
-          break;
-        case 'doc_notes':
-          confirmMsg += `Doctor notes saved`;
-          break;
-        case 'next_appointment':
-          confirmMsg += `Appointment: ${metric.value}`;
-          break;
-        default:
-          confirmMsg += `Data recorded`;
-      }
-
-      await client.messages.create({
-        from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
-        to: fromPhone,
-        body: confirmMsg,
-      });
-    } else {
-      // Unknown format - send help message
-      const helpMsg = `📝 I can track:
-
-🍼 Breastmilk 100ml / Formula 150ml
-💧 Potty / Diaper
-🛁 Bath / Oil massage
-⚖️ Weight 5kg
-🌡️ Fever 101f
-💉 Vaccine 9th june
-📝 Doc notes baby is healthy
-📅 Next appt 2nd June 9:00`;
-
-      await client.messages.create({
-        from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
-        to: fromPhone,
-        body: helpMsg,
-      });
     }
+
+    // Send confirmation
+    let confirmMsg = results.length > 0 
+      ? `✅ Logged:\n${results.join('\n')}`
+      : `📝 Format not recognized.\n\nI track:\n🍼 Breastmilk/Formula ml\n💧 Potty/Diaper\n🛁 Bath/Oil\n⚖️ Weight #kg\n🌡️ Fever #f\n💉 Vaccine date\n📝 Doc notes\n📅 Next appt date time`;
+
+    await client.messages.create({
+      from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
+      to: fromPhone,
+      body: confirmMsg,
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {
