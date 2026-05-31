@@ -94,7 +94,8 @@ export async function POST(request: NextRequest) {
     const fromPhone = formData.get('From') as string;
     const phoneNumber = fromPhone?.replace('whatsapp:', '') || '';
 
-    console.log(`Message from ${phoneNumber}: "${messageText}"`);
+    console.log(`📱 Message from ${phoneNumber}: "${messageText}"`);
+    console.log(`Phone extracted: "${phoneNumber}"`);
 
     const lines = messageText.split('\n').filter(l => l.trim());
     const results = [];
@@ -103,7 +104,7 @@ export async function POST(request: NextRequest) {
       const metric = parseMetric(line);
       
       if (metric) {
-        console.log(`Matched: ${metric.type} from ${phoneNumber}`);
+        console.log(`✅ Matched: ${metric.type} from ${phoneNumber}`);
         
         const { error } = await supabase.from('baby_metrics').insert({
           metric_type: metric.type,
@@ -114,7 +115,7 @@ export async function POST(request: NextRequest) {
         });
 
         if (error) {
-          console.error('DB Error:', error);
+          console.error('❌ DB Error:', error);
         } else {
           results.push(`✅ ${metric.type}`);
         }
@@ -122,8 +123,8 @@ export async function POST(request: NextRequest) {
     }
 
     const reply = results.length > 0 
-      ? `Logged:\n${results.join('\n')}`
-      : 'Not recognized';
+      ? `Logged:\n${results.join('\n')}\n\nFrom: ${phoneNumber}`
+      : `Not recognized\n\nFrom: ${phoneNumber}`;
 
     await client.messages.create({
       from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
@@ -133,7 +134,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error:', error);
+    console.error('❌ Error:', error);
     return NextResponse.json({ error: 'Error' }, { status: 500 });
   }
 }
