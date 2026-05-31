@@ -401,7 +401,7 @@ export async function POST(request: NextRequest) {
       
       if (metric) {
         const latest = await getLatestMetricForToday(metric.type);
-        if (latest && typeof latest.value === 'number') {
+        if (latest && typeof latest.value === 'number' && typeof metric.value === 'number') {
           const newValue = Math.max(0, latest.value - metric.value);
           const { error } = await supabase.from('baby_metrics').update({ value: newValue }).eq('id', latest.id);
           if (!error) {
