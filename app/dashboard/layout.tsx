@@ -13,16 +13,8 @@ export default function DashboardLayout({
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
-        router.push('/login')
-      } else {
-        setLoading(false)
-      }
-    }
-    checkAuth()
-  }, [router])
+    setLoading(false)
+  }, [])
 
   if (loading) {
     return <div className="flex items-center justify-center h-screen">Loading...</div>
