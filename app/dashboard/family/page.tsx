@@ -13,10 +13,10 @@ export default function FamilyManagement() {
   const [editingBabyId, setEditingBabyId] = useState<string | null>(null);
   const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
   const [editBabyData, setEditBabyData] = useState({ name: '', dob: '' });
-  const [editMemberData, setEditMemberData] = useState({ name: '', phone: '', timezone: 'Europe/London' });
+  const [editMemberData, setEditMemberData] = useState({ relation: '', whatsapp_number: '', email: '', timezone: 'Europe/London' });
 
   const [babyForm, setBabyForm] = useState({ name: '', dob: '' });
-  const [memberForm, setMemberForm] = useState({ name: '', phone: '', timezone: 'Europe/London' });
+  const [memberForm, setMemberForm] = useState({ relation: '', whatsapp_number: '', email: '', timezone: 'Europe/London' });
 
   useEffect(() => {
     const fetch = async () => {
@@ -55,13 +55,13 @@ export default function FamilyManagement() {
   const addMember = async (e: any) => {
     e.preventDefault();
     if (!userId) return;
-    const { data } = await supabase.from('family_members').insert([{ user_id: userId, ...memberForm }]).select();
-    if (data) { setMembers([...members, data[0]]); setMemberForm({ name: '', phone: '', timezone: 'Europe/London' }); }
+    const { data } = await supabase.from('family_members').insert([{ user_id: userId, family_id: PILOT_FAMILY_ID, role: 'family', ...memberForm }]).select();
+    if (data) { setMembers([...members, data[0]]); setMemberForm({ relation: '', whatsapp_number: '', email: '', timezone: 'Europe/London' }); }
   };
 
   const saveMemberEdit = async (id: string) => {
-    if (!editMemberData.name || !editMemberData.phone) return;
-    await supabase.from('family_members').update({ name: editMemberData.name, phone: editMemberData.phone, timezone: editMemberData.timezone }).eq('id', id);
+    if (!editMemberData.relation) return;
+    await supabase.from('family_members').update({ relation: editMemberData.relation, whatsapp_number: editMemberData.whatsapp_number, email: editMemberData.email, timezone: editMemberData.timezone }).eq('id', id);
     setMembers(members.map(m => m.id === id ? { ...m, ...editMemberData } : m));
     setEditingMemberId(null);
   };
@@ -120,8 +120,9 @@ export default function FamilyManagement() {
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-2xl font-bold mb-4">👥 Family Members</h2>
           <form onSubmit={addMember} className="space-y-3 mb-6 pb-6 border-b">
-            <input type="text" value={memberForm.name} onChange={e => setMemberForm({...memberForm, name: e.target.value})} placeholder="Name" required className="w-full px-4 py-2 border rounded" />
-            <input type="tel" value={memberForm.phone} onChange={e => setMemberForm({...memberForm, phone: e.target.value})} placeholder="Phone" required className="w-full px-4 py-2 border rounded" />
+            <input type="text" value={memberForm.relation} onChange={e => setMemberForm({...memberForm, relation: e.target.value})} placeholder="Relation (e.g. Mother, Father)" required className="w-full px-4 py-2 border rounded" />
+            <input type="tel" value={memberForm.whatsapp_number} onChange={e => setMemberForm({...memberForm, whatsapp_number: e.target.value})} placeholder="WhatsApp Number" required className="w-full px-4 py-2 border rounded" />
+            <input type="email" value={memberForm.email} onChange={e => setMemberForm({...memberForm, email: e.target.value})} placeholder="Email (optional)" className="w-full px-4 py-2 border rounded" />
             <select value={memberForm.timezone} onChange={e => setMemberForm({...memberForm, timezone: e.target.value})} className="w-full px-4 py-2 border rounded">
               {TIMEZONES.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
@@ -133,8 +134,9 @@ export default function FamilyManagement() {
               <div key={m.id} className="border-2 border-purple-200 rounded-lg p-4 bg-purple-50 hover:shadow-md transition">
                 {editingMemberId === m.id ? (
                   <div className="space-y-2">
-                    <input type="text" value={editMemberData.name} onChange={e => setEditMemberData({...editMemberData, name: e.target.value})} className="w-full px-2 py-1 border rounded text-sm" />
-                    <input type="tel" value={editMemberData.phone} onChange={e => setEditMemberData({...editMemberData, phone: e.target.value})} className="w-full px-2 py-1 border rounded text-sm" />
+                    <input type="text" value={editMemberData.relation} onChange={e => setEditMemberData({...editMemberData, relation: e.target.value})} className="w-full px-2 py-1 border rounded text-sm" />
+                    <input type="tel" value={editMemberData.whatsapp_number} onChange={e => setEditMemberData({...editMemberData, whatsapp_number: e.target.value})} className="w-full px-2 py-1 border rounded text-sm" />
+                    <input type="email" value={editMemberData.email} onChange={e => setEditMemberData({...editMemberData, email: e.target.value})} className="w-full px-2 py-1 border rounded text-sm" />
                     <select value={editMemberData.timezone} onChange={e => setEditMemberData({...editMemberData, timezone: e.target.value})} className="w-full px-2 py-1 border rounded text-sm">
                       {TIMEZONES.map(t => <option key={t} value={t}>{t}</option>)}
                     </select>
@@ -146,12 +148,13 @@ export default function FamilyManagement() {
                 ) : (
                   <div className="flex justify-between items-center">
                     <div>
-                      <p className="text-lg font-bold text-purple-900">{m.name}</p>
-                      <p className="text-sm text-gray-600">📱 {m.phone}</p>
+                      <p className="text-lg font-bold text-purple-900">{m.relation}</p>
+                      <p className="text-sm text-gray-600">📱 {m.whatsapp_number}</p>
+                      {m.email && <p className="text-sm text-gray-600">✉️ {m.email}</p>}
                       <p className="text-sm text-gray-600">🕐 {m.timezone}</p>
                     </div>
                     <div className="flex gap-2">
-                      <button onClick={() => { setEditingMemberId(m.id); setEditMemberData({ name: m.name, phone: m.phone, timezone: m.timezone }); }} className="px-2 py-1 bg-blue-600 text-white rounded text-sm">Edit</button>
+                      <button onClick={() => { setEditingMemberId(m.id); setEditMemberData({ relation: m.relation, whatsapp_number: m.whatsapp_number, email: m.email || '', timezone: m.timezone }); }} className="px-2 py-1 bg-blue-600 text-white rounded text-sm">Edit</button>
                       <button onClick={() => deleteMember(m.id)} className="px-2 py-1 bg-red-600 text-white rounded text-sm">Delete</button>
                     </div>
                   </div>
