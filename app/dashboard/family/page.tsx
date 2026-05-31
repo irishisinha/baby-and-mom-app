@@ -3,247 +3,128 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 
+const TIMEZONES = ['Europe/London', 'Europe/Paris', 'Asia/Kolkata', 'America/New_York'];
+
 export default function FamilyManagement() {
-  const [loading, setLoading] = useState(true);
-  const [family, setFamily] = useState<any>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [babies, setBabies] = useState<any[]>([]);
   const [members, setMembers] = useState<any[]>([]);
-  const [inviteLink, setInviteLink] = useState('');
-  const [copied, setCopied] = useState(false);
-  
-  const [formData, setFormData] = useState({
-    memberEmail: '',
-    whatsappNumber: '',
-    role: 'member'
-  });
-  const [submitted, setSubmitted] = useState(false);
+  const [editingBabyId, setEditingBabyId] = useState<string | null>(null);
+  const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
+
+  const [babyForm, setBabyForm] = useState({ name: '', dob: '' });
+  const [memberForm, setMemberForm] = useState({ name: '', phone: '', timezone: 'Europe/London' });
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        console.log('Current user:', user?.id, 'Email:', user?.email);
-        
-        if (!user) {
-          window.location.href = '/login';
-          return;
-        }
-
-        // First try: families created by this user
-        let { data: familyData, error: familyError } = await supabase
-          .from('families')
-          .select('*')
-          .eq('created_by', user.id)
-          .single();
-
-        console.log('Family by created_by:', familyData, familyError);
-
-        // If not found, try: families where user is a member (by email)
-        if (!familyData && user.email) {
-          const { data: memberData } = await supabase
-            .from('family_members')
-            .select('family_id')
-            .eq('email', user.email)
-            .single();
-
-          console.log('Member data:', memberData);
-
-          if (memberData) {
-            const { data: foundFamily } = await supabase
-              .from('families')
-              .select('*')
-              .eq('id', memberData.family_id)
-              .single();
-
-            familyData = foundFamily;
-            console.log('Family by member email:', familyData);
-          }
-        }
-
-        if (familyData) {
-          setFamily(familyData);
-
-          const token = btoa(JSON.stringify({ family_id: familyData.id, created_at: new Date().toISOString() }));
-          setInviteLink(window.location.origin + '/join/' + token);
-
-          const { data: membersData, error: membersError } = await supabase
-            .from('family_members')
-            .select('*')
-            .eq('family_id', familyData.id);
-
-          console.log('Members data:', membersData);
-          console.log('Members error:', membersError);
-
-          if (membersData) {
-            setMembers(membersData);
-            console.log('Set members:', membersData);
-          }
-        } else {
-          console.log('No family found for this user');
-        }
-
-        setLoading(false);
-      } catch (err) {
-        console.error('Error:', err);
-        setLoading(false);
-      }
+    const fetch = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      setUserId(user.id);
+      
+      const { data: b } = await supabase.from('babies').select('*').eq('user_id', user.id);
+      setBabies(b || []);
+      
+      const { data: m } = await supabase.from('family_members').select('*').eq('user_id', user.id);
+      setMembers(m || []);
     };
-
-    fetchData();
+    fetch();
   }, []);
 
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(inviteLink);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const addBaby = async (e: any) => {
+    e.preventDefault();
+    if (!userId || !babyForm.name) return;
+    const { data } = await supabase.from('babies').insert([{ user_id: userId, name: babyForm.name, date_of_birth: babyForm.dob }]).select();
+    if (data) { setBabies([...babies, data[0]]); setBabyForm({ name: '', dob: '' }); }
   };
 
-  const handleAddMember = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!family) return;
+  const editBaby = async (id: string, name: string, dob: string) => {
+    await supabase.from('babies').update({ name, date_of_birth: dob }).eq('id', id);
+    setBabies(babies.map(b => b.id === id ? { ...b, name, date_of_birth: dob } : b));
+    setEditingBabyId(null);
+  };
 
-    try {
-      const { data, error } = await supabase
-        .from('family_members')
-        .insert([{
-          family_id: family.id,
-          email: formData.memberEmail,
-          whatsapp_number: formData.whatsappNumber,
-          role: formData.role,
-          user_id: null
-        }])
-        .select();
-
-      if (!error && data) {
-        setMembers([...members, data[0]]);
-        setSubmitted(true);
-        setFormData({ memberEmail: '', whatsappNumber: '', role: 'member' });
-        setTimeout(() => setSubmitted(false), 3000);
-      }
-    } catch (err) {
-      console.error('Error:', err);
+  const deleteBaby = async (id: string) => {
+    if (confirm('Delete?')) {
+      await supabase.from('babies').delete().eq('id', id);
+      setBabies(babies.filter(b => b.id !== id));
     }
   };
 
-  if (loading) return <div className="p-4">Loading...</div>;
+  const addMember = async (e: any) => {
+    e.preventDefault();
+    if (!userId) return;
+    const { data } = await supabase.from('family_members').insert([{ user_id: userId, ...memberForm }]).select();
+    if (data) { setMembers([...members, data[0]]); setMemberForm({ name: '', phone: '', timezone: 'Europe/London' }); }
+  };
+
+  const editMember = async (id: string, data: any) => {
+    await supabase.from('family_members').update(data).eq('id', id);
+    setMembers(members.map(m => m.id === id ? { ...m, ...data } : m));
+    setEditingMemberId(null);
+  };
+
+  const deleteMember = async (id: string) => {
+    if (confirm('Delete?')) {
+      await supabase.from('family_members').delete().eq('id', id);
+      setMembers(members.filter(m => m.id !== id));
+    }
+  };
 
   return (
-    <div className="p-6">
-      <h1 className="text-3xl font-bold mb-6">Family Management</h1>
+    <div className="p-6 max-w-6xl mx-auto">
+      <h1 className="text-3xl font-bold mb-8">Family Management</h1>
 
-      {family && (
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg shadow p-6 mb-6 border border-blue-200">
-          <h2 className="text-2xl font-bold mb-2">{family.name}</h2>
-          <div className="grid grid-cols-2 gap-4 text-gray-700">
-            <div>
-              <p className="text-sm text-gray-600">Location</p>
-              <p className="font-semibold">{family.country}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">Timezone</p>
-              <p className="font-semibold">{family.timezone}</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div className="bg-white rounded-lg shadow p-6 mb-6">
-        <h2 className="text-xl font-bold mb-4">Invite Family Members</h2>
-        <p className="text-gray-600 mb-4">Share this link with your nanny, grandparents, or other family members</p>
-        
-        <div className="flex gap-2 mb-4">
-          <input 
-            type="text" 
-            value={inviteLink} 
-            readOnly 
-            className="flex-1 px-4 py-2 border rounded bg-gray-50 text-sm"
-          />
-          <button 
-            onClick={copyToClipboard}
-            className={`px-6 py-2 rounded font-semibold transition ${copied ? 'bg-green-600 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white'}`}
-          >
-            {copied ? 'Copied!' : 'Copy Link'}
-          </button>
-        </div>
-      </div>
-
-      <div className="bg-white rounded-lg shadow p-6 mb-6">
-        <h2 className="text-xl font-bold mb-4">Add Family Member</h2>
-        <form onSubmit={handleAddMember} className="space-y-4">
-          <div>
-            <label className="block text-sm font-semibold mb-2">Email</label>
-            <input 
-              type="email" 
-              value={formData.memberEmail}
-              onChange={(e) => setFormData({...formData, memberEmail: e.target.value})}
-              placeholder="nanny@example.com"
-              className="w-full px-4 py-2 border rounded focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold mb-2">WhatsApp Number</label>
-            <input 
-              type="tel" 
-              value={formData.whatsappNumber}
-              onChange={(e) => setFormData({...formData, whatsappNumber: e.target.value})}
-              placeholder="+1 (555) 123-4567"
-              className="w-full px-4 py-2 border rounded focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold mb-2">Role</label>
-            <select 
-              value={formData.role}
-              onChange={(e) => setFormData({...formData, role: e.target.value})}
-              className="w-full px-4 py-2 border rounded focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="nanny">Nanny</option>
-              <option value="grandparent">Grandparent</option>
-              <option value="pediatrician">Pediatrician</option>
-              <option value="member">Family Member</option>
-            </select>
-          </div>
-
-          {submitted && (
-            <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-2 rounded text-sm">
-              Invitation sent successfully!
-            </div>
-          )}
-
-          <button 
-            type="submit"
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded"
-          >
-            Send Invite
-          </button>
-        </form>
-      </div>
-
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-xl font-bold mb-4">Family Members</h2>
-        {members.length === 0 ? (
-          <p className="text-gray-500">No members yet. Use invite link above.</p>
-        ) : (
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-2xl font-bold mb-4">Babies</h2>
+          <form onSubmit={addBaby} className="space-y-3 mb-6 pb-6 border-b">
+            <input type="text" value={babyForm.name} onChange={e => setBabyForm({...babyForm, name: e.target.value})} placeholder="Baby name" required className="w-full px-4 py-2 border rounded" />
+            <input type="date" value={babyForm.dob} onChange={e => setBabyForm({...babyForm, dob: e.target.value})} className="w-full px-4 py-2 border rounded" />
+            <button type="submit" className="w-full bg-pink-600 text-white font-bold py-2 rounded">Add Baby</button>
+          </form>
+          
           <div className="space-y-3">
-            {members.map((member) => (
-              <div key={member.id} className="border rounded p-4 bg-gray-50">
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <p className="font-semibold text-gray-900">{member.email || 'No email'}</p>
-                    {member.relation && (
-                      <p className="text-sm text-blue-600 font-medium mt-1">{member.relation}</p>
-                    )}
-                    <p className="text-sm text-gray-600 mt-1">Role: <span className="capitalize">{member.role}</span></p>
-                    {member.whatsapp_number && (
-                      <p className="text-sm text-gray-600 mt-1">WhatsApp: {member.whatsapp_number}</p>
-                    )}
+            {babies.map(b => (
+              <div key={b.id} className="border rounded p-4 bg-gray-50">
+                {editingBabyId === b.id ? (
+                  <div className="space-y-2">
+                    <input type="text" defaultValue={b.name} onChange={e => {}} className="w-full px-2 py-1 border rounded text-sm" />
+                    <input type="date" defaultValue={b.date_of_birth} onChange={e => {}} className="w-full px-2 py-1 border rounded text-sm" />
+                    <button onClick={() => setEditingBabyId(null)} className="px-3 py-1 bg-green-600 text-white rounded text-sm">Save</button>
                   </div>
+                ) : (
+                  <div className="flex justify-between">
+                    <div><p className="font-bold">{b.name}</p><p className="text-sm text-gray-600">{b.date_of_birth}</p></div>
+                    <div className="flex gap-2"><button onClick={() => setEditingBabyId(b.id)} className="px-2 py-1 bg-blue-600 text-white rounded text-sm">Edit</button><button onClick={() => deleteBaby(b.id)} className="px-2 py-1 bg-red-600 text-white rounded text-sm">Delete</button></div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-2xl font-bold mb-4">Family Members</h2>
+          <form onSubmit={addMember} className="space-y-3 mb-6 pb-6 border-b">
+            <input type="text" value={memberForm.name} onChange={e => setMemberForm({...memberForm, name: e.target.value})} placeholder="Name" required className="w-full px-4 py-2 border rounded" />
+            <input type="tel" value={memberForm.phone} onChange={e => setMemberForm({...memberForm, phone: e.target.value})} placeholder="Phone" required className="w-full px-4 py-2 border rounded" />
+            <select value={memberForm.timezone} onChange={e => setMemberForm({...memberForm, timezone: e.target.value})} className="w-full px-4 py-2 border rounded">
+              {TIMEZONES.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+            <button type="submit" className="w-full bg-blue-600 text-white font-bold py-2 rounded">Add Member</button>
+          </form>
+
+          <div className="space-y-3">
+            {members.map(m => (
+              <div key={m.id} className="border rounded p-4 bg-gray-50">
+                <div className="flex justify-between">
+                  <div><p className="font-bold">{m.name}</p><p className="text-sm text-gray-600">{m.phone}</p><p className="text-sm text-gray-600">{m.timezone}</p></div>
+                  <div className="flex gap-2"><button onClick={() => editMember(m.id, {})} className="px-2 py-1 bg-blue-600 text-white rounded text-sm">Edit</button><button onClick={() => deleteMember(m.id)} className="px-2 py-1 bg-red-600 text-white rounded text-sm">Delete</button></div>
                 </div>
               </div>
             ))}
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
