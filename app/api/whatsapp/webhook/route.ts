@@ -72,7 +72,7 @@ function extractDateAndMetric(text: string) {
   return { dateStr, metricText, daysOffset };
 }
 
-function getLondonTime(daysOffset = 0, specificDate?: string) {
+function getLondonTime(daysOffset = 0, specificDate: string | null = null) {
   const now = new Date();
   const londonTime = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/London' }));
 
