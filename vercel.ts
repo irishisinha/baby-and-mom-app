@@ -6,5 +6,9 @@ export const config: VercelConfig = {
       path: '/api/reports/daily',
       schedule: '0 17 * * *', // 6 PM daily (London time)
     },
+    {
+      path: '/api/appointments/reminders',
+      schedule: '0 9 * * *', // 9 AM daily (London time)
+    },
   ],
 };
