@@ -475,10 +475,26 @@ export async function POST(request: NextRequest) {
       }
     }
     else {
-      const { dateStr, metricText, daysOffset } = extractDateAndMetric(line);
-      const metric = parseMetric(metricText);
+      // Check for mom metrics first
+      const momMetric = parseMomMetric(line);
+      if (momMetric) {
+        const { error } = await supabase.from('mother_events').insert({
+          family_id: 'df3d99a8-f7a2-44cf-bcb4-9c5f3300caa6',
+          event_type: momMetric.type.replace('mom_', ''),
+          value: String(momMetric.value),
+          occurred_at: getLondonTime(),
+          notes: ''
+        });
+        if (!error) {
+          successCount++;
+          reply += `MOM ${momMetric.type.toUpperCase().replace('MOM_', '')}: ${momMetric.value}
+`;
+        }
+      } else {
+        const { dateStr, metricText, daysOffset } = extractDateAndMetric(line);
+        const metric = parseMetric(metricText);
 
-      if (metric) {
+        if (metric) {
         const timestamp = getLondonTime(daysOffset, dateStr);
         await supabase.from('baby_metrics').insert({
           metric_type: metric.type,
@@ -523,4 +539,43 @@ export async function POST(request: NextRequest) {
 
 export async function GET() {
   return NextResponse.json({ ok: true });
+}
+
+// Mom wellness metric parser
+function parseMomMetric(text: string) {
+  const lower = text.toLowerCase().trim();
+  
+  if (lower.startsWith('mom ')) {
+    const metricText = lower.substring(4);
+    
+    if (metricText.includes('recovery')) {
+      const value = metricText.replace('recovery', '').trim();
+      return { type: 'mom_recovery', value: value || 'updated' };
+    }
+    if (metricText.includes('sleep')) {
+      const num = metricText.match(/(\d+\.?\d*)/);
+      if (num) return { type: 'mom_sleep', value: parseFloat(num[1]) };
+    }
+    if (metricText.includes('mood')) {
+      const value = metricText.replace('mood', '').trim();
+      return { type: 'mom_mood', value: value || 'neutral' };
+    }
+    if (metricText.includes('energy')) {
+      const num = metricText.match(/(\d+)/);
+      if (num) return { type: 'mom_energy', value: parseInt(num[1]) };
+    }
+    if (metricText.includes('pain')) {
+      const num = metricText.match(/(\d+)/);
+      if (num) return { type: 'mom_pain', value: parseInt(num[1]) };
+    }
+    if (metricText.includes('medication')) {
+      const value = metricText.replace('medication', '').trim();
+      return { type: 'mom_medication', value: value || 'taken' };
+    }
+    if (metricText.includes('exercise')) {
+      const value = metricText.replace('exercise', '').trim();
+      return { type: 'mom_exercise', value: value || 'done' };
+    }
+  }
+  return null;
 }
