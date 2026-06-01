@@ -362,24 +362,54 @@ async function broadcastToAllFamilyMembers(message: string) {
 
 
 
+async function getAllFamilyMemberPhones() {
   return ['+919604898762', '+919914789171', '+919871319008'];
+}
 
+async function getFamilyMemberName(phoneNumber: string) {
   const phones: any = {
     '+919604898762': 'Mom',
     '+919914789171': 'Dad',
     '+919871319008': 'Grandma',
   };
   return phones[phoneNumber] || 'Family';
+}
 
+async function broadcastToAllFamilyMembers(message: string) {
   const familyPhones = await getAllFamilyMemberPhones();
   for (const phone of familyPhones) {
     try {
       await sendTwilioMessage(`whatsapp:${phone}`, message);
     } catch (error) {
       console.error(`Failed to send to ${phone}:`, error);
+    }
   }
 }
 
+
+async function getAllFamilyMemberPhones() {
+  return ['+919604898762', '+919914789171', '+919871319008'];
+}
+
+async function getFamilyMemberName(phoneNumber: string) {
+  const phones: any = {
+    '+919604898762': 'Mom',
+    '+919914789171': 'Dad',
+    '+919871319008': 'Grandma',
+  };
+  return phones[phoneNumber] || 'Family';
+}
+
+async function broadcastToAllFamilyMembers(message: string) {
+  const familyPhones = await getAllFamilyMemberPhones();
+  for (const phone of familyPhones) {
+    try {
+      await sendTwilioMessage(`whatsapp:${phone}`, message);
+    } catch (error) {
+      console.error(`Failed to send to ${phone}:`, error);
+    }
+  }
+}
 
 async function sendTwilioMessage(fromPhone: string, body: string) {
   try {
