@@ -115,12 +115,22 @@ function parseMetric(text: string) {
   if (cleanText.includes('vaccine')) return { type: 'vaccine', value: 'Vaccine recorded', unit: 'given' };
   if (cleanText.includes('doc') || cleanText.includes('doctor')) return { type: 'doc_notes', value: 'Notes saved', unit: 'notes' };
   if (cleanText.includes('next') || cleanText.includes('appt') || cleanText.includes('appointment')) {
+    // Determine who the appointment is for
+    let appointmentFor = 'jaian'; // default to baby
+    if (cleanText.includes('shiva') || cleanText.includes('mom') || cleanText.includes('mother')) {
+      appointmentFor = 'shiva';
+    } else if (cleanText.includes('rishi') || cleanText.includes('dad') || cleanText.includes('father')) {
+      appointmentFor = 'rishi';
+    } else if (cleanText.includes('ichi') || cleanText.includes('grandmom') || cleanText.includes('grandmother')) {
+      appointmentFor = 'ichi';
+    }
+    
     const dateMatch = text.match(/(\d{1,2})\s*(?:st|nd|rd|th)?\s*(jan|feb|mar|apr|may|jun|july|aug|sep|oct|nov|dec|january|february|march|april|june|july|august|september|october|november|december)/i);
     const timeMatch = text.match(/(\d{1,2})(?::(\d{2}))?\s*(?:am|pm|a\.m\.|p\.m\.|AM|PM)/i);
     const details = dateMatch ? dateMatch[0] : '';
     const time = timeMatch ? timeMatch[0] : '';
     const appointmentValue = `${details}${time ? ' ' + time : ''}`.trim() || 'Appointment scheduled';
-    return { type: 'next_appointment', value: appointmentValue, unit: 'scheduled' };
+    return { type: 'next_appointment', value: appointmentValue, appointmentFor, unit: 'scheduled' };
   }
   return null;
 }
@@ -558,7 +568,16 @@ export async function POST(request: NextRequest) {
           created_at: timestamp,
         });
         successCount++;
-        reply += `${metric.type.toUpperCase()}: ${metric.value} ${metric.unit}`;
+        if (metric.type === 'next_appointment') {
+          const appointeeEmojis: any = { 'shiva': '👩', 'rishi': '👨', 'ichi': '👵', 'jaian': '👶' };
+          const appointeeNames: any = { 'shiva': 'Shiva', 'rishi': 'Rishi', 'ichi': 'Ichi', 'jaian': 'Jaian' };
+          const appointmentFor = metric.appointmentFor || 'jaian';
+          const emoji = appointeeEmojis[appointmentFor] || '📅';
+          const name = appointeeNames[appointmentFor] || 'Baby';
+          reply += `${emoji} ${name}'s appointment: ${metric.value}`;
+        } else {
+          reply += `${metric.type.toUpperCase()}: ${metric.value} ${metric.unit}`;
+        }
         if (dateStr) {
           reply += ` (${dateStr})`;
         } else if (daysOffset > 0) {
