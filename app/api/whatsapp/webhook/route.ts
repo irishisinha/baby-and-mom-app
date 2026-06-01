@@ -5,6 +5,9 @@ import { createClient } from '@supabase/supabase-js';
 const PILOT_FAMILY_ID = 'df3d99a8-f7a2-44cf-bcb4-9c5f3300caa6';
 const PILOT_BABY_ID = 'e8a7c56c-62c6-442c-94ac-518928c8c07b'; // Jaian
 
+let messagesSinceBroadcast = 0; // Counter for broadcast frequency
+const BROADCAST_FREQUENCY = 6; // Send broadcast every 6th message
+
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -612,17 +615,21 @@ export async function POST(request: NextRequest) {
     await sendTwilioMessage(fromPhone, finalReply);
   }
 
-  // Broadcast to all family members
+  // Broadcast to all family members every 6th message to save Twilio quota
   if (successCount > 0) {
-    const today = await getTodayMetrics();
-    const breast = today['breastmilk'] || 0;
-    const formula = today['formula'] || 0;
-    const total = breast + formula;
-    const senderName = await getFamilyMemberName(phoneNumber);
-    const broadcastMsg = `✅ ${senderName}: ${reply.trim()}
+    messagesSinceBroadcast++;
+    if (messagesSinceBroadcast >= BROADCAST_FREQUENCY) {
+      const today = await getTodayMetrics();
+      const breast = today['breastmilk'] || 0;
+      const formula = today['formula'] || 0;
+      const total = breast + formula;
+      const senderName = await getFamilyMemberName(phoneNumber);
+      const broadcastMsg = `✅ ${senderName}: ${reply.trim()}
 
 📊 Current: ${total}ml total (Breast: ${breast}ml, Formula: ${formula}ml)`;
-    await broadcastToAllFamilyMembers(broadcastMsg);
+      await broadcastToAllFamilyMembers(broadcastMsg);
+      messagesSinceBroadcast = 0; // Reset counter
+    }
   }
 
   return NextResponse.json({ success: true });
