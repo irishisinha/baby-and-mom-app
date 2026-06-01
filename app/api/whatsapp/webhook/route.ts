@@ -341,11 +341,11 @@ async function getAllFamilyMemberPhones() {
 
 async function getFamilyMemberName(phoneNumber: string) {
   const phones: any = {
-    '+919604898762': 'Mom',
-    '+919914789171': 'Dad',
-    '+919871319008': 'Grandma',
+    '+919604898762': 'Rishi',
+    '+919914789171': 'Ichi',
+    '+919871319008': 'Shiva',
   };
-  return phones[phoneNumber] || 'Family';
+  return phones[phoneNumber] || 'Family Member';
 }
 
 async function broadcastToAllFamilyMembers(message: string) {
