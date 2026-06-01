@@ -44,9 +44,9 @@ function parseMetric(text: string) {
   }
   if (cleanText.includes('vaccine')) return { type: 'vaccine', value: 'Vaccine recorded', unit: 'given' };
   if (cleanText.includes('doc') || cleanText.includes('doctor')) return { type: 'doc_notes', value: 'Notes saved', unit: 'notes' };
-  if (cleanText.includes('next') || cleanText.includes('appt')) {
-    const dateMatch = text.match(/(\d{1,2}(?:st|nd|rd|th)?\s+\w+|\w+\s+\d{1,2})/i);
-    const timeMatch = text.match(/(\d{1,2}:\d{2}\s*(?:am|pm)?)/i);
+  if (cleanText.includes('next') || cleanText.includes('appt') || cleanText.includes('appointment')) {
+    const dateMatch = text.match(/(\d{1,2})\s*(?:st|nd|rd|th)?\s*(jan|feb|mar|apr|may|jun|july|aug|sep|oct|nov|dec|january|february|march|april|june|july|august|september|october|november|december)/i);
+    const timeMatch = text.match(/(\d{1,2})(?::(\d{2}))?\s*(?:am|pm|a\.m\.|p\.m\.|AM|PM)/i);
     const details = dateMatch ? dateMatch[0] : '';
     const time = timeMatch ? timeMatch[0] : '';
     const appointmentValue = `${details}${time ? ' ' + time : ''}`.trim() || 'Appointment scheduled';
