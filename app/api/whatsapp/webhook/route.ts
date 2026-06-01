@@ -91,7 +91,7 @@ function parseMetric(text: string) {
   // Remove time patterns (HH:MM, H.MM, etc)
   const cleanText = lower.replace(/^[\d:.]*\s*[-–]?\s*/, '');
   
-  if (cleanText.includes('breastmilk') || cleanText.includes('pumped')) {
+  if (cleanText.includes('breastmilk') || cleanText.includes('breast milk') || cleanText.includes('breast milk') || cleanText.includes('pumped')) {
     const num = cleanText.match(/(\d+)/);
     if (num) return { type: 'breastmilk', value: parseInt(num[1]), unit: 'ml' };
   }
@@ -605,6 +605,13 @@ export async function POST(request: NextRequest) {
     ? `LOGGED:\n${reply}\nFrom: ${phoneNumber}`
     : `Format not recognized\n\nFrom: ${phoneNumber}`;
 
+  // Send confirmation to sender
+  if (successCount > 0) {
+    await sendTwilioMessage(fromPhone, `✅ Logged:\n${reply.trim()}`);
+  } else {
+    await sendTwilioMessage(fromPhone, finalReply);
+  }
+
   // Broadcast to all family members
   if (successCount > 0) {
     const today = await getTodayMetrics();
@@ -616,8 +623,6 @@ export async function POST(request: NextRequest) {
 
 📊 Current: ${total}ml total (Breast: ${breast}ml, Formula: ${formula}ml)`;
     await broadcastToAllFamilyMembers(broadcastMsg);
-  } else {
-    await sendTwilioMessage(fromPhone, finalReply);
   }
 
   return NextResponse.json({ success: true });
