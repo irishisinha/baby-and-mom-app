@@ -12,6 +12,69 @@ const client = twilio(
   process.env.TWILIO_AUTH_TOKEN
 );
 
+// Person type mapping
+const PERSON_MAP: { [key: string]: string } = {
+  'shiva': 'mom',
+  'rishi': 'dad',
+  'ichi': 'grandmom'
+};
+
+function parseWellnessEvent(text: string): any {
+  const lower = text.toLowerCase().trim();
+  
+  // Check for person prefix
+  let personType: string | null = null;
+  let remaining = text;
+  
+  for (const [name, type] of Object.entries(PERSON_MAP)) {
+    if (lower.startsWith(name)) {
+      personType = type;
+      remaining = text.substring(name.length).trim();
+      break;
+    }
+  }
+  
+  if (!personType) return null;
+  
+  const cleanLower = remaining.toLowerCase();
+  
+  // Parse wellness events
+  if (cleanLower.includes('sleep')) {
+    const num = cleanLower.match(/(\d+\.?\d*)\s*(?:hour|hr|h)?/);
+    if (num) return { type: 'wellness', personType, eventType: 'sleep', value: parseFloat(num[1]) };
+  }
+  if (cleanLower.includes('mood')) {
+    const mood = remaining.split('mood')[1]?.trim() || 'happy';
+    return { type: 'wellness', personType, eventType: 'mood', value: mood };
+  }
+  if (cleanLower.includes('energy')) {
+    const num = cleanLower.match(/(\d+)/);
+    if (num) return { type: 'wellness', personType, eventType: 'energy', value: parseInt(num[1]) };
+  }
+  if (cleanLower.includes('pain')) {
+    const num = cleanLower.match(/(\d+)/);
+    if (num) return { type: 'wellness', personType, eventType: 'pain', value: parseInt(num[1]) };
+  }
+  if (cleanLower.includes('recovery')) {
+    const value = remaining.split('recovery')[1]?.trim() || 'good';
+    return { type: 'wellness', personType, eventType: 'recovery', value };
+  }
+  if (cleanLower.includes('medication')) {
+    return { type: 'wellness', personType, eventType: 'medication', value: 'taken' };
+  }
+  if (cleanLower.includes('exercise')) {
+    const match = remaining.match(/(\d+)\s*(min|km|mile)/);
+    if (match) return { type: 'wellness', personType, eventType: 'exercise', value: match[0] };
+    return { type: 'wellness', personType, eventType: 'exercise', value: 'done' };
+  }
+  if (cleanLower.includes('health')) {
+    const value = remaining.split('health')[1]?.trim() || 'checkup';
+    return { type: 'wellness', personType, eventType: 'health_check', value };
+  }
+  
+  return null;
+}
+
 function parseMetric(text: string) {
   const lower = text.toLowerCase().trim();
   
