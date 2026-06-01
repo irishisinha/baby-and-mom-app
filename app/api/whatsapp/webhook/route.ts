@@ -560,12 +560,20 @@ export async function POST(request: NextRequest) {
 
       if (metric) {
         const timestamp = getLondonTime(daysOffset, dateStr);
+        
+        // For appointments, store who it's for in notes
+        let notes = '';
+        if (metric.type === 'next_appointment' && metric.appointmentFor) {
+          notes = `appointmentFor:${metric.appointmentFor}`;
+        }
+        
         await supabase.from('baby_metrics').insert({
           metric_type: metric.type,
           value: metric.value,
           unit: metric.unit,
           sent_from_phone: phoneNumber,
           created_at: timestamp,
+          notes: notes
         });
         successCount++;
         if (metric.type === 'next_appointment') {
