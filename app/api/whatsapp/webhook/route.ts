@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import twilio from 'twilio';
 import { createClient } from '@supabase/supabase-js';
 
+const PILOT_FAMILY_ID = 'df3d99a8-f7a2-44cf-bcb4-9c5f3300caa6';
+const PILOT_BABY_ID = 'e8a7c56c-62c6-442c-94ac-518928c8c07b'; // Jaian
+
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -568,6 +571,8 @@ export async function POST(request: NextRequest) {
         }
         
         await supabase.from('baby_metrics').insert({
+          family_id: PILOT_FAMILY_ID,
+          baby_id: PILOT_BABY_ID,
           metric_type: metric.type,
           value: metric.value,
           unit: metric.unit,
