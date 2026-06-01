@@ -12,11 +12,18 @@ const client = twilio(
   process.env.TWILIO_AUTH_TOKEN
 );
 
-// Person type mapping
+// Person type mapping - supports actual names and aliases
 const PERSON_MAP: { [key: string]: string } = {
   'shiva': 'mom',
+  'mom': 'mom',
+  'mother': 'mom',
   'rishi': 'dad',
-  'ichi': 'grandmom'
+  'dad': 'dad',
+  'father': 'dad',
+  'ichi': 'grandmom',
+  'grandmom': 'grandmom',
+  'grandmother': 'grandmom',
+  'grand mom': 'grandmom'
 };
 
 function parseWellnessEvent(text: string): any {
