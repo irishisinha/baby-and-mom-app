@@ -49,7 +49,29 @@ async function getMetrics(dateStr: string, supabase: any) {
   return data || [];
 }
 
-function buildReport(todayData: any[], yesterdayData: any[]) {
+async function getUpcomingAppointments(supabase: any) {
+  const now = new Date();
+  const londonTime = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/London' }));
+  const oneWeekLater = new Date(londonTime);
+  oneWeekLater.setDate(oneWeekLater.getDate() + 7);
+
+  const { data, error } = await supabase
+    .from('baby_metrics')
+    .select('*')
+    .eq('metric_type', 'next_appointment')
+    .gte('created_at', londonTime.toISOString())
+    .lte('created_at', oneWeekLater.toISOString())
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    console.error('Error fetching appointments:', error);
+    return [];
+  }
+
+  return data || [];
+}
+
+function buildReport(todayData: any[], yesterdayData: any[], appointments: any[]) {
   // Aggregate metrics
   const today = aggregateMetrics(todayData);
   const yesterday = aggregateMetrics(yesterdayData);
@@ -146,9 +168,12 @@ export async function POST(request: NextRequest) {
     // Get metrics for today and yesterday
     const todayData = await getMetrics('today', supabase);
     const yesterdayData = await getMetrics('yesterday', supabase);
+    
+    // Get upcoming appointments for next 7 days
+    const appointments = await getUpcomingAppointments(supabase);
 
-    // Build report
-    const report = buildReport(todayData, yesterdayData);
+    // Build report with appointments included
+    const report = buildReport(todayData, yesterdayData, appointments);
 
     console.log('📊 Generated report:', report);
 
