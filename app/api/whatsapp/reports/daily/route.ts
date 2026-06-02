@@ -52,14 +52,20 @@ async function getMetrics(dateStr: string, supabase: any) {
 async function getUpcomingAppointments(supabase: any) {
   const now = new Date();
   const londonTime = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/London' }));
-  const oneWeekLater = new Date(londonTime);
+  
+  // Start from midnight today
+  const todayMidnight = new Date(londonTime);
+  todayMidnight.setHours(0, 0, 0, 0);
+  
+  // End one week from midnight today
+  const oneWeekLater = new Date(todayMidnight);
   oneWeekLater.setDate(oneWeekLater.getDate() + 7);
 
   const { data, error } = await supabase
     .from('baby_metrics')
     .select('*')
     .eq('metric_type', 'next_appointment')
-    .gte('created_at', londonTime.toISOString())
+    .gte('created_at', todayMidnight.toISOString())
     .lte('created_at', oneWeekLater.toISOString())
     .order('created_at', { ascending: true });
 
