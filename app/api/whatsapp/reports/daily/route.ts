@@ -175,6 +175,10 @@ function buildReport(todayData: any[], yesterdayData: any[], appointments: any[]
     });
   }
 
+  // Add website link
+  report += `
+🌐 View full dashboard: https://baby-and-mom-app.vercel.app`;
+
   return report;
 }
 
