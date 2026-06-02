@@ -136,8 +136,37 @@ function buildReport(todayData: any[], yesterdayData: any[], appointments: any[]
   }
 
   // Appointments
-  if (today['next_appointment']) {
-    report += `📅 NEXT APPOINTMENT: Scheduled\n`;
+  // Upcoming appointments section
+  if (appointments && appointments.length > 0) {
+    report += `
+📅 UPCOMING APPOINTMENTS (Next 7 days):
+`;
+    appointments.forEach((apt: any) => {
+      // Parse appointmentFor and appointmentTime from notes
+      const notes = apt.notes || "";
+      const appointmentForMatch = notes.match(/appointmentFor:([^|]+)/);
+      const appointmentTimeMatch = notes.match(/appointmentTime:([^|]+)/);
+      
+      const appointmentFor = appointmentForMatch ? appointmentForMatch[1] : "jaian";
+      const appointmentTime = appointmentTimeMatch ? appointmentTimeMatch[1] : "Time TBD";
+      
+      let personEmoji = "👶";
+      let personName = "Jaian";
+      
+      if (appointmentFor === "shiva" || appointmentFor === "mom") {
+        personEmoji = "👩";
+        personName = "Shiva";
+      } else if (appointmentFor === "rishi" || appointmentFor === "dad") {
+        personEmoji = "👨";
+        personName = "Rishi";
+      } else if (appointmentFor === "ichi" || appointmentFor === "grandmom") {
+        personEmoji = "👵";
+        personName = "Ichi";
+      }
+      
+      report += `  ${personEmoji} ${personName}: ${appointmentTime}
+`;
+    });
   }
 
   return report;
