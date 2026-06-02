@@ -567,17 +567,17 @@ export async function POST(request: NextRequest) {
       if (metric) {
         const timestamp = getLondonTime(daysOffset, dateStr);
         
-        // For appointments, store who it's for in notes
+        // For appointments, store date/time in notes and appointmentFor as identifier
         let notes = '';
         if (metric.type === 'next_appointment' && metric.appointmentFor) {
-          notes = `appointmentFor:${metric.appointmentFor}`;
+          notes = `appointmentFor:${metric.appointmentFor}|appointmentTime:${metric.value}`;
         }
         
         await supabase.from('baby_metrics').insert({
           family_id: PILOT_FAMILY_ID,
           baby_id: PILOT_BABY_ID,
           metric_type: metric.type,
-          value: metric.value,
+          value: 1,  // Placeholder numeric value for appointment
           unit: metric.unit,
           sent_from_phone: phoneNumber,
           created_at: timestamp,
