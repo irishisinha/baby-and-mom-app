@@ -592,19 +592,6 @@ export async function POST(request: NextRequest) {
     
             reply += `REDUCED ${metric.type.toUpperCase()}:\n   From: ${latest.value} ${latest.unit}\n   To: ${newValue} ${latest.unit}\n`;
           }
-          // Backup: log to metrics table to verify appointment parsing
-          const appointeeNames: any = { 'shiva': 'Shiva (Mom)', 'rishi': 'Rishi (Dad)', 'ichi': 'Ichi (Grandmom)', 'jaian': 'Jaian (Baby)' };
-          await supabase.from('baby_metrics').insert({
-            family_id: PILOT_FAMILY_ID,
-            baby_id: PILOT_BABY_ID,
-            metric_type: 'next_appointment',
-            value: appointeeNames[metric.appointmentFor] || 'appointment',
-            unit: 'scheduled',
-            sent_from_phone: phoneNumber,
-            created_at: timestamp,
-            notes: metricText
-          }).catch(() => {});
-          successCount++;
         } else {
           reply += `No ${metric.type} entry found for today\n`;
         }
@@ -622,19 +609,6 @@ export async function POST(request: NextRequest) {
             successCount++;
             reply += `DELETED ${metric.type.toUpperCase()}: ${latest.value} ${latest.unit}\n`;
           }
-          // Backup: log to metrics table to verify appointment parsing
-          const appointeeNames: any = { 'shiva': 'Shiva (Mom)', 'rishi': 'Rishi (Dad)', 'ichi': 'Ichi (Grandmom)', 'jaian': 'Jaian (Baby)' };
-          await supabase.from('baby_metrics').insert({
-            family_id: PILOT_FAMILY_ID,
-            baby_id: PILOT_BABY_ID,
-            metric_type: 'next_appointment',
-            value: appointeeNames[metric.appointmentFor] || 'appointment',
-            unit: 'scheduled',
-            sent_from_phone: phoneNumber,
-            created_at: timestamp,
-            notes: metricText
-          }).catch(() => {});
-          successCount++;
         } else {
           reply += `No ${metric.type} entry found for today\n`;
         }
@@ -652,19 +626,6 @@ export async function POST(request: NextRequest) {
             successCount++;
             reply += `UPDATED ${metric.type.toUpperCase()}:\n   Old: ${latest.value} ${latest.unit}\n   New: ${metric.value} ${metric.unit}\n`;
           }
-          // Backup: log to metrics table to verify appointment parsing
-          const appointeeNames: any = { 'shiva': 'Shiva (Mom)', 'rishi': 'Rishi (Dad)', 'ichi': 'Ichi (Grandmom)', 'jaian': 'Jaian (Baby)' };
-          await supabase.from('baby_metrics').insert({
-            family_id: PILOT_FAMILY_ID,
-            baby_id: PILOT_BABY_ID,
-            metric_type: 'next_appointment',
-            value: appointeeNames[metric.appointmentFor] || 'appointment',
-            unit: 'scheduled',
-            sent_from_phone: phoneNumber,
-            created_at: timestamp,
-            notes: metricText
-          }).catch(() => {});
-          successCount++;
         } else {
           reply += `No ${metric.type} entry found for today\n`;
         }
@@ -708,19 +669,6 @@ export async function POST(request: NextRequest) {
             appointment_time: appointmentTime,
             notes: `From WhatsApp: ${phoneNumber}`
           });
-          // Backup: log to metrics table to verify appointment parsing
-          const appointeeNames: any = { 'shiva': 'Shiva (Mom)', 'rishi': 'Rishi (Dad)', 'ichi': 'Ichi (Grandmom)', 'jaian': 'Jaian (Baby)' };
-          await supabase.from('baby_metrics').insert({
-            family_id: PILOT_FAMILY_ID,
-            baby_id: PILOT_BABY_ID,
-            metric_type: 'next_appointment',
-            value: appointeeNames[metric.appointmentFor] || 'appointment',
-            unit: 'scheduled',
-            sent_from_phone: phoneNumber,
-            created_at: timestamp,
-            notes: metricText
-          }).catch(() => {});
-          successCount++;
         } else {
           // Insert into baby_metrics for other metrics
           let notes = '';
@@ -746,19 +694,6 @@ export async function POST(request: NextRequest) {
           const emoji = appointeeEmojis[appointmentFor] || '📅';
           const name = appointeeNames[appointmentFor] || 'Baby';
           reply += `${emoji} ${name}'s appointment: ${metric.value}`;
-          // Backup: log to metrics table to verify appointment parsing
-          const appointeeNames: any = { 'shiva': 'Shiva (Mom)', 'rishi': 'Rishi (Dad)', 'ichi': 'Ichi (Grandmom)', 'jaian': 'Jaian (Baby)' };
-          await supabase.from('baby_metrics').insert({
-            family_id: PILOT_FAMILY_ID,
-            baby_id: PILOT_BABY_ID,
-            metric_type: 'next_appointment',
-            value: appointeeNames[metric.appointmentFor] || 'appointment',
-            unit: 'scheduled',
-            sent_from_phone: phoneNumber,
-            created_at: timestamp,
-            notes: metricText
-          }).catch(() => {});
-          successCount++;
         } else {
           reply += `${metric.type.toUpperCase()}: ${metric.value} ${metric.unit}`;
         }
