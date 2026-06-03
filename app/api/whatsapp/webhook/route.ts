@@ -578,7 +578,7 @@ export async function POST(request: NextRequest) {
           const newValue = Math.max(0, latest.value - metric.value);
           const { error } = await supabase.from('baby_metrics').update({ value: newValue }).eq('id', latest.id);
           if (!error) {
-            successCount++;
+    
             reply += `REDUCED ${metric.type.toUpperCase()}:\n   From: ${latest.value} ${latest.unit}\n   To: ${newValue} ${latest.unit}\n`;
           }
         } else {
@@ -627,25 +627,35 @@ export async function POST(request: NextRequest) {
       if (metric) {
         const timestamp = getLondonTime(daysOffset, dateStr);
         
-        // For appointments, store date/time in notes and appointmentFor as identifier
-        let notes = '';
+        // For appointments, store in appointments table
         if (metric.type === 'next_appointment' && metric.appointmentFor) {
-          notes = `appointmentFor:${metric.appointmentFor}|appointmentTime:${metric.value}`;
+          // Insert into appointments table
+          await supabase.from('appointments').insert({
+            user_id: PILOT_FAMILY_ID,
+            doctor: metric.value.split('at')[0].trim() || 'Appointment',
+            reason: metricText,
+            appointment_date: dateStr || new Date(timestamp).toISOString().split('T')[0],
+            appointment_time: metric.value.includes('at') ? metric.value.split('at')[1].trim() : '',
+            notes: `For: ${metric.appointmentFor}. From WhatsApp: ${phoneNumber}`
+          });
+          successCount++;
+        } else {
+          // Insert into baby_metrics for other metrics
+          let notes = '';
+          const insertValue = metric.value;
+          
+          await supabase.from('baby_metrics').insert({
+            family_id: PILOT_FAMILY_ID,
+            baby_id: PILOT_BABY_ID,
+            metric_type: metric.type,
+            value: insertValue,
+            unit: metric.unit,
+            sent_from_phone: phoneNumber,
+            created_at: timestamp,
+            notes: notes
+          });
+          successCount++;
         }
-        
-        // Use actual metric value, or 1 for appointments (which store data in notes)
-        const insertValue = metric.type === 'next_appointment' ? 1 : metric.value;
-        
-        await supabase.from('baby_metrics').insert({
-          family_id: PILOT_FAMILY_ID,
-          baby_id: PILOT_BABY_ID,
-          metric_type: metric.type,
-          value: insertValue,
-          unit: metric.unit,
-          sent_from_phone: phoneNumber,
-          created_at: timestamp,
-          notes: notes
-        });
         successCount++;
         if (metric.type === 'next_appointment') {
           const appointeeEmojis: any = { 'shiva': '👩', 'rishi': '👨', 'ichi': '👵', 'jaian': '👶' };
