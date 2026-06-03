@@ -613,7 +613,12 @@ export async function POST(request: NextRequest) {
 
   // Send confirmation to sender
   if (successCount > 0) {
-    await sendTwilioMessage(fromPhone, `✅ Logged:\n${reply.trim()}`);
+    const senderReply = `✅ Logged:
+${reply.trim()}
+
+🔗 In case of errors, correct using:
+https://baby-and-mom-app.vercel.app/dashboard`;
+    await sendTwilioMessage(fromPhone, senderReply);
   } else {
     await sendTwilioMessage(fromPhone, finalReply);
   }
