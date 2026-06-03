@@ -645,7 +645,7 @@ export async function POST(request: NextRequest) {
           let appointmentTime = '';
           
           // Parse date: "04 Jun 5pm" -> date: "2026-06-04", time: "5pm"
-          const dateTimeMatch = metric.value.match(/(d{1,2})s+([a-z]+)s+(d{1,2})(?::(d{2}))?s*(am|pm)?/i);
+          const dateTimeMatch = metric.value.match(/(\d{1,2})\s+([a-z]+)\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/i);
           if (dateTimeMatch) {
             const day = dateTimeMatch[1].padStart(2, '0');
             const monthNum = getMonthNumber(dateTimeMatch[2]);
