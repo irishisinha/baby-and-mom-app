@@ -17,11 +17,11 @@ async function getFamilyTokens(): Promise<string[]> {
 
 async function sendFamilyNotification(title: string, body: string): Promise<number> {
   try {
-    const * as admin = await import('firebase-admin');
+    const admin = await import('firebase-admin');
     
-    if (!admin.apps.length) {
-      admin.initializeApp({
-        credential: admin.credential.cert({
+    if (!admin.default.apps.length) {
+      admin.default.initializeApp({
+        credential: admin.default.credential.cert({
           type: process.env.FIREBASE_TYPE,
           project_id: process.env.FIREBASE_PROJECT_ID,
           private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
@@ -36,7 +36,7 @@ async function sendFamilyNotification(title: string, body: string): Promise<numb
       });
     }
 
-    const messaging = admin.messaging();
+    const messaging = admin.default.messaging();
     const tokens = await getFamilyTokens();
     if (tokens.length === 0) return 0;
 
