@@ -639,6 +639,7 @@ export async function POST(request: NextRequest) {
         const timestamp = getLondonTime(daysOffset, dateStr);
         
         // For appointments, store in appointments table
+        if (false) { // Disabled: Log all as metrics
         if (metric.type === 'next_appointment' && metric.appointmentFor) {
           // Extract date and time from metric value (e.g., "04 Jun 5pm")
           let appointmentDate = dateStr || new Date(timestamp).toISOString().split('T')[0];
