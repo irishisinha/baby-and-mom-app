@@ -11,6 +11,7 @@ const AUTHORIZED_NUMBERS = [
 
 const PILOT_FAMILY_ID = 'df3d99a8-f7a2-44cf-bcb4-9c5f3300caa6';
 const PILOT_BABY_ID = 'e8a7c56c-62c6-442c-94ac-518928c8c07b'; // Jaian
+const PILOT_USER_ID = 'd5ac8a3e-3cdd-4808-a164-7e7937926e6a';
 
 const BROADCAST_FREQUENCY = 6; // Send broadcast every 6th message
 
@@ -670,7 +671,7 @@ export async function POST(request: NextRequest) {
           const appointeeNames: any = { 'shiva': 'Shiva (Mom)', 'rishi': 'Rishi (Dad)', 'ichi': 'Ichi (Grandmom)', 'jaian': 'Jaian (Baby)' };
           
           await supabase.from('appointments').insert({
-            user_id: PILOT_FAMILY_ID,
+            user_id: PILOT_USER_ID,
             doctor: 'Appointment',
             reason: metricText,
             appointment_date: appointmentDate,
