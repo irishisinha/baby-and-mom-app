@@ -122,10 +122,27 @@ export default function Dashboard() {
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-    // Filter out appointment metrics
+    // Whitelist of valid baby metrics only - no appointments
+    const validMetricTypes = [
+      'breastmilk',
+      'formula',
+      'sleep',
+      'weight',
+      'bath',
+      'oil',
+      'diaper',
+      'potty',
+      'fever',
+      'vaccine',
+      'doctor_notes'
+    ];
+
+    // Filter to last 7 days and only valid baby metrics
     const last7Days = metricsData.filter((m) => {
       const metricDate = new Date(m.created_at);
-      return metricDate >= sevenDaysAgo && m.metric_type !== 'appointment';
+      const isValidMetric = validMetricTypes.includes(m.metric_type);
+      const isWithinRange = metricDate >= sevenDaysAgo;
+      return isValidMetric && isWithinRange;
     });
 
     const countMetrics = ['bath', 'oil'];
@@ -469,3 +486,4 @@ export default function Dashboard() {
     </div>
   );
 }
+
