@@ -1,3 +1,5 @@
+'use server';
+
 import { messaging } from './firebase-admin';
 import { createClient } from '@supabase/supabase-js';
 
