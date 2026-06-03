@@ -22,22 +22,25 @@ export default function AppointmentsPage() {
     const fetch = async () => {
       setUserId(PILOT_USER_ID);
 
-      const { data: data1 } = await supabase
+      const { data: data1, error: error1 } = await supabase
         .from('appointments')
         .select('*')
         .eq('user_id', PILOT_USER_ID)
         .order('appointment_date', { ascending: true });
       
-      const { data: data2 } = await supabase
+      const { data: data2, error: error2 } = await supabase
         .from('appointments')
         .select('*')
         .eq('user_id', PILOT_FAMILY_ID)
         .order('appointment_date', { ascending: true });
       
+      console.log('[APPT DEBUG]', { data1, error1, data2, error2, PILOT_USER_ID, PILOT_FAMILY_ID });
+      
       const data = [...(data1 || []), ...(data2 || [])].sort((a, b) => 
         new Date(a.appointment_date).getTime() - new Date(b.appointment_date).getTime()
       );
 
+      console.log('[APPT DEBUG] Final merged data:', data);
       setAppointments(data || []);
     };
     fetch();
