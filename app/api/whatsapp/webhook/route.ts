@@ -669,31 +669,14 @@ export async function POST(request: NextRequest) {
           // Map appointeeFor codes to readable names
           const appointeeNames: any = { 'shiva': 'Shiva (Mom)', 'rishi': 'Rishi (Dad)', 'ichi': 'Ichi (Grandmom)', 'jaian': 'Jaian (Baby)' };
           
-          try {
-            await supabase.from('appointments').insert({
-              user_id: PILOT_FAMILY_ID,
-              doctor: 'Appointment',
-              reason: metricText,
-              appointment_date: appointmentDate,
-              appointment_time: appointmentTime,
-              notes: `From WhatsApp: ${phoneNumber}`
-            });
-            successCount++;
-          } catch (err) {
-            console.log('[APPT-ERROR]', err.message);
-            // Fallback: log as metric
-            await supabase.from('baby_metrics').insert({
-              family_id: PILOT_FAMILY_ID,
-              baby_id: PILOT_BABY_ID,
-              metric_type: 'next_appointment',
-              value: appointmentTime || appointmentDate,
-              unit: 'appointment',
-              sent_from_phone: phoneNumber,
-              created_at: timestamp,
-              notes: metricText
-            }).catch(() => {});
-            successCount++;
-          }
+          await supabase.from('appointments').insert({
+            user_id: PILOT_FAMILY_ID,
+            doctor: 'Appointment',
+            reason: metricText,
+            appointment_date: appointmentDate,
+            appointment_time: appointmentTime,
+            notes: `From WhatsApp: ${phoneNumber}`
+          });
         } else {
           // Insert into baby_metrics for other metrics
           let notes = '';
