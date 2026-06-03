@@ -25,7 +25,7 @@ export default function AppointmentsPage() {
       const { data } = await supabase
         .from('appointments')
         .select('*')
-        .or(\`user_id.eq.\${PILOT_USER_ID},user_id.eq.\${PILOT_FAMILY_ID}\`)
+        .or(`user_id.eq.${PILOT_USER_ID},user_id.eq.${PILOT_FAMILY_ID}`)
         .order('appointment_date', { ascending: true });
 
       setAppointments(data || []);
