@@ -22,13 +22,14 @@ export default function AppointmentsPage() {
     const fetch = async () => {
       setUserId(PILOT_USER_ID);
 
-      // Just get all appointments - simple!
-      const { data } = await supabase
-        .from('appointments')
-        .select('*')
-        .order('appointment_date', { ascending: true });
-
-      setAppointments(data || []);
+      try {
+        const response = await fetch('/api/appointments');
+        const result = await response.json();
+        setAppointments(result.data || []);
+      } catch (err) {
+        console.error('Error fetching appointments:', err);
+        setAppointments([]);
+      }
     };
     fetch();
   }, []);
