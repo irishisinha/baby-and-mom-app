@@ -573,11 +573,14 @@ export async function POST(request: NextRequest) {
           notes = `appointmentFor:${metric.appointmentFor}|appointmentTime:${metric.value}`;
         }
         
+        // Use actual metric value, or 1 for appointments (which store data in notes)
+        const insertValue = metric.type === 'next_appointment' ? 1 : metric.value;
+        
         await supabase.from('baby_metrics').insert({
           family_id: PILOT_FAMILY_ID,
           baby_id: PILOT_BABY_ID,
           metric_type: metric.type,
-          value: 1,  // Placeholder numeric value for appointment
+          value: insertValue,
           unit: metric.unit,
           sent_from_phone: phoneNumber,
           created_at: timestamp,
