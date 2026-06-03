@@ -5,31 +5,28 @@ const supabase = createClient(
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVjZG9wdWZ6eHlpZ2dzZ3d0enVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDI5NjU2MDAsImV4cCI6MjAxODU0MTYwMH0.XtqN0JYJJfvqb5xJD_JglBx7xpFeCSDvGb3J4OP9KS4"
 );
 
-async function checkAppointments() {
+async function checkTokens() {
   const { data, error } = await supabase
-    .from("appointments")
+    .from("family_device_tokens")
     .select("*")
-    .order("appointment_date", { ascending: false })
-    .limit(10);
+    .limit(20);
 
   if (error) {
-    console.error("Error fetching appointments:", error.message);
+    console.error("Error fetching tokens:", error.message);
     return;
   }
 
-  console.log("✅ LATEST APPOINTMENTS (Last 10):");
+  console.log("✅ REGISTERED DEVICE TOKENS:");
   console.log("════════════════════════════════════════════════════════════════════════════════");
   
   if (!data || data.length === 0) {
-    console.log("No appointments found");
+    console.log("No device tokens registered yet");
   } else {
-    data.forEach((apt) => {
-      const date = new Date(apt.appointment_date).toLocaleDateString("en-IN");
-      const time = apt.appointment_time || "N/A";
-      console.log(`${date} ${time} | ${apt.doctor || apt.reason || "N/A"} | ${apt.reason || "N/A"}`);
+    data.forEach((token, idx) => {
+      console.log(`${idx + 1}. Device: ${token.device_name || 'Unknown'} | Registered: ${new Date(token.created_at).toLocaleString('en-IN')}`);
     });
   }
   console.log("════════════════════════════════════════════════════════════════════════════════");
 }
 
-checkAppointments();
+checkTokens();

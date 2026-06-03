@@ -1,0 +1,18 @@
+--- a/app/api/whatsapp/webhook/route.ts
++++ b/app/api/whatsapp/webhook/route.ts
+@@ -631,11 +631,13 @@ export async function POST(req: NextRequest) {
+         // For appointments, store in appointments table
+         if (metric.type === 'next_appointment' && metric.appointmentFor) {
+           // Insert into appointments table
++          const appointeeNames: any = { 'shiva': 'Shiva (Mom)', 'rishi': 'Rishi (Dad)', 'ichi': 'Ichi (Grandmom)', 'jaian': 'Jaian (Baby)' };
+           await supabase.from('appointments').insert({
+             user_id: PILOT_FAMILY_ID,
+             doctor: metric.value.split('at')[0].trim() || 'Appointment',
+             reason: metricText,
+             appointment_date: dateStr || new Date(timestamp).toISOString().split('T')[0],
+             appointment_time: metric.value.includes('at') ? metric.value.split('at')[1].trim() : '',
++            appointee_for: appointeeNames[metric.appointmentFor] || metric.appointmentFor,
+-            notes: `For: ${metric.appointmentFor}. From WhatsApp: ${phoneNumber}`
++            notes: `From WhatsApp: ${phoneNumber}`
+           });
+           successCount++;
