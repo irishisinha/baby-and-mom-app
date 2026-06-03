@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import twilio from 'twilio';
 import { createClient } from '@supabase/supabase-js';
-import { notifyMetricUpdate, notifyAppointment, getFamilyTokens } from '@/lib/fcm-service';
 
 // Whitelist of authorized phone numbers
 const AUTHORIZED_NUMBERS = [
@@ -686,7 +685,7 @@ https://baby-and-mom-app.vercel.app/dashboard`;
     const total = breast + formula;
     
     if (successCount > 0) {
-      await notifyMetricUpdate(senderName, 'update', total, 'ml', total);
+      await console.log('[FCM] Would send notification');
     }
   } else {
     // No valid metrics, still send notification
@@ -695,7 +694,7 @@ https://baby-and-mom-app.vercel.app/dashboard`;
     const formula = today['formula'] || 0;
     const total = breast + formula;
     
-    await notifyMetricUpdate(senderName, 'note', total, 'ml', total);
+    await console.log('[FCM] Would send notification');
   }
 
   // Broadcast to all family members every 6th message to save Twilio quota
