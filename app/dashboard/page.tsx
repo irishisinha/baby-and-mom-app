@@ -77,13 +77,55 @@ export default function Dashboard() {
     }
   };
 
+  const getDateStatus = (createdAt: string): { badge: string; color: string; timestamp: string } => {
+    const metricDate = new Date(createdAt);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    // Set time to midnight for comparison
+    metricDate.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+    yesterday.setHours(0, 0, 0, 0);
+
+    const timestamp = new Date(createdAt).toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    if (metricDate.getTime() === today.getTime()) {
+      return {
+        badge: 'Today',
+        color: 'bg-green-100 text-green-800 border-l-4 border-green-600',
+        timestamp,
+      };
+    } else if (metricDate.getTime() === yesterday.getTime()) {
+      return {
+        badge: 'Yesterday',
+        color: 'bg-yellow-100 text-yellow-800 border-l-4 border-yellow-600',
+        timestamp,
+      };
+    } else {
+      const dateStr = metricDate.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+      });
+      return {
+        badge: dateStr,
+        color: 'bg-gray-100 text-gray-800 border-l-4 border-gray-600',
+        timestamp,
+      };
+    }
+  };
+
   const calculateSummaryStats = (metricsData: Metric[]) => {
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
+    // Filter out appointment metrics
     const last7Days = metricsData.filter((m) => {
       const metricDate = new Date(m.created_at);
-      return metricDate >= sevenDaysAgo;
+      return metricDate >= sevenDaysAgo && m.metric_type !== 'appointment';
     });
 
     const countMetrics = ['bath', 'oil'];
@@ -321,43 +363,46 @@ export default function Dashboard() {
           </div>
           <div className="space-y-2 max-h-96 overflow-y-auto">
             {metrics.length > 0 ? (
-              metrics.slice(0, 5).map((m) => (
-                <div
-                  key={m.id}
-                  className="border border-gray-200 rounded-lg p-3 bg-gray-50 hover:bg-gray-100 transition"
-                >
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex-1">
-                      <p className="font-semibold text-sm text-gray-800">
-                        {m.metric_type}: {m.value} {m.unit}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {new Date(m.created_at).toLocaleTimeString([], {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </p>
+              metrics.slice(0, 5).map((m) => {
+                const dateStatus = getDateStatus(m.created_at);
+                return (
+                  <div
+                    key={m.id}
+                    className="border border-gray-200 rounded-lg p-3 bg-gray-50 hover:bg-gray-100 transition"
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="flex-1">
+                        <p className="font-semibold text-sm text-gray-800">
+                          {m.metric_type}: {m.value} {m.unit}
+                        </p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className={`text-xs font-semibold px-2 py-1 rounded ${dateStatus.color}`}>
+                            {dateStatus.badge}
+                          </span>
+                          <p className="text-xs text-gray-500">{dateStatus.timestamp}</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => {
+                          const v = prompt('New value', m.value.toString());
+                          if (v) handleEdit(m.id, v);
+                        }}
+                        className="flex-1 px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDelete(m.id)}
+                        className="flex-1 px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded transition"
+                      >
+                        Delete
+                      </button>
                     </div>
                   </div>
-                  <div className="flex gap-1">
-                    <button
-                      onClick={() => {
-                        const v = prompt('New value', m.value.toString());
-                        if (v) handleEdit(m.id, v);
-                      }}
-                      className="flex-1 px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDelete(m.id)}
-                      className="flex-1 px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded transition"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              ))
+                );
+              })
             ) : (
               <p className="text-gray-500 text-sm text-center py-4">
                 No metrics yet
