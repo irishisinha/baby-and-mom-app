@@ -669,17 +669,6 @@ export async function POST(request: NextRequest) {
             appointment_time: appointmentTime,
             notes: `From WhatsApp: ${phoneNumber}`
           });
-          // DEBUG: Also log to metrics table temporarily
-          await supabase.from('baby_metrics').insert({
-            family_id: PILOT_FAMILY_ID,
-            baby_id: PILOT_BABY_ID,
-            metric_type: 'next_appointment',
-            value: appointmentTime || appointmentDate,
-            unit: 'appointment',
-            sent_from_phone: phoneNumber,
-            created_at: timestamp,
-            notes: `DEBUG APPOINTMENT: ${metricText}`
-          }).catch(() => {});
         } else {
           // Insert into baby_metrics for other metrics
           let notes = '';
