@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { PILOT_USER_ID } from '@/lib/pilot-user';
+import { PILOT_USER_ID, PILOT_FAMILY_ID } from '@/lib/pilot-user';
 
 export default function AppointmentsPage() {
   const [userId, setUserId] = useState<string | null>(null);
@@ -25,7 +25,7 @@ export default function AppointmentsPage() {
       const { data } = await supabase
         .from('appointments')
         .select('*')
-        .eq('user_id', PILOT_USER_ID)
+        .or(\`user_id.eq.\${PILOT_USER_ID},user_id.eq.\${PILOT_FAMILY_ID}\`)
         .order('appointment_date', { ascending: true });
 
       setAppointments(data || []);
