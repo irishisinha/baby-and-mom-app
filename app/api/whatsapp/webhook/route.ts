@@ -5,8 +5,39 @@ import { createClient } from '@supabase/supabase-js';
 const PILOT_FAMILY_ID = 'df3d99a8-f7a2-44cf-bcb4-9c5f3300caa6';
 const PILOT_BABY_ID = 'e8a7c56c-62c6-442c-94ac-518928c8c07b'; // Jaian
 
-let messagesSinceBroadcast = 0; // Counter for broadcast frequency
 const BROADCAST_FREQUENCY = 6; // Send broadcast every 6th message
+
+// Get broadcast counter from database
+async function getBroadcastCounter(): Promise<number> {
+  const { data, error } = await supabase
+    .from('system_config')
+    .select('value')
+    .eq('key', 'broadcast_counter')
+    .single();
+  
+  if (error || !data) return 0;
+  return parseInt(data.value) || 0;
+}
+
+// Update broadcast counter in database
+async function setBroadcastCounter(value: number): Promise<void> {
+  const { data: existing } = await supabase
+    .from('system_config')
+    .select('id')
+    .eq('key', 'broadcast_counter')
+    .single();
+  
+  if (existing) {
+    await supabase
+      .from('system_config')
+      .update({ value: value.toString() })
+      .eq('key', 'broadcast_counter');
+  } else {
+    await supabase
+      .from('system_config')
+      .insert({ key: 'broadcast_counter', value: value.toString() });
+  }
+}
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -630,8 +661,10 @@ https://baby-and-mom-app.vercel.app/dashboard`;
 
   // Broadcast to all family members every 6th message to save Twilio quota
   if (successCount > 0) {
-    messagesSinceBroadcast++;
-    if (messagesSinceBroadcast >= BROADCAST_FREQUENCY) {
+    let counter = await getBroadcastCounter();
+    counter++;
+    
+    if (counter >= BROADCAST_FREQUENCY) {
       const today = await getTodayMetrics();
       const breast = today['breastmilk'] || 0;
       const formula = today['formula'] || 0;
@@ -641,7 +674,9 @@ https://baby-and-mom-app.vercel.app/dashboard`;
 
 📊 Current: ${total}ml total (Breast: ${breast}ml, Formula: ${formula}ml)`;
       await broadcastToAllFamilyMembers(broadcastMsg);
-      messagesSinceBroadcast = 0; // Reset counter
+      await setBroadcastCounter(0); // Reset counter
+    } else {
+      await setBroadcastCounter(counter); // Increment counter
     }
   }
 
