@@ -5,7 +5,10 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "test:pre-deploy": "jest tests/broadcast-frequency.test.ts",
+    "verify:deployment": "ts-node scripts/verify-deployment.ts",
+    "monitor:quota": "watch \"ts-node scripts/verify-deployment.ts\" app/api/whatsapp"
   },
   "dependencies": {
     "@supabase/auth-helpers-nextjs": "^0.10.0",
