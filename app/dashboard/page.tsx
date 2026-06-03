@@ -29,10 +29,19 @@ interface SummaryStats {
   };
 }
 
+interface DayComparison {
+  [key: string]: {
+    today: number;
+    yesterday: number;
+    unit: string;
+  };
+}
+
 export default function Dashboard() {
   const [metrics, setMetrics] = useState<Metric[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [summaryStats, setSummaryStats] = useState<SummaryStats>({});
+  const [dayComparison, setDayComparison] = useState<DayComparison>({});
   const [loading, setLoading] = useState(true);
   const [newMetric, setNewMetric] = useState({
     type: 'breastmilk',
@@ -62,6 +71,7 @@ export default function Dashboard() {
     if (data && !error) {
       setMetrics(data as Metric[]);
       calculateSummaryStats(data as Metric[]);
+      calculateDayComparison(data as Metric[]);
     }
   };
 
@@ -77,52 +87,10 @@ export default function Dashboard() {
     }
   };
 
-  const getDateStatus = (createdAt: string): { badge: string; color: string; timestamp: string } => {
-    const metricDate = new Date(createdAt);
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-
-    // Set time to midnight for comparison
-    metricDate.setHours(0, 0, 0, 0);
-    today.setHours(0, 0, 0, 0);
-    yesterday.setHours(0, 0, 0, 0);
-
-    const timestamp = new Date(createdAt).toLocaleTimeString([], {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-
-    if (metricDate.getTime() === today.getTime()) {
-      return {
-        badge: 'Today',
-        color: 'bg-green-100 text-green-800 border-l-4 border-green-600',
-        timestamp,
-      };
-    } else if (metricDate.getTime() === yesterday.getTime()) {
-      return {
-        badge: 'Yesterday',
-        color: 'bg-yellow-100 text-yellow-800 border-l-4 border-yellow-600',
-        timestamp,
-      };
-    } else {
-      const dateStr = metricDate.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-      });
-      return {
-        badge: dateStr,
-        color: 'bg-gray-100 text-gray-800 border-l-4 border-gray-600',
-        timestamp,
-      };
-    }
-  };
-
   const calculateSummaryStats = (metricsData: Metric[]) => {
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-    // Whitelist of valid baby metrics only - no appointments
     const validMetricTypes = [
       'breastmilk',
       'formula',
@@ -134,10 +102,9 @@ export default function Dashboard() {
       'potty',
       'fever',
       'vaccine',
-      'doctor_notes'
+      'doctor_notes',
     ];
 
-    // Filter to last 7 days and only valid baby metrics
     const last7Days = metricsData.filter((m) => {
       const metricDate = new Date(m.created_at);
       const isValidMetric = validMetricTypes.includes(m.metric_type);
@@ -178,13 +145,132 @@ export default function Dashboard() {
     setSummaryStats(stats);
   };
 
+  const calculateDayComparison = (metricsData: Metric[]) => {
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    today.setHours(0, 0, 0, 0);
+    yesterday.setHours(0, 0, 0, 0);
+
+    const comparison: DayComparison = {};
+    const metricsMap = new Map<string, { today: number[]; yesterday: number[] }>();
+
+    metricsData.forEach((m) => {
+      const metricDate = new Date(m.created_at);
+      metricDate.setHours(0, 0, 0, 0);
+
+      if (
+        metricDate.getTime() === today.getTime() ||
+        metricDate.getTime() === yesterday.getTime()
+      ) {
+        if (!metricsMap.has(m.metric_type)) {
+          metricsMap.set(m.metric_type, { today: [], yesterday: [] });
+        }
+
+        const mapEntry = metricsMap.get(m.metric_type)!;
+        const value = parseFloat(m.value.toString());
+
+        if (metricDate.getTime() === today.getTime()) {
+          mapEntry.today.push(value);
+        } else {
+          mapEntry.yesterday.push(value);
+        }
+      }
+    });
+
+    const validMetricTypes = [
+      'breastmilk',
+      'formula',
+      'sleep',
+      'weight',
+      'bath',
+      'oil',
+      'diaper',
+      'potty',
+    ];
+
+    const countMetrics = ['bath', 'oil', 'diaper', 'potty'];
+
+    metricsMap.forEach((values, type) => {
+      if (!validMetricTypes.includes(type)) return;
+
+      let todayTotal = 0;
+      let yesterdayTotal = 0;
+
+      if (countMetrics.includes(type)) {
+        todayTotal = values.today.length;
+        yesterdayTotal = values.yesterday.length;
+      } else {
+        todayTotal = values.today.reduce((a, b) => a + b, 0);
+        yesterdayTotal = values.yesterday.reduce((a, b) => a + b, 0);
+      }
+
+      const unit =
+        type === 'breastmilk' || type === 'formula'
+          ? 'ml'
+          : type === 'sleep'
+          ? 'h'
+          : type === 'weight'
+          ? 'kg'
+          : '';
+
+      comparison[type] = {
+        today: todayTotal,
+        yesterday: yesterdayTotal,
+        unit,
+      };
+    });
+
+    setDayComparison(comparison);
+  };
+
+  const getDateStatus = (createdAt: string): { badge: string; color: string; timestamp: string } => {
+    const metricDate = new Date(createdAt);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    metricDate.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+    yesterday.setHours(0, 0, 0, 0);
+
+    const timestamp = new Date(createdAt).toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    if (metricDate.getTime() === today.getTime()) {
+      return {
+        badge: 'Today',
+        color: 'bg-green-100 text-green-800 border-l-4 border-green-600',
+        timestamp,
+      };
+    } else if (metricDate.getTime() === yesterday.getTime()) {
+      return {
+        badge: 'Yesterday',
+        color: 'bg-yellow-100 text-yellow-800 border-l-4 border-yellow-600',
+        timestamp,
+      };
+    } else {
+      const dateStr = metricDate.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+      });
+      return {
+        badge: dateStr,
+        color: 'bg-gray-100 text-gray-800 border-l-4 border-gray-600',
+        timestamp,
+      };
+    }
+  };
+
   const getAppointmentUrgency = (appointmentDate: string): { label: string; color: string } => {
     const apptDate = new Date(appointmentDate);
     const today = new Date();
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    // Set time to midnight for comparison
     apptDate.setHours(0, 0, 0, 0);
     today.setHours(0, 0, 0, 0);
     tomorrow.setHours(0, 0, 0, 0);
@@ -217,6 +303,24 @@ export default function Dashboard() {
     }
   };
 
+  const getComparisonColor = (today: number, yesterday: number): string => {
+    if (today > yesterday) {
+      return 'text-green-600';
+    } else if (today < yesterday) {
+      return 'text-red-600';
+    }
+    return 'text-gray-600';
+  };
+
+  const getComparisonBgColor = (today: number, yesterday: number): string => {
+    if (today > yesterday) {
+      return 'bg-green-50 border-green-200';
+    } else if (today < yesterday) {
+      return 'bg-red-50 border-red-200';
+    }
+    return 'bg-gray-50 border-gray-200';
+  };
+
   const upcomingAppointments = appointments
     .filter((a) => {
       const apptDate = new Date(a.appointment_date);
@@ -247,6 +351,7 @@ export default function Dashboard() {
       setMetrics([data[0] as Metric, ...metrics]);
       setNewMetric({ type: 'breastmilk', value: '', unit: 'ml' });
       calculateSummaryStats([data[0] as Metric, ...metrics]);
+      calculateDayComparison([data[0] as Metric, ...metrics]);
     }
   };
 
@@ -293,7 +398,7 @@ export default function Dashboard() {
     <div className="p-6 bg-gray-50 min-h-screen">
       <h1 className="text-4xl font-bold mb-8 text-gray-800">Dashboard</h1>
 
-      {/* 7-Day Summary Stats */}
+      {/* 7-Day Summary Stats Grid */}
       {Object.keys(summaryStats).length > 0 && (
         <div className="bg-white rounded-lg shadow p-6 mb-8">
           <h2 className="text-xl font-bold mb-4 text-gray-800">7-Day Summary</h2>
@@ -313,7 +418,71 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Main Grid Layout - 3 Columns */}
+      {/* Today vs Yesterday Comparison Grid */}
+      {Object.keys(dayComparison).length > 0 && (
+        <div className="bg-white rounded-lg shadow p-6 mb-8">
+          <h2 className="text-xl font-bold mb-4 text-gray-800">Today vs Yesterday</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {Object.entries(dayComparison).map(([type, data]) => (
+              <div
+                key={type}
+                className={`rounded-lg p-4 border transition-colors ${getComparisonBgColor(
+                  data.today,
+                  data.yesterday
+                )}`}
+              >
+                <p className="text-xs font-semibold text-gray-600 uppercase mb-3 tracking-wide">
+                  {type}
+                </p>
+                <div className="space-y-2">
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-xs text-gray-600 font-medium">Today:</span>
+                    <span className="text-lg font-bold text-gray-900">
+                      {data.today}
+                    </span>
+                    {data.unit && (
+                      <span className="text-xs text-gray-500">{data.unit}</span>
+                    )}
+                  </div>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-xs text-gray-600 font-medium">Yesterday:</span>
+                    <span className="text-lg font-bold text-gray-600">
+                      {data.yesterday}
+                    </span>
+                    {data.unit && (
+                      <span className="text-xs text-gray-500">{data.unit}</span>
+                    )}
+                  </div>
+                  <div className="pt-2 border-t border-gray-300 mt-2">
+                    <div className="flex items-center gap-2">
+                      <span className={`text-sm font-bold ${getComparisonColor(
+                        data.today,
+                        data.yesterday
+                      )}`}>
+                        {data.today > data.yesterday && (
+                          <>
+                            <span>↑</span> +{data.today - data.yesterday} {data.unit}
+                          </>
+                        )}
+                        {data.today < data.yesterday && (
+                          <>
+                            <span>↓</span> -{data.yesterday - data.today} {data.unit}
+                          </>
+                        )}
+                        {data.today === data.yesterday && (
+                          <span>= No change</span>
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 3-Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Quick Add Metric Form */}
         <div className="bg-white rounded-lg shadow p-6">
@@ -367,7 +536,7 @@ export default function Dashboard() {
           </form>
         </div>
 
-        {/* Recent Metrics */}
+        {/* Recent Metrics with Today/Yesterday Badges */}
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-bold text-gray-800">Recent Metrics</h2>
@@ -486,4 +655,3 @@ export default function Dashboard() {
     </div>
   );
 }
-
