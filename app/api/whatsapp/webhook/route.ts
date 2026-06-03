@@ -169,7 +169,7 @@ function parseMetric(text: string) {
   }
   if (cleanText.includes('vaccine')) return { type: 'vaccine', value: 'Vaccine recorded', unit: 'given' };
   if (cleanText.includes('doc') || cleanText.includes('doctor')) return { type: 'doc_notes', value: 'Notes saved', unit: 'notes' };
-  if (cleanText.includes('next') || cleanText.includes('appt') || cleanText.includes('appointment')) {
+  if (cleanText.includes('next') || cleanText.includes('appt') || cleanText.includes('appoint')) {
     // Determine who the appointment is for
     let appointmentFor = 'jaian'; // default to baby
     if (cleanText.includes('shiva') || cleanText.includes('mom') || cleanText.includes('mother')) {
