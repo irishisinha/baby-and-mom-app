@@ -456,7 +456,10 @@ async function sendTwilioMessage(fromPhone: string, body: string) {
     console.log(`[TWILIO] OK - SID: ${result.sid}`);
     return result;
   } catch (error: any) {
-    console.error(`[TWILIO] ERROR: ${error.message}`);
+    console.error(`[TWILIO] ERROR sending to ${fromPhone}`);
+    console.error(`[TWILIO] Error message: ${error.message}`);
+    console.error(`[TWILIO] Error code: ${error.code}`);
+    console.error(`[TWILIO] Full error:`, error);
     // Don't throw - log error and continue
     // This allows metrics to be saved even if Twilio fails (e.g., limit exceeded)
     return null;
