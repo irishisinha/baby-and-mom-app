@@ -457,7 +457,9 @@ async function sendTwilioMessage(fromPhone: string, body: string) {
     return result;
   } catch (error: any) {
     console.error(`[TWILIO] ERROR: ${error.message}`);
-    throw error;
+    // Don't throw - log error and continue
+    // This allows metrics to be saved even if Twilio fails (e.g., limit exceeded)
+    return null;
   }
 }
 
