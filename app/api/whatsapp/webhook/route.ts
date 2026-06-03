@@ -774,4 +774,4 @@ export async function POST(request: NextRequest) {
 
 export async function GET() {
   return NextResponse.json({ ok: true });
-}
+}// Force rebuild Wed Jun  3 22:28:48 GMTDT 2026
