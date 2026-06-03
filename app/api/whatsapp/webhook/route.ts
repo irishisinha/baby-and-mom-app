@@ -170,7 +170,6 @@ function parseMetric(text: string) {
   if (cleanText.includes('vaccine')) return { type: 'vaccine', value: 'Vaccine recorded', unit: 'given' };
   if (cleanText.includes('doc') || cleanText.includes('doctor')) return { type: 'doc_notes', value: 'Notes saved', unit: 'notes' };
   if (cleanText.includes('next') || cleanText.includes('appt') || cleanText.includes('appoint')) {
-    console.log('[APPOINTMENT] Detected appointment in:', metricText);
     // Determine who the appointment is for
     let appointmentFor = 'jaian'; // default to baby
     if (cleanText.includes('shiva') || cleanText.includes('mom') || cleanText.includes('mother')) {
@@ -585,7 +584,6 @@ export async function POST(request: NextRequest) {
       const metric = parseMetric(reduceText);
       
       if (metric) {
-        console.log('[METRIC] Parsed metric:', { type: metric.type, appointmentFor: metric.appointmentFor });
         const latest = await getLatestMetricForToday(metric.type);
         if (latest && typeof latest.value === 'number' && typeof metric.value === 'number') {
           const newValue = Math.max(0, latest.value - metric.value);
