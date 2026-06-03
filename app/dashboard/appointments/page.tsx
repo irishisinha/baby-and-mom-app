@@ -19,7 +19,7 @@ export default function AppointmentsPage() {
   });
 
   useEffect(() => {
-    const fetch = async () => {
+    const fetchAppointments = async () => {
       setUserId(PILOT_USER_ID);
 
       try {
@@ -31,7 +31,7 @@ export default function AppointmentsPage() {
         setAppointments([]);
       }
     };
-    fetch();
+    fetchAppointments();
   }, []);
 
   const handleAdd = async (e: React.FormEvent) => {
