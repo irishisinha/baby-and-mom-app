@@ -22,11 +22,21 @@ export default function AppointmentsPage() {
     const fetch = async () => {
       setUserId(PILOT_USER_ID);
 
-      const { data } = await supabase
+      const { data: data1 } = await supabase
         .from('appointments')
         .select('*')
-        .or(`user_id.eq.${PILOT_USER_ID},user_id.eq.${PILOT_FAMILY_ID}`)
+        .eq('user_id', PILOT_USER_ID)
         .order('appointment_date', { ascending: true });
+      
+      const { data: data2 } = await supabase
+        .from('appointments')
+        .select('*')
+        .eq('user_id', PILOT_FAMILY_ID)
+        .order('appointment_date', { ascending: true });
+      
+      const data = [...(data1 || []), ...(data2 || [])].sort((a, b) => 
+        new Date(a.appointment_date).getTime() - new Date(b.appointment_date).getTime()
+      );
 
       setAppointments(data || []);
     };
