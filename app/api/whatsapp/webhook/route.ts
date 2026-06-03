@@ -634,6 +634,11 @@ export async function POST(request: NextRequest) {
     else {
       const { dateStr, metricText, daysOffset } = extractDateAndMetric(line);
       const metric = parseMetric(metricText);
+      // DEBUG: Check what we're parsing
+      const isApptMsg = metricText.toLowerCase().includes('appt') || metricText.toLowerCase().includes('next') || metricText.toLowerCase().includes('appoint');
+      if (isApptMsg) {
+        console.log('[PARSE-APPT]', { metricText, metric: metric ? metric.type : 'NULL' });
+      }
 
       if (metricText.toLowerCase().includes('appt') || metricText.toLowerCase().includes('next') || metricText.toLowerCase().includes('appoint')) {
         console.log('[APPT-DEBUG] Text:', metricText, '| Metric:', metric ? metric.type : 'NULL');
