@@ -667,10 +667,8 @@ export async function POST(request: NextRequest) {
             reason: metricText,
             appointment_date: appointmentDate,
             appointment_time: appointmentTime,
-            appointee_for: appointeeNames[metric.appointmentFor] || metric.appointmentFor,
             notes: `From WhatsApp: ${phoneNumber}`
           });
-          successCount++;
         } else {
           // Insert into baby_metrics for other metrics
           let notes = '';
