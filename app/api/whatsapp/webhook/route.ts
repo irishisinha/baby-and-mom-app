@@ -635,6 +635,9 @@ export async function POST(request: NextRequest) {
       const { dateStr, metricText, daysOffset } = extractDateAndMetric(line);
       const metric = parseMetric(metricText);
 
+      if (metricText.toLowerCase().includes('appt') || metricText.toLowerCase().includes('next') || metricText.toLowerCase().includes('appoint')) {
+        console.log('[APPT-DEBUG] Text:', metricText, '| Metric:', metric ? metric.type : 'NULL');
+      }
       if (metric) {
         const timestamp = getLondonTime(daysOffset, dateStr);
         
