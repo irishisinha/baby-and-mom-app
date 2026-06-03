@@ -1,6 +1,5 @@
 'use server';
 
-import { messaging } from './firebase-admin';
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
@@ -12,6 +11,14 @@ interface NotificationPayload {
   title: string;
   body: string;
   data?: Record<string, string>;
+}
+
+/**
+ * Get messaging instance (lazy load)
+ */
+async function getMessaging() {
+  const { messaging } = await import('./firebase-admin');
+  return messaging;
 }
 
 /**
@@ -71,6 +78,7 @@ export async function sendFamilyNotification(
   payload: NotificationPayload
 ): Promise<number> {
   try {
+    const messaging = await getMessaging();
     const tokens = await getFamilyTokens();
 
     if (tokens.length === 0) {
@@ -95,7 +103,7 @@ export async function sendFamilyNotification(
           ...message,
           token: token,
         })
-        .catch(err => {
+        .catch((err: any) => {
           console.error(`Failed to send to ${token}:`, err.message);
           return null;
         })
