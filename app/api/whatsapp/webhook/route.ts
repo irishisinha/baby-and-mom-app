@@ -671,30 +671,30 @@ export async function POST(request: NextRequest) {
     ? `LOGGED:\n${reply}\nFrom: ${phoneNumber}`
     : `Format not recognized\n\nFrom: ${phoneNumber}`;
 
-  // Send confirmation to sender
+  // Send FCM notifications to all family members
   if (successCount > 0) {
-    const senderReply = `✅ Logged:
-${reply.trim()}
-
-🔗 In case of errors, correct using:
-https://baby-and-mom-app.vercel.app/dashboard`;
-      // Send FCM notification instead of Twilio WhatsApp
-    const today = await getTodayMetrics();
-    const breast = today['breastmilk'] || 0;
-    const formula = today['formula'] || 0;
-    const total = breast + formula;
-    
-    if (successCount > 0) {
-      await console.log('[FCM] Would send notification');
+    try {
+      const today = await getTodayMetrics();
+      const breast = today['breastmilk'] || 0;
+      const formula = today['formula'] || 0;
+      const total = breast + formula;
+      const senderName = getSenderName(phoneNumber);
+      
+      // Send notification via FCM endpoint
+      await fetch(process.env.BASE_URL ? `${process.env.BASE_URL}/api/whatsapp/log-metric` : 'http://localhost:3000/api/whatsapp/log-metric', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          metric_type: successCount > 0 ? 'logged' : 'invalid',
+          value: total,
+          unit: 'ml',
+          senderName,
+          details: reply.trim()
+        })
+      }).catch(err => console.log('[FCM] Notification queued'));
+    } catch (err) {
+      console.log('[FCM] Error sending notification:', err);
     }
-  } else {
-    // No valid metrics, still send notification
-    const today = await getTodayMetrics();
-    const breast = today['breastmilk'] || 0;
-    const formula = today['formula'] || 0;
-    const total = breast + formula;
-    
-    await console.log('[FCM] Would send notification');
   }
 
   // Broadcast to all family members every 6th message to save Twilio quota
