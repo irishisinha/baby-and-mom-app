@@ -1,6 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import twilio from 'twilio';
 import { createClient } from '@supabase/supabase-js';
+import { notifyMetricUpdate, notifyAppointment, getFamilyTokens } from '@/lib/fcm-service';
+
+// Whitelist of authorized phone numbers
+const AUTHORIZED_NUMBERS = [
+  '+919604898762',  // Rishi
+  '+919871319008',  // Mom
+  '+919914789171',  // Grandmom
+];
 
 const PILOT_FAMILY_ID = 'df3d99a8-f7a2-44cf-bcb4-9c5f3300caa6';
 const PILOT_BABY_ID = 'e8a7c56c-62c6-442c-94ac-518928c8c07b'; // Jaian
@@ -476,6 +484,16 @@ async function broadcastToAllFamilyMembers(message: string) {
   }
 }
 
+
+// Get sender name from phone number
+function getSenderName(phone: string): string {
+  const cleanPhone = '+' + phone.replace(/\D/g, '');
+  if (cleanPhone === '+919604898762') return 'Rishi';
+  if (cleanPhone === '+919871319008') return 'Mom';
+  if (cleanPhone === '+919914789171') return 'Grandmom';
+  return 'Family Member';
+}
+
 async function sendTwilioMessage(fromPhone: string, body: string) {
   try {
     console.log(`[TWILIO] Sending to ${fromPhone}: ${body.substring(0, 50)}`);
@@ -504,6 +522,13 @@ export async function POST(request: NextRequest) {
   const phoneNumber = fromPhone?.replace('whatsapp:', '') || '';
 
   console.log(`[WEBHOOK] Received: ${messageText} from ${phoneNumber}`);
+
+  // WHITELIST CHECK: Only authorized numbers can send messages
+  const cleanPhone = '+' + phoneNumber.replace(/\D/g, '');
+  if (!AUTHORIZED_NUMBERS.includes(cleanPhone)) {
+    console.log(`[WHITELIST] Rejected: ${phoneNumber} is not authorized`);
+    return NextResponse.json({ success: false, message: 'Not authorized' });
+  }
 
   const lower = messageText.toLowerCase().trim();
 
@@ -654,9 +679,23 @@ ${reply.trim()}
 
 🔗 In case of errors, correct using:
 https://baby-and-mom-app.vercel.app/dashboard`;
-    await sendTwilioMessage(fromPhone, senderReply);
+      // Send FCM notification instead of Twilio WhatsApp
+    const today = await getTodayMetrics();
+    const breast = today['breastmilk'] || 0;
+    const formula = today['formula'] || 0;
+    const total = breast + formula;
+    
+    if (successCount > 0) {
+      await notifyMetricUpdate(senderName, 'update', total, 'ml', total);
+    }
   } else {
-    await sendTwilioMessage(fromPhone, finalReply);
+    // No valid metrics, still send notification
+    const today = await getTodayMetrics();
+    const breast = today['breastmilk'] || 0;
+    const formula = today['formula'] || 0;
+    const total = breast + formula;
+    
+    await notifyMetricUpdate(senderName, 'note', total, 'ml', total);
   }
 
   // Broadcast to all family members every 6th message to save Twilio quota
