@@ -14,9 +14,11 @@ interface Metric {
 
 interface Appointment {
   id: string;
-  title: string;
+  doctor: string;
+  reason: string;
   appointment_date: string;
-  time?: string;
+  appointment_time: string;
+  appointee_for?: string;
   notes?: string;
 }
 
@@ -117,53 +119,23 @@ export default function Dashboard() {
     setSummaryStats(stats);
   };
 
-  const getDateStatus = (dateString: string) => {
-    const date = new Date(dateString);
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-
-    const dateOnly = date.toDateString();
-    const todayOnly = today.toDateString();
-    const yesterdayOnly = yesterday.toDateString();
-
-    if (dateOnly === todayOnly) {
-      return {
-        label: 'Today',
-        color: 'bg-green-100 text-green-800',
-      };
-    } else if (dateOnly === yesterdayOnly) {
-      return {
-        label: 'Yesterday',
-        color: 'bg-yellow-100 text-yellow-800',
-      };
-    } else {
-      return {
-        label: date.toLocaleDateString('en-US', {
-          month: 'short',
-          day: 'numeric',
-        }),
-        color: 'bg-gray-100 text-gray-800',
-      };
-    }
-  };
-
-  const getAppointmentStatus = (appointmentDate: string) => {
+  const getAppointmentUrgency = (appointmentDate: string): { label: string; color: string } => {
     const apptDate = new Date(appointmentDate);
     const today = new Date();
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    const apptDateOnly = apptDate.toDateString();
-    const todayOnly = today.toDateString();
-    const tomorrowOnly = tomorrow.toDateString();
+    // Set time to midnight for comparison
+    apptDate.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+    tomorrow.setHours(0, 0, 0, 0);
 
-    if (apptDateOnly === todayOnly) {
+    if (apptDate.getTime() === today.getTime()) {
       return {
         label: 'Today!',
         color: 'bg-red-100 text-red-800 border-l-4 border-red-600',
       };
-    } else if (apptDateOnly === tomorrowOnly) {
+    } else if (apptDate.getTime() === tomorrow.getTime()) {
       return {
         label: 'Tomorrow',
         color: 'bg-orange-100 text-orange-800 border-l-4 border-orange-600',
@@ -172,15 +144,28 @@ export default function Dashboard() {
       const daysUntil = Math.floor(
         (apptDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
       );
-      return {
-        label: `In ${daysUntil} days`,
-        color: 'bg-blue-100 text-blue-800 border-l-4 border-blue-600',
-      };
+      if (daysUntil > 0) {
+        return {
+          label: `In ${daysUntil} days`,
+          color: 'bg-blue-100 text-blue-800 border-l-4 border-blue-600',
+        };
+      } else {
+        return {
+          label: 'Past',
+          color: 'bg-gray-100 text-gray-800 border-l-4 border-gray-600',
+        };
+      }
     }
   };
 
   const upcomingAppointments = appointments
-    .filter((a) => new Date(a.appointment_date) >= new Date())
+    .filter((a) => {
+      const apptDate = new Date(a.appointment_date);
+      const today = new Date();
+      apptDate.setHours(0, 0, 0, 0);
+      today.setHours(0, 0, 0, 0);
+      return apptDate.getTime() >= today.getTime();
+    })
     .slice(0, 5);
 
   const handleQuickAdd = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -269,8 +254,8 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Main Grid Layout */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* Main Grid Layout - 3 Columns */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Quick Add Metric Form */}
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-xl font-bold mb-4 text-gray-800">Quick Add</h2>
@@ -336,51 +321,43 @@ export default function Dashboard() {
           </div>
           <div className="space-y-2 max-h-96 overflow-y-auto">
             {metrics.length > 0 ? (
-              metrics.slice(0, 5).map((m) => {
-                const dateStatus = getDateStatus(m.created_at);
-                return (
-                  <div
-                    key={m.id}
-                    className="border border-gray-200 rounded-lg p-3 bg-gray-50 hover:bg-gray-100 transition"
-                  >
-                    <div className="flex justify-between items-start mb-2">
-                      <div className="flex-1">
-                        <p className="font-semibold text-sm text-gray-800">
-                          {m.metric_type}: {m.value} {m.unit}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {new Date(m.created_at).toLocaleTimeString([], {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
-                        </p>
-                      </div>
-                      <span
-                        className={`text-xs font-semibold px-2 py-1 rounded ml-2 whitespace-nowrap ${dateStatus.color}`}
-                      >
-                        {dateStatus.label}
-                      </span>
-                    </div>
-                    <div className="flex gap-1">
-                      <button
-                        onClick={() => {
-                          const v = prompt('New value', m.value.toString());
-                          if (v) handleEdit(m.id, v);
-                        }}
-                        className="flex-1 px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDelete(m.id)}
-                        className="flex-1 px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded transition"
-                      >
-                        Delete
-                      </button>
+              metrics.slice(0, 5).map((m) => (
+                <div
+                  key={m.id}
+                  className="border border-gray-200 rounded-lg p-3 bg-gray-50 hover:bg-gray-100 transition"
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <div className="flex-1">
+                      <p className="font-semibold text-sm text-gray-800">
+                        {m.metric_type}: {m.value} {m.unit}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {new Date(m.created_at).toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </p>
                     </div>
                   </div>
-                );
-              })
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => {
+                        const v = prompt('New value', m.value.toString());
+                        if (v) handleEdit(m.id, v);
+                      }}
+                      className="flex-1 px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(m.id)}
+                      className="flex-1 px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded transition"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))
             ) : (
               <p className="text-gray-500 text-sm text-center py-4">
                 No metrics yet
@@ -403,36 +380,36 @@ export default function Dashboard() {
           <div className="space-y-2 max-h-96 overflow-y-auto">
             {upcomingAppointments.length > 0 ? (
               upcomingAppointments.map((a) => {
-                const apptStatus = getAppointmentStatus(a.appointment_date);
+                const urgency = getAppointmentUrgency(a.appointment_date);
                 return (
                   <div
                     key={a.id}
-                    className={`rounded-lg p-3 ${apptStatus.color}`}
+                    className={`rounded-lg p-3 ${urgency.color}`}
                   >
                     <div className="flex justify-between items-start mb-1">
-                      <p className="font-semibold text-sm">{a.title}</p>
-                      <span className="text-xs font-bold bg-white bg-opacity-70 px-2 py-1 rounded">
-                        {apptStatus.label}
+                      <div className="flex-1">
+                        <p className="font-semibold text-sm">{a.doctor}</p>
+                        <p className="text-xs opacity-90">{a.reason}</p>
+                      </div>
+                      <span className="text-xs font-bold bg-white bg-opacity-70 px-2 py-1 rounded ml-2 whitespace-nowrap">
+                        {urgency.label}
                       </span>
                     </div>
-                    <p className="text-xs opacity-90">
-                      {new Date(a.appointment_date).toLocaleDateString(
-                        'en-US',
-                        {
-                          weekday: 'short',
-                          month: 'short',
-                          day: 'numeric',
-                        }
-                      )}
-                    </p>
-                    {a.time && (
-                      <p className="text-xs opacity-90 font-semibold">
-                        {a.time}
+                    <div className="text-xs opacity-90">
+                      <p>
+                        {new Date(a.appointment_date).toLocaleDateString(
+                          'en-US',
+                          {
+                            weekday: 'short',
+                            month: 'short',
+                            day: 'numeric',
+                          }
+                        )}
                       </p>
-                    )}
-                    {a.notes && (
-                      <p className="text-xs opacity-75 italic mt-1">{a.notes}</p>
-                    )}
+                      {a.appointment_time && (
+                        <p className="font-semibold">{a.appointment_time}</p>
+                      )}
+                    </div>
                   </div>
                 );
               })
@@ -441,37 +418,6 @@ export default function Dashboard() {
                 No upcoming appointments
               </p>
             )}
-          </div>
-        </div>
-
-        {/* Quick Links */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-bold mb-4 text-gray-800">Quick Links</h2>
-          <div className="space-y-2">
-            <Link
-              href="/dashboard/metrics"
-              className="block px-4 py-3 bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold rounded-lg transition border border-blue-200"
-            >
-              All Metrics
-            </Link>
-            <Link
-              href="/dashboard/appointments"
-              className="block px-4 py-3 bg-green-50 hover:bg-green-100 text-green-700 font-semibold rounded-lg transition border border-green-200"
-            >
-              Appointments
-            </Link>
-            <Link
-              href="/dashboard/profile"
-              className="block px-4 py-3 bg-purple-50 hover:bg-purple-100 text-purple-700 font-semibold rounded-lg transition border border-purple-200"
-            >
-              Baby Profile
-            </Link>
-            <Link
-              href="/dashboard/settings"
-              className="block px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-lg transition border border-gray-300"
-            >
-              Settings
-            </Link>
           </div>
         </div>
       </div>
