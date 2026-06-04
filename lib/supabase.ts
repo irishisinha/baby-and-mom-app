@@ -3,10 +3,20 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 
-// Create client with fallback values during build time (env vars will be available at runtime)
+// Create client with persistent session storage (localStorage)
 export const supabase = createClient(
   supabaseUrl || 'https://placeholder.supabase.co',
-  supabaseAnonKey || 'placeholder-key'
+  supabaseAnonKey || 'placeholder-key',
+  {
+    auth: {
+      persistSession: true, // Enable session persistence
+      autoRefreshToken: true, // Auto-refresh tokens
+      detectSessionInUrl: true, // Detect session from URL (for magic links)
+      storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+      storageKey: 'sb-auth-token', // Key for localStorage
+      flowType: 'pkce', // PKCE flow for better security
+    },
+  }
 )
 
 export const supabaseAdmin = createClient(

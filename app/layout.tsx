@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { SessionProvider } from './providers'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -24,7 +25,7 @@ export default function RootLayout({
         <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
       </head>
       <body className="bg-white text-gray-900">
-        {children}
+        <SessionProvider>{children}</SessionProvider>
       </body>
     </html>
   )

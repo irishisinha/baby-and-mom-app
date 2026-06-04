@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 
 interface Metric {
   id: string;
@@ -38,22 +37,7 @@ interface DayComparison {
   };
 }
 
-interface NavTab {
-  href: string;
-  label: string;
-  icon: string;
-}
-
-const navTabs: NavTab[] = [
-  { href: '/dashboard', label: 'Home', icon: '🏠' },
-  { href: '/dashboard/appointments', label: 'Appointments', icon: '📅' },
-  { href: '/dashboard/metrics', label: 'Metrics', icon: '📊' },
-  { href: '/dashboard/baby', label: 'Baby', icon: '👶' },
-  { href: '/dashboard/family', label: 'Family', icon: '👨‍👩‍👧' },
-];
-
 export default function Dashboard() {
-  const pathname = usePathname();
   const [metrics, setMetrics] = useState<Metric[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [summaryStats, setSummaryStats] = useState<SummaryStats>({});
@@ -402,286 +386,272 @@ export default function Dashboard() {
     }
   };
 
-  const isActive = (href: string) => pathname === href;
-
   if (loading) {
     return (
-      <div className="w-full min-h-screen bg-white flex items-center justify-center">
+      <div className="p-6 bg-gray-50 min-h-screen flex items-center justify-center">
         <div className="text-gray-600 text-lg">Loading...</div>
       </div>
     );
   }
 
   return (
-    <div className="w-full bg-white min-h-screen flex flex-col pb-24 md:pb-0">
-      {/* Header */}
-      <header className="sticky top-0 bg-white border-b border-gray-200 px-4 md:px-6 py-4">
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-900">👶 Baby & Mom Care</h1>
-      </header>
+    <div className="p-6 bg-gray-50 min-h-screen">
+      <h1 className="text-4xl font-bold mb-8 text-gray-800">Dashboard</h1>
 
-      {/* Main Content */}
-      <main className="flex-1 px-4 md:px-6 py-6 md:py-8 max-w-6xl mx-auto w-full overflow-y-auto">
-        {/* 7-Day Summary Stats Grid */}
-        {Object.keys(summaryStats).length > 0 && (
-          <section className="mb-8">
-            <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-4">7-Day Summary</h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">
-              {Object.entries(summaryStats).map(([type, stat]) => (
-                <div
-                  key={type}
-                  className="bg-blue-50 rounded-lg p-4 border border-blue-100"
-                >
-                  <p className="text-xs font-semibold text-gray-600 uppercase mb-2 tracking-wide">
-                    {type}
-                  </p>
-                  <p className="text-lg md:text-xl font-bold text-blue-900">{stat.value}</p>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
+      {/* 7-Day Summary Stats Grid */}
+      {Object.keys(summaryStats).length > 0 && (
+        <div className="bg-white rounded-lg shadow p-6 mb-8">
+          <h2 className="text-xl font-bold mb-4 text-gray-800">7-Day Summary</h2>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            {Object.entries(summaryStats).map(([type, stat]) => (
+              <div
+                key={type}
+                className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-200 shadow-sm"
+              >
+                <p className="text-xs font-semibold text-gray-600 uppercase mb-2 tracking-wide">
+                  {type}
+                </p>
+                <p className="text-lg font-bold text-blue-900">{stat.value}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
-        {/* Today vs Yesterday Comparison Grid */}
-        {Object.keys(dayComparison).length > 0 && (
-          <section className="mb-8">
-            <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-4">Today vs Yesterday</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-              {Object.entries(dayComparison).map(([type, data]) => (
-                <div
-                  key={type}
-                  className={`rounded-lg p-4 border transition-colors ${getComparisonBgColor(
-                    data.today,
-                    data.yesterday
-                  )}`}
-                >
-                  <p className="text-xs font-semibold text-gray-600 uppercase mb-3 tracking-wide">
-                    {type}
-                  </p>
-                  <div className="space-y-2">
+      {/* Today vs Yesterday Comparison Grid */}
+      {Object.keys(dayComparison).length > 0 && (
+        <div className="bg-white rounded-lg shadow p-6 mb-8">
+          <h2 className="text-xl font-bold mb-4 text-gray-800">Today vs Yesterday</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {Object.entries(dayComparison).map(([type, data]) => (
+              <div
+                key={type}
+                className={`rounded-lg p-4 border transition-colors ${getComparisonBgColor(
+                  data.today,
+                  data.yesterday
+                )}`}
+              >
+                <p className="text-xs font-semibold text-gray-600 uppercase mb-3 tracking-wide">
+                  {type}
+                </p>
+                <div className="space-y-2">
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-xs text-gray-600 font-medium">Today:</span>
+                    <span className="text-lg font-bold text-gray-900">
+                      {data.today}
+                    </span>
+                    {data.unit && (
+                      <span className="text-xs text-gray-500">{data.unit}</span>
+                    )}
+                  </div>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-xs text-gray-600 font-medium">Yesterday:</span>
+                    <span className="text-lg font-bold text-gray-600">
+                      {data.yesterday}
+                    </span>
+                    {data.unit && (
+                      <span className="text-xs text-gray-500">{data.unit}</span>
+                    )}
+                  </div>
+                  <div className="pt-2 border-t border-gray-300 mt-2">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-600 font-medium">Today:</span>
-                      <span className="text-lg font-bold text-gray-900">{data.today}</span>
-                      {data.unit && <span className="text-xs text-gray-500">{data.unit}</span>}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-600 font-medium">Yesterday:</span>
-                      <span className="text-lg font-bold text-gray-600">{data.yesterday}</span>
-                      {data.unit && <span className="text-xs text-gray-500">{data.unit}</span>}
-                    </div>
-                    <div className="pt-2 border-t border-gray-300 mt-2">
-                      <div className={`text-sm font-semibold ${getComparisonColor(
+                      <span className={`text-sm font-bold ${getComparisonColor(
                         data.today,
                         data.yesterday
                       )}`}>
                         {data.today > data.yesterday && (
-                          <>↑ +{data.today - data.yesterday} {data.unit}</>
+                          <>
+                            <span>↑</span> +{data.today - data.yesterday} {data.unit}
+                          </>
                         )}
                         {data.today < data.yesterday && (
-                          <>↓ -{data.yesterday - data.today} {data.unit}</>
+                          <>
+                            <span>↓</span> -{data.yesterday - data.today} {data.unit}
+                          </>
                         )}
                         {data.today === data.yesterday && (
-                          <>= No change</>
+                          <span>= No change</span>
                         )}
-                      </div>
+                      </span>
                     </div>
                   </div>
                 </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* 3-Column Layout */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Quick Add Metric Form */}
-          <div className="bg-blue-50 rounded-lg p-6 border border-blue-100">
-            <h2 className="text-lg md:text-xl font-bold text-gray-900 mb-4">Quick Add</h2>
-            <form onSubmit={handleQuickAdd} className="space-y-3">
-              <select
-                value={newMetric.type}
-                onChange={(e) =>
-                  setNewMetric({ ...newMetric, type: e.target.value })
-                }
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
-              >
-                <option value="breastmilk">Breastmilk</option>
-                <option value="formula">Formula</option>
-                <option value="potty">Potty</option>
-                <option value="diaper">Diaper</option>
-                <option value="sleep">Sleep</option>
-                <option value="weight">Weight</option>
-                <option value="bath">Bath</option>
-                <option value="oil">Oil</option>
-              </select>
-
-              <input
-                type="number"
-                value={newMetric.value}
-                onChange={(e) =>
-                  setNewMetric({ ...newMetric, value: e.target.value })
-                }
-                placeholder="Value"
-                step="0.1"
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-              />
-
-              <input
-                type="text"
-                value={newMetric.unit}
-                onChange={(e) =>
-                  setNewMetric({ ...newMetric, unit: e.target.value })
-                }
-                placeholder="Unit (ml, oz, etc.)"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-              />
-
-              <button
-                type="submit"
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition duration-200 min-h-[44px]"
-              >
-                Add Metric
-              </button>
-            </form>
-          </div>
-
-          {/* Recent Metrics */}
-          <div className="bg-white rounded-lg p-6 border border-gray-200">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg md:text-xl font-bold text-gray-900">Recent Metrics</h2>
-              <Link
-                href="/dashboard/metrics"
-                className="text-blue-600 hover:text-blue-800 text-sm font-semibold"
-              >
-                View All →
-              </Link>
-            </div>
-            <div className="space-y-2 max-h-96 overflow-y-auto">
-              {metrics.length > 0 ? (
-                metrics.slice(0, 5).map((m) => {
-                  const dateStatus = getDateStatus(m.created_at);
-                  return (
-                    <div
-                      key={m.id}
-                      className="border border-gray-200 rounded-lg p-3 bg-gray-50 hover:bg-gray-100 transition"
-                    >
-                      <div className="flex justify-between items-start mb-2">
-                        <div className="flex-1">
-                          <p className="font-semibold text-sm text-gray-900">
-                            {m.metric_type}: {m.value} {m.unit}
-                          </p>
-                          <div className="flex items-center gap-2 mt-2">
-                            <span className={`text-xs font-semibold px-2 py-1 rounded ${dateStatus.color}`}>
-                              {dateStatus.badge}
-                            </span>
-                            <p className="text-xs text-gray-500">{dateStatus.timestamp}</p>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex gap-2 mt-3">
-                        <button
-                          onClick={() => {
-                            const v = prompt('New value', m.value.toString());
-                            if (v) handleEdit(m.id, v);
-                          }}
-                          className="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition min-h-[40px] flex items-center justify-center"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDelete(m.id)}
-                          className="flex-1 px-3 py-2 bg-red-600 hover:bg-red-700 text-white text-xs rounded transition min-h-[40px] flex items-center justify-center"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })
-              ) : (
-                <p className="text-gray-500 text-sm text-center py-4">
-                  No metrics yet
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Next Appointments */}
-          <div className="bg-white rounded-lg p-6 border border-gray-200">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg md:text-xl font-bold text-gray-900">Next Appointments</h2>
-              <Link
-                href="/dashboard/appointments"
-                className="text-blue-600 hover:text-blue-800 text-sm font-semibold"
-              >
-                View All →
-              </Link>
-            </div>
-            <div className="space-y-2 max-h-96 overflow-y-auto">
-              {upcomingAppointments.length > 0 ? (
-                upcomingAppointments.map((a) => {
-                  const urgency = getAppointmentUrgency(a.appointment_date);
-                  return (
-                    <div
-                      key={a.id}
-                      className={`rounded-lg p-3 ${urgency.color}`}
-                    >
-                      <div className="flex justify-between items-start mb-1">
-                        <div className="flex-1">
-                          <p className="font-semibold text-sm">{a.doctor}</p>
-                          <p className="text-xs opacity-90">{a.reason}</p>
-                        </div>
-                        <span className="text-xs font-bold bg-white bg-opacity-70 px-2 py-1 rounded ml-2 whitespace-nowrap">
-                          {urgency.label}
-                        </span>
-                      </div>
-                      <div className="text-xs opacity-90 mt-2">
-                        <p>
-                          {new Date(a.appointment_date).toLocaleDateString(
-                            'en-US',
-                            {
-                              weekday: 'short',
-                              month: 'short',
-                              day: 'numeric',
-                            }
-                          )}
-                        </p>
-                        {a.appointment_time && (
-                          <p className="font-semibold">{a.appointment_time}</p>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })
-              ) : (
-                <p className="text-gray-500 text-sm text-center py-4">
-                  No upcoming appointments
-                </p>
-              )}
-            </div>
+              </div>
+            ))}
           </div>
         </div>
-      </main>
+      )}
 
-      {/* Mobile Bottom Navigation - Only visible on mobile */}
-      <nav className="fixed md:hidden bottom-0 left-0 right-0 bg-white border-t border-gray-200">
-        <div className="flex justify-around">
-          {navTabs.map((tab) => (
-            <Link
-              key={tab.href}
-              href={tab.href}
-              className={`flex-1 flex flex-col items-center justify-center py-3 px-2 transition-colors ${
-                isActive(tab.href)
-                  ? 'text-blue-600 border-t-2 border-blue-600'
-                  : 'text-gray-600 border-t-2 border-transparent hover:text-gray-900'
-              }`}
+      {/* 3-Column Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Quick Add Metric Form */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-xl font-bold mb-4 text-gray-800">Quick Add</h2>
+          <form onSubmit={handleQuickAdd} className="space-y-3">
+            <select
+              value={newMetric.type}
+              onChange={(e) =>
+                setNewMetric({ ...newMetric, type: e.target.value })
+              }
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-800"
             >
-              <span className="text-xl mb-1">{tab.icon}</span>
-              <span className="text-xs font-medium">{tab.label}</span>
-            </Link>
-          ))}
+              <option value="breastmilk">Breastmilk</option>
+              <option value="formula">Formula</option>
+              <option value="potty">Potty</option>
+              <option value="diaper">Diaper</option>
+              <option value="sleep">Sleep</option>
+              <option value="weight">Weight</option>
+              <option value="bath">Bath</option>
+              <option value="oil">Oil</option>
+            </select>
+
+            <input
+              type="number"
+              value={newMetric.value}
+              onChange={(e) =>
+                setNewMetric({ ...newMetric, value: e.target.value })
+              }
+              placeholder="Value"
+              step="0.1"
+              required
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800"
+            />
+
+            <input
+              type="text"
+              value={newMetric.unit}
+              onChange={(e) =>
+                setNewMetric({ ...newMetric, unit: e.target.value })
+              }
+              placeholder="Unit (ml, oz, etc.)"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800"
+            />
+
+            <button
+              type="submit"
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-200"
+            >
+              Add Metric
+            </button>
+          </form>
         </div>
-      </nav>
+
+        {/* Recent Metrics with Today/Yesterday Badges */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold text-gray-800">Recent Metrics</h2>
+            <Link
+              href="/dashboard/metrics"
+              className="text-blue-600 hover:text-blue-800 text-xs font-semibold"
+            >
+              View All →
+            </Link>
+          </div>
+          <div className="space-y-2 max-h-96 overflow-y-auto">
+            {metrics.length > 0 ? (
+              metrics.slice(0, 5).map((m) => {
+                const dateStatus = getDateStatus(m.created_at);
+                return (
+                  <div
+                    key={m.id}
+                    className="border border-gray-200 rounded-lg p-3 bg-gray-50 hover:bg-gray-100 transition"
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="flex-1">
+                        <p className="font-semibold text-sm text-gray-800">
+                          {m.metric_type}: {m.value} {m.unit}
+                        </p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className={`text-xs font-semibold px-2 py-1 rounded ${dateStatus.color}`}>
+                            {dateStatus.badge}
+                          </span>
+                          <p className="text-xs text-gray-500">{dateStatus.timestamp}</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => {
+                          const v = prompt('New value', m.value.toString());
+                          if (v) handleEdit(m.id, v);
+                        }}
+                        className="flex-1 px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDelete(m.id)}
+                        className="flex-1 px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded transition"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <p className="text-gray-500 text-sm text-center py-4">
+                No metrics yet
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Next Appointments */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold text-gray-800">Next Appointments</h2>
+            <Link
+              href="/dashboard/appointments"
+              className="text-blue-600 hover:text-blue-800 text-xs font-semibold"
+            >
+              View All →
+            </Link>
+          </div>
+          <div className="space-y-2 max-h-96 overflow-y-auto">
+            {upcomingAppointments.length > 0 ? (
+              upcomingAppointments.map((a) => {
+                const urgency = getAppointmentUrgency(a.appointment_date);
+                return (
+                  <div
+                    key={a.id}
+                    className={`rounded-lg p-3 ${urgency.color}`}
+                  >
+                    <div className="flex justify-between items-start mb-1">
+                      <div className="flex-1">
+                        <p className="font-semibold text-sm">{a.doctor}</p>
+                        <p className="text-xs opacity-90">{a.reason}</p>
+                      </div>
+                      <span className="text-xs font-bold bg-white bg-opacity-70 px-2 py-1 rounded ml-2 whitespace-nowrap">
+                        {urgency.label}
+                      </span>
+                    </div>
+                    <div className="text-xs opacity-90">
+                      <p>
+                        {new Date(a.appointment_date).toLocaleDateString(
+                          'en-US',
+                          {
+                            weekday: 'short',
+                            month: 'short',
+                            day: 'numeric',
+                          }
+                        )}
+                      </p>
+                      {a.appointment_time && (
+                        <p className="font-semibold">{a.appointment_time}</p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <p className="text-gray-500 text-sm text-center py-4">
+                No upcoming appointments
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

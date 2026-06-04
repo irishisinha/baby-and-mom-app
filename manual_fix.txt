@@ -1,0 +1,8 @@
+The webhook code locally is correct:
+- PILOT_USER_ID is defined
+- user_id: PILOT_USER_ID is in the insert
+- appointee_for field is there
+
+But Vercel is deploying old code.
+
+Let me add a simple console.log to force rebuild.

@@ -1,0 +1,43 @@
+--- a/app/api/whatsapp/webhook/route.ts
++++ b/app/api/whatsapp/webhook/route.ts
+@@ -625,14 +625,33 @@ export async function POST(req: NextRequest) {
+       const { dateStr, metricText, daysOffset } = extractDateAndMetric(line);
+       const metric = parseMetric(metricText);
+ 
+       if (metric) {
+         const timestamp = getLondonTime(daysOffset, dateStr);
+         
+         // For appointments, store in appointments table
+         if (metric.type === 'next_appointment' && metric.appointmentFor) {
++          // Extract date and time from the metric value
++          let appointmentDate = dateStr || new Date(timestamp).toISOString().split('T')[0];
++          let appointmentTime = '';
++          let appointmentDoctor = 'Appointment';
++          
++          // Parse date from value (e.g., "04 Jun 5pm" -> date: "2026-06-04", time: "5pm")
++          const dateTimeMatch = metric.value.match(/(\d{1,2})\s+([a-z]+)\s+(\d{1,2}):?(\d{2})?\s*(am|pm)?/i);
++          if (dateTimeMatch) {
++            const day = dateTimeMatch[1];
++            const month = dateTimeMatch[2];
++            const year = new Date().getFullYear();
++            appointmentDate = `${year}-${getMonthNumber(month)}-${day.padStart(2, '0')}`;
++            appointmentTime = dateTimeMatch[3] + (dateTimeMatch[4] ? ':' + dateTimeMatch[4] : ':00') + (dateTimeMatch[5] ? dateTimeMatch[5].toLowerCase() : 'am');
++            appointmentDoctor = metricText.split(/\d{1,2}\s+[a-z]+/i)[0].replace('appointment', '').replace('next', '').replace(metric.appointmentFor, '').trim() || 'Appointment';
++          }
++          
+           // Map appointeeFor codes to readable names
+           const appointeeNames: any = { 'shiva': 'Shiva (Mom)', 'rishi': 'Rishi (Dad)', 'ichi': 'Ichi (Grandmom)', 'jaian': 'Jaian (Baby)' };
+           // Insert into appointments table
+           await supabase.from('appointments').insert({
+             user_id: PILOT_FAMILY_ID,
+-            doctor: metric.value.split('at')[0].trim() || 'Appointment',
++            doctor: appointmentDoctor,
+             reason: metricText,
+-            appointment_date: dateStr || new Date(timestamp).toISOString().split('T')[0],
+-            appointment_time: metric.value.includes('at') ? metric.value.split('at')[1].trim() : '',
++            appointment_date: appointmentDate,
++            appointment_time: appointmentTime,
+             appointee_for: appointeeNames[metric.appointmentFor] || metric.appointmentFor,
+             notes: `From WhatsApp: ${phoneNumber}`
+           });
+           successCount++;
