@@ -388,30 +388,30 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="p-6 bg-gray-50 min-h-screen flex items-center justify-center">
+      <div className="px-3 py-4 sm:p-6 bg-gray-50 min-h-screen flex items-center justify-center">
         <div className="text-gray-600 text-lg">Loading...</div>
       </div>
     );
   }
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <h1 className="text-4xl font-bold mb-8 text-gray-800">Dashboard</h1>
+    <div className="px-3 py-4 sm:p-6 bg-gray-50 min-h-screen">
+      <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-4 sm:mb-6 lg:mb-8 text-gray-800">Dashboard</h1>
 
       {/* 7-Day Summary Stats Grid */}
       {Object.keys(summaryStats).length > 0 && (
-        <div className="bg-white rounded-lg shadow p-6 mb-8">
-          <h2 className="text-xl font-bold mb-4 text-gray-800">7-Day Summary</h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div className="bg-white rounded-lg shadow p-3 sm:p-6 mb-4 sm:mb-8">
+          <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4 text-gray-800">7-Day Summary</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
             {Object.entries(summaryStats).map(([type, stat]) => (
               <div
                 key={type}
-                className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-200 shadow-sm"
+                className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-3 sm:p-4 border border-blue-200 shadow-sm"
               >
                 <p className="text-xs font-semibold text-gray-600 uppercase mb-2 tracking-wide">
                   {type}
                 </p>
-                <p className="text-lg font-bold text-blue-900">{stat.value}</p>
+                <p className="text-base sm:text-lg font-bold text-blue-900">{stat.value}</p>
               </div>
             ))}
           </div>
@@ -420,24 +420,24 @@ export default function Dashboard() {
 
       {/* Today vs Yesterday Comparison Grid */}
       {Object.keys(dayComparison).length > 0 && (
-        <div className="bg-white rounded-lg shadow p-6 mb-8">
-          <h2 className="text-xl font-bold mb-4 text-gray-800">Today vs Yesterday</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="bg-white rounded-lg shadow p-3 sm:p-6 mb-4 sm:mb-8">
+          <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4 text-gray-800">Today vs Yesterday</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
             {Object.entries(dayComparison).map(([type, data]) => (
               <div
                 key={type}
-                className={`rounded-lg p-4 border transition-colors ${getComparisonBgColor(
+                className={`rounded-lg p-3 sm:p-4 border transition-colors ${getComparisonBgColor(
                   data.today,
                   data.yesterday
                 )}`}
               >
-                <p className="text-xs font-semibold text-gray-600 uppercase mb-3 tracking-wide">
+                <p className="text-xs font-semibold text-gray-600 uppercase mb-2 sm:mb-3 tracking-wide">
                   {type}
                 </p>
                 <div className="space-y-2">
                   <div className="flex items-baseline gap-2">
                     <span className="text-xs text-gray-600 font-medium">Today:</span>
-                    <span className="text-lg font-bold text-gray-900">
+                    <span className="text-base sm:text-lg font-bold text-gray-900">
                       {data.today}
                     </span>
                     {data.unit && (
@@ -446,7 +446,7 @@ export default function Dashboard() {
                   </div>
                   <div className="flex items-baseline gap-2">
                     <span className="text-xs text-gray-600 font-medium">Yesterday:</span>
-                    <span className="text-lg font-bold text-gray-600">
+                    <span className="text-base sm:text-lg font-bold text-gray-600">
                       {data.yesterday}
                     </span>
                     {data.unit && (
@@ -483,17 +483,17 @@ export default function Dashboard() {
       )}
 
       {/* 3-Column Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Quick Add Metric Form */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-bold mb-4 text-gray-800">Quick Add</h2>
-          <form onSubmit={handleQuickAdd} className="space-y-3">
+        <div className="bg-white rounded-lg shadow p-3 sm:p-6">
+          <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4 text-gray-800">Quick Add</h2>
+          <form onSubmit={handleQuickAdd} className="space-y-2 sm:space-y-3">
             <select
               value={newMetric.type}
               onChange={(e) =>
                 setNewMetric({ ...newMetric, type: e.target.value })
               }
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-800"
+              className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm sm:text-base text-gray-800"
             >
               <option value="breastmilk">Breastmilk</option>
               <option value="formula">Formula</option>
@@ -514,7 +514,7 @@ export default function Dashboard() {
               placeholder="Value"
               step="0.1"
               required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800"
+              className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800"
             />
 
             <input
@@ -524,12 +524,12 @@ export default function Dashboard() {
                 setNewMetric({ ...newMetric, unit: e.target.value })
               }
               placeholder="Unit (ml, oz, etc.)"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800"
+              className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800"
             />
 
             <button
               type="submit"
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-200"
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 sm:py-2 px-3 sm:px-4 rounded-lg transition duration-200 text-sm sm:text-base min-h-[44px] flex items-center justify-center"
             >
               Add Metric
             </button>
@@ -537,12 +537,12 @@ export default function Dashboard() {
         </div>
 
         {/* Recent Metrics with Today/Yesterday Badges */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold text-gray-800">Recent Metrics</h2>
+        <div className="bg-white rounded-lg shadow p-3 sm:p-6">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-3 sm:mb-4 gap-2 sm:gap-0">
+            <h2 className="text-lg sm:text-xl font-bold text-gray-800">Recent Metrics</h2>
             <Link
               href="/dashboard/metrics"
-              className="text-blue-600 hover:text-blue-800 text-xs font-semibold"
+              className="text-blue-600 hover:text-blue-800 text-xs sm:text-sm font-semibold"
             >
               View All →
             </Link>
@@ -554,11 +554,11 @@ export default function Dashboard() {
                 return (
                   <div
                     key={m.id}
-                    className="border border-gray-200 rounded-lg p-3 bg-gray-50 hover:bg-gray-100 transition"
+                    className="border border-gray-200 rounded-lg p-2 sm:p-3 bg-gray-50 hover:bg-gray-100 transition"
                   >
                     <div className="flex justify-between items-start mb-2">
                       <div className="flex-1">
-                        <p className="font-semibold text-sm text-gray-800">
+                        <p className="font-semibold text-xs sm:text-sm text-gray-800">
                           {m.metric_type}: {m.value} {m.unit}
                         </p>
                         <div className="flex items-center gap-2 mt-1">
@@ -575,13 +575,13 @@ export default function Dashboard() {
                           const v = prompt('New value', m.value.toString());
                           if (v) handleEdit(m.id, v);
                         }}
-                        className="flex-1 px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition"
+                        className="flex-1 px-2 py-1 sm:py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition min-h-[44px] sm:min-h-auto flex items-center justify-center"
                       >
                         Edit
                       </button>
                       <button
                         onClick={() => handleDelete(m.id)}
-                        className="flex-1 px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded transition"
+                        className="flex-1 px-2 py-1 sm:py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded transition min-h-[44px] sm:min-h-auto flex items-center justify-center"
                       >
                         Delete
                       </button>
@@ -590,7 +590,7 @@ export default function Dashboard() {
                 );
               })
             ) : (
-              <p className="text-gray-500 text-sm text-center py-4">
+              <p className="text-gray-500 text-xs sm:text-sm text-center py-4">
                 No metrics yet
               </p>
             )}
@@ -598,12 +598,12 @@ export default function Dashboard() {
         </div>
 
         {/* Next Appointments */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold text-gray-800">Next Appointments</h2>
+        <div className="bg-white rounded-lg shadow p-3 sm:p-6">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-3 sm:mb-4 gap-2 sm:gap-0">
+            <h2 className="text-lg sm:text-xl font-bold text-gray-800">Next Appointments</h2>
             <Link
               href="/dashboard/appointments"
-              className="text-blue-600 hover:text-blue-800 text-xs font-semibold"
+              className="text-blue-600 hover:text-blue-800 text-xs sm:text-sm font-semibold"
             >
               View All →
             </Link>
@@ -615,11 +615,11 @@ export default function Dashboard() {
                 return (
                   <div
                     key={a.id}
-                    className={`rounded-lg p-3 ${urgency.color}`}
+                    className={`rounded-lg p-2 sm:p-3 ${urgency.color}`}
                   >
                     <div className="flex justify-between items-start mb-1">
                       <div className="flex-1">
-                        <p className="font-semibold text-sm">{a.doctor}</p>
+                        <p className="font-semibold text-xs sm:text-sm">{a.doctor}</p>
                         <p className="text-xs opacity-90">{a.reason}</p>
                       </div>
                       <span className="text-xs font-bold bg-white bg-opacity-70 px-2 py-1 rounded ml-2 whitespace-nowrap">
@@ -645,7 +645,7 @@ export default function Dashboard() {
                 );
               })
             ) : (
-              <p className="text-gray-500 text-sm text-center py-4">
+              <p className="text-gray-500 text-xs sm:text-sm text-center py-4">
                 No upcoming appointments
               </p>
             )}
