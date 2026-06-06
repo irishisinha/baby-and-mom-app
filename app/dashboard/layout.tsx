@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
+import { FirebaseNotifications } from '@/app/components/FirebaseNotifications'
 
 const TopNavigation = () => {
   const pathname = usePathname()
@@ -86,11 +87,9 @@ export default function DashboardLayout({
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Just check localStorage session
     const sessionData = localStorage.getItem('app-session')
     
     if (!sessionData) {
-      // Auto-create session if missing
       const session = {
         email: 'parent@example.com',
         loggedInAt: new Date().toISOString(),
@@ -108,15 +107,11 @@ export default function DashboardLayout({
 
   return (
     <div className="flex flex-col h-screen bg-gray-50">
-      {/* Top Navigation - Desktop only */}
+      <FirebaseNotifications />
       <TopNavigation />
-
-      {/* Main content area with proper spacing */}
       <main className="flex-1 overflow-y-auto pt-16 md:pt-16 pb-24 md:pb-0">
         {children}
       </main>
-
-      {/* Bottom Navigation - Mobile only */}
       <BottomNavigation />
     </div>
   )

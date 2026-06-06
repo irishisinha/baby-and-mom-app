@@ -1,32 +1,30 @@
-import type { Metadata } from 'next'
-import { SessionProvider } from './providers'
-import './globals.css'
+import type { Metadata } from "next";
+import "./globals.css";
+import { SessionProvider } from "./providers";
+import { NotificationProvider } from "./components/NotificationProvider";
 
 export const metadata: Metadata = {
-  title: 'Baby & Mom Care',
-  description: 'Track baby and postpartum mother health via WhatsApp and PWA',
-  manifest: '/manifest.json',
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: 'default',
-  },
-}
+  title: "Baby & Mom Care",
+  description: "Real-time baby care tracking",
+};
 
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
   return (
     <html lang="en">
       <head>
-        <link rel="manifest" href="/manifest.json" />
-        <meta name="theme-color" content="#ffffff" />
-        <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+        <meta name="theme-color" content="#3b82f6" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
       </head>
-      <body className="bg-white text-gray-900">
-        <SessionProvider>{children}</SessionProvider>
+      <body>
+        <NotificationProvider>
+          <SessionProvider>{children}</SessionProvider>
+        </NotificationProvider>
       </body>
     </html>
-  )
+  );
 }

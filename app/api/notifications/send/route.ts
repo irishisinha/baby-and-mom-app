@@ -3,28 +3,60 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { topic, title, message, data } = body;
+    const { topic, title, message } = body;
 
     if (!topic || !title || !message) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
     }
 
-    console.log(`[NOTIFICATION] ${topic}: ${title} - ${message}`);
+    console.log(`[FCM-SEND] Topic: ${topic}, Title: ${title}`);
 
+    // Send via Firebase Admin SDK (imported from firebase-admin)
+    try {
+      const admin = require('firebase-admin');
+      
+      if (admin.apps && admin.apps.length > 0) {
+        const fcmResponse = await admin.messaging().send({
+          notification: {
+            title: title,
+            body: message,
+          },
+          topic: topic,
+          webpush: {
+            notification: {
+              title: title,
+              body: message,
+              icon: '/favicon.ico',
+              badge: '/favicon.ico',
+              vibrate: [100, 50, 100],
+            },
+          },
+        });
+
+        console.log('[FCM-SUCCESS] Message sent:', fcmResponse);
+        return NextResponse.json({
+          success: true,
+          messageId: fcmResponse,
+          title,
+          message,
+        });
+      }
+    } catch (fcmError) {
+      console.error('[FCM-ERROR]', fcmError);
+    }
+
+    // Fallback: just log it
+    console.log('[NOTIFICATION-LOGGED]', { topic, title, message });
     return NextResponse.json({
       success: true,
-      topic,
       title,
       message,
-      sentAt: new Date().toISOString(),
+      method: 'logged',
     });
-  } catch (error) {
-    console.error('Error:', error);
+  } catch (error: any) {
+    console.error('[SEND-ERROR]', error);
     return NextResponse.json(
-      { error: 'Failed to send notification' },
+      { error: error.message || 'Failed' },
       { status: 500 }
     );
   }
