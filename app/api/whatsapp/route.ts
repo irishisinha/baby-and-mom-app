@@ -51,23 +51,32 @@ function parseAppointmentMessage(text: string): any {
 
 
 function parseMetric(text: string): any {
-  const formulaMatch = text.match(/(\d+)\s*ml\s*formula/i);
-  if (formulaMatch) return { metric_type: 'formula', value: formulaMatch[1], unit: 'ml', isMetric: true };
+  // Formula - very flexible matching
+  let match = text.match(/formula[\s.]*(\d+)[\s.]*(ml)?/i) || text.match(/(\d+)[\s.]*(ml)[\s.]*formula/i);
+  if (match) return { metric_type: 'formula', value: match[1], unit: 'ml', isMetric: true };
 
-  const breastmilkMatch = text.match(/(\d+)\s*ml\s*breastmilk/i);
-  if (breastmilkMatch) return { metric_type: 'breastmilk', value: breastmilkMatch[1], unit: 'ml', isMetric: true };
+  // Breastmilk
+  match = text.match(/breastmilk[\s.]*(\d+)[\s.]*(ml)?/i) || text.match(/(\d+)[\s.]*(ml)[\s.]*breastmilk/i);
+  if (match) return { metric_type: 'breastmilk', value: match[1], unit: 'ml', isMetric: true };
 
-  const weightMatch = text.match(/(\d+(?:\.\d+)?)\s*kg/i);
-  if (weightMatch) return { metric_type: 'weight', value: weightMatch[1], unit: 'kg', isMetric: true };
+  // Weight - super flexible for "wright" typo, no space, periods, etc
+  match = text.match(/(\d+(?:[.,]\d+)?)[\s.]*(kg)[\s.]*(w(eight|right)?)?/i) || text.match(/(w(eight|right)?)[\s.]*(\d+(?:[.,]\d+)?)[\s.]*(kg)?/i);
+  if (match) {
+    let val = match[1] || match[3];
+    val = val.replace(',', '.');
+    return { metric_type: 'weight', value: val, unit: 'kg', isMetric: true };
+  }
 
+  // Single word metrics
   if (/vaccine/i.test(text)) return { metric_type: 'vaccine', value: '1', unit: 'count', isMetric: true };
   if (/diaper/i.test(text)) return { metric_type: 'diaper', value: '1', unit: 'count', isMetric: true };
   if (/bath/i.test(text)) return { metric_type: 'bath', value: '1', unit: 'count', isMetric: true };
   if (/potty/i.test(text)) return { metric_type: 'potty', value: '1', unit: 'count', isMetric: true };
   if (/oil/i.test(text)) return { metric_type: 'oil', value: '1', unit: 'count', isMetric: true };
 
-  const sleepMatch = text.match(/(\d+)\s*(?:hours?|hrs?)/i);
-  if (sleepMatch) return { metric_type: 'sleep', value: sleepMatch[1], unit: 'hours', isMetric: true };
+  // Sleep - flexible with missing spaces/periods
+  match = text.match(/sleep[\s.]*(\d+)[\s.]*(hour|hr)?/i) || text.match(/(\d+)[\s.]*(hour|hr)[\s.]*sleep/i) || text.match(/(\d+)[\s.]*(hour|hr)/i);
+  if (match) return { metric_type: 'sleep', value: match[1], unit: 'hours', isMetric: true };
 
   return null;
 }
