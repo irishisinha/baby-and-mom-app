@@ -49,6 +49,29 @@ function parseAppointmentMessage(text: string): any {
   };
 }
 
+
+function parseMetric(text: string): any {
+  const formulaMatch = text.match(/(\d+)\s*ml\s*formula/i);
+  if (formulaMatch) return { metric_type: 'formula', value: formulaMatch[1], unit: 'ml', isMetric: true };
+
+  const breastmilkMatch = text.match(/(\d+)\s*ml\s*breastmilk/i);
+  if (breastmilkMatch) return { metric_type: 'breastmilk', value: breastmilkMatch[1], unit: 'ml', isMetric: true };
+
+  const weightMatch = text.match(/(\d+(?:\.\d+)?)\s*kg/i);
+  if (weightMatch) return { metric_type: 'weight', value: weightMatch[1], unit: 'kg', isMetric: true };
+
+  if (/vaccine/i.test(text)) return { metric_type: 'vaccine', value: '1', unit: 'count', isMetric: true };
+  if (/diaper/i.test(text)) return { metric_type: 'diaper', value: '1', unit: 'count', isMetric: true };
+  if (/bath/i.test(text)) return { metric_type: 'bath', value: '1', unit: 'count', isMetric: true };
+  if (/potty/i.test(text)) return { metric_type: 'potty', value: '1', unit: 'count', isMetric: true };
+  if (/oil/i.test(text)) return { metric_type: 'oil', value: '1', unit: 'count', isMetric: true };
+
+  const sleepMatch = text.match(/(\d+)\s*(?:hours?|hrs?)/i);
+  if (sleepMatch) return { metric_type: 'sleep', value: sleepMatch[1], unit: 'hours', isMetric: true };
+
+  return null;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.text();
@@ -106,7 +129,33 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const helpResponse = '<?xml version="1.0" encoding="UTF-8"?><Response><Message>Format: Appointment- [name] [date] [time] [type] | Example: Appointment- Jaian 9 June 3:20 pm Vaccination</Message></Response>';
+    const metricData = parseMetric(messageBody);
+    if (metricData && metricData.isMetric) {
+      try {
+        const { data, error } = await supabase
+          .from('baby_metrics')
+          .insert({
+            family_id: FAMILY_ID,
+            baby_id: BABY_ID,
+            metric_type: metricData.metric_type,
+            value: metricData.value,
+            unit: metricData.unit,
+            sent_from_phone: fromPhone
+          })
+          .select();
+
+        if (error) throw error;
+
+        const response = `<?xml version="1.0" encoding="UTF-8"?><Response><Message>Logged: ${metricData.metric_type} ${metricData.value}${metricData.unit}</Message></Response>`;
+        return new NextResponse(response, { status: 200, headers: { 'Content-Type': 'application/xml' } });
+      } catch (dbError: any) {
+        console.error('[METRIC-ERROR]', dbError);
+        const response = '<?xml version="1.0" encoding="UTF-8"?><Response><Message>Error saving metric</Message></Response>';
+        return new NextResponse(response, { status: 200, headers: { 'Content-Type': 'application/xml' } });
+      }
+    }
+
+    const helpResponse = '<?xml version="1.0" encoding="UTF-8"?><Response><Message>Try: 30 ml formula | 5.5 kg weight | vaccine | diaper | bath | potty | oil | sleep 2 hours</Message></Response>';
     return new NextResponse(helpResponse, {
       status: 200,
       headers: { 'Content-Type': 'application/xml' }
