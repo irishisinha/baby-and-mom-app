@@ -32,3 +32,39 @@ export async function GET() {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+    const { family_id, baby_id, title, description, appointment_date } = body;
+
+    if (!family_id || !baby_id || !title || !appointment_date) {
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
+
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { persistSession: false } }
+    );
+
+    const { data, error } = await supabase
+      .from('appointments')
+      .insert({
+        family_id,
+        baby_id,
+        title,
+        description: description || '',
+        appointment_date,
+        notes: ''
+      })
+      .select();
+
+    if (error) throw error;
+
+    return NextResponse.json({ data }, { status: 201 });
+  } catch (err: any) {
+    console.error('[APPT-ERROR]', err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+}
