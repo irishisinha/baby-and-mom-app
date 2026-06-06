@@ -42,6 +42,7 @@ export default function Dashboard() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [summaryStats, setSummaryStats] = useState<SummaryStats>({});
   const [dayComparison, setDayComparison] = useState<DayComparison>({});
+  const [lastWeight, setLastWeight] = useState<{ value: string; date: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [newMetric, setNewMetric] = useState({
     type: 'breastmilk',
@@ -72,6 +73,7 @@ export default function Dashboard() {
       setMetrics(data as Metric[]);
       calculateSummaryStats(data as Metric[]);
       calculateDayComparison(data as Metric[]);
+      calculateLastWeight(data as Metric[]);
     }
   };
 
@@ -145,7 +147,20 @@ export default function Dashboard() {
     setSummaryStats(stats);
   };
 
-  const calculateDayComparison = (metricsData: Metric[]) => {
+  const calculateLastWeight = (metricsData: Metric[]) => {
+    const weightMetrics = metricsData
+      .filter((m) => m.metric_type === 'weight')
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    
+    if (weightMetrics.length > 0) {
+      setLastWeight({
+        value: weightMetrics[0].value.toString(),
+        date: weightMetrics[0].created_at
+      });
+    }
+  };
+
+    const calculateDayComparison = (metricsData: Metric[]) => {
     const today = new Date();
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
@@ -157,6 +172,9 @@ export default function Dashboard() {
     const metricsMap = new Map<string, { today: number[]; yesterday: number[] }>();
 
     metricsData.forEach((m) => {
+      // Skip weight - it's a reading, not additive
+      if (m.metric_type === 'weight') return;
+      
       const metricDate = new Date(m.created_at);
       metricDate.setHours(0, 0, 0, 0);
 
@@ -386,7 +404,21 @@ export default function Dashboard() {
     }
   };
 
+  const deleteAppointment = async (id: string) => {
+    if (confirm('Delete this appointment?')) {
+      try {
+        const response = await fetch(`/api/appointments/${id}`, { method: 'DELETE' });
+        if (response.ok) {
+          setAppointments(appointments.filter(a => a.id !== id));
+        }
+      } catch (error) {
+        console.error('Failed to delete appointment:', error);
+      }
+    }
+  };
+
   if (loading) {
+
     return (
       <div className="p-6 bg-gray-50 min-h-screen flex items-center justify-center">
         <div className="text-gray-600 text-lg">Loading...</div>
@@ -622,9 +654,25 @@ export default function Dashboard() {
                         <p className="font-semibold text-sm">{a.doctor}</p>
                         <p className="text-xs opacity-90">{a.reason}</p>
                       </div>
-                      <span className="text-xs font-bold bg-white bg-opacity-70 px-2 py-1 rounded ml-2 whitespace-nowrap">
-                        {urgency.label}
-                      </span>
+                      <div className="flex gap-1 ml-2">
+                        <button
+                          onClick={() => window.location.href = `/dashboard/appointments?edit=${a.id}`}
+                          className="text-xs bg-white bg-opacity-70 hover:bg-opacity-100 px-2 py-1 rounded"
+                          title="Edit"
+                        >
+                          ✏️
+                        </button>
+                        <button
+                          onClick={() => deleteAppointment(a.id)}
+                          className="text-xs bg-white bg-opacity-70 hover:bg-opacity-100 px-2 py-1 rounded text-red-600"
+                          title="Delete"
+                        >
+                          🗑️
+                        </button>
+                        <span className="text-xs font-bold bg-white bg-opacity-70 px-2 py-1 rounded whitespace-nowrap">
+                          {urgency.label}
+                        </span>
+                      </div>
                     </div>
                     <div className="text-xs opacity-90">
                       <p>
