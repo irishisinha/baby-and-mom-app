@@ -177,3 +177,38 @@ UPDATE THIS DOCUMENT AFTER EVERY MAJOR CHANGE.
 
 For database details: see DATABASE_BASE_SCHEMA.md
 For WhatsApp webhook: see WEBHOOK_BASE_REFERENCE.md
+
+---
+
+## TIMEZONE FIX & BEST PRACTICE (UPDATED 2026-06-08)
+
+**CRITICAL RULE FOUND:**
+Never re-parse locale strings as Date objects!
+
+**Wrong Pattern (DO NOT USE):**
+```javascript
+const londonTime = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/London' }));
+```
+This converts to London string, then re-parses as browser local timezone (WRONG!)
+
+**Correct Pattern (USE THIS):**
+```javascript
+// For getting London date string
+const todayStr = now.toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
+
+// For calculating yesterday (work with UTC, then format)
+const yesterdayMs = now.getTime() - (24 * 60 * 60 * 1000);
+const yesterdayDate = new Date(yesterdayMs);
+const yesterdayStr = yesterdayDate.toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
+```
+
+**Key Points:**
+- Use toLocaleDateString() for FORMATTING ONLY
+- Always work with UTC timestamps for CALCULATIONS
+- Never create intermediate Date objects from locale strings
+- This applies to ALL date/time operations in the app
+
+**Applied To:**
+- app/api/whatsapp/route.ts - getTodayVsYesterdayReport()
+- Should be audited elsewhere in app/dashboard/page.tsx
+
