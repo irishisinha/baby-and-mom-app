@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
@@ -49,34 +49,77 @@ function parseAppointmentMessage(text: string): any {
   };
 }
 
-
 function parseMetric(text: string): any {
-  // Formula - very flexible matching
+  let cleanText = text.toLowerCase().trim();
+  let personType = 'baby';
+  
+  // Family members
+  if (cleanText.match(/^(shiva|mom|mother)\s+/)) {
+    personType = 'mom';
+    cleanText = cleanText.replace(/^(shiva|mom|mother)\s+/i, '').trim();
+  } else if (cleanText.match(/^(rishi|dad|father)\s+/)) {
+    personType = 'dad';
+    cleanText = cleanText.replace(/^(rishi|dad|father)\s+/i, '').trim();
+  } else if (cleanText.match(/^(ichi|grandmom|grandma)\s+/)) {
+    personType = 'grandmom';
+    cleanText = cleanText.replace(/^(ichi|grandmom|grandma)\s+/i, '').trim();
+  }
+  
+  // Wellness metrics
+  if (personType !== 'baby') {
+    if (cleanText.includes('mood')) {
+      const moodVal = cleanText.replace(/mood/i, '').trim().split(/\s+/)[0] || 'logged';
+      return { metric_type: 'wellness_mood', value: moodVal, unit: 'text', isMetric: true, personType };
+    }
+    if (cleanText.includes('steps')) {
+      const match = cleanText.match(/(\d+)/);
+      if (match) return { metric_type: 'wellness_steps', value: match[1], unit: 'steps', isMetric: true, personType };
+    }
+    if (cleanText.includes('energy')) {
+      const match = cleanText.match(/(\d+)/);
+      if (match) return { metric_type: 'wellness_energy', value: match[1], unit: '/10', isMetric: true, personType };
+    }
+    if (cleanText.includes('pain')) {
+      const match = cleanText.match(/(\d+)/);
+      if (match) return { metric_type: 'wellness_pain', value: match[1], unit: '/10', isMetric: true, personType };
+    }
+    if (cleanText.includes('sleep')) {
+      const match = cleanText.match(/(\d+)/);
+      if (match) return { metric_type: 'wellness_sleep', value: match[1], unit: 'hours', isMetric: true, personType };
+    }
+    if (cleanText.includes('exercise')) {
+      const match = cleanText.match(/(\d+)/);
+      if (match) return { metric_type: 'wellness_exercise', value: match[1], unit: 'mins', isMetric: true, personType };
+    }
+    if (cleanText.includes('medication')) {
+      const match = cleanText.match(/(\d+)/);
+      if (match) return { metric_type: 'wellness_medication', value: match[1], unit: 'count', isMetric: true, personType };
+    }
+    return null;
+  }
+
+  // Baby metrics
   let match = text.match(/formula[\s.]*(\d+)[\s.]*(ml)?/i) || text.match(/(\d+)[\s.]*(ml)[\s.]*formula/i);
-  if (match) return { metric_type: 'formula', value: match[1], unit: 'ml', isMetric: true };
+  if (match) return { metric_type: 'formula', value: match[1], unit: 'ml', isMetric: true, personType };
 
-  // Breastmilk
   match = text.match(/breastmilk[\s.]*(\d+)[\s.]*(ml)?/i) || text.match(/(\d+)[\s.]*(ml)[\s.]*breastmilk/i);
-  if (match) return { metric_type: 'breastmilk', value: match[1], unit: 'ml', isMetric: true };
+  if (match) return { metric_type: 'breastmilk', value: match[1], unit: 'ml', isMetric: true, personType };
 
-  // Weight - super flexible for "wright" typo, no space, periods, etc
   match = text.match(/(\d+(?:[.,]\d+)?)[\s.]*(kg)[\s.]*(w(eight|right)?)?/i) || text.match(/(w(eight|right)?)[\s.]*(\d+(?:[.,]\d+)?)[\s.]*(kg)?/i);
   if (match) {
     let val = match[1] || match[3];
     val = val.replace(',', '.');
-    return { metric_type: 'weight', value: val, unit: 'kg', isMetric: true };
+    return { metric_type: 'weight', value: val, unit: 'kg', isMetric: true, personType };
   }
 
-  // Single word metrics
-  if (/vaccine/i.test(text)) return { metric_type: 'vaccine', value: '1', unit: 'count', isMetric: true };
-  if (/diaper/i.test(text)) return { metric_type: 'diaper', value: '1', unit: 'count', isMetric: true };
-  if (/bath/i.test(text)) return { metric_type: 'bath', value: '1', unit: 'count', isMetric: true };
-  if (/potty/i.test(text)) return { metric_type: 'potty', value: '1', unit: 'count', isMetric: true };
-  if (/oil/i.test(text)) return { metric_type: 'oil', value: '1', unit: 'count', isMetric: true };
+  if (/vaccine/i.test(text)) return { metric_type: 'vaccine', value: '1', unit: 'count', isMetric: true, personType };
+  if (/diaper/i.test(text)) return { metric_type: 'diaper', value: '1', unit: 'count', isMetric: true, personType };
+  if (/bath/i.test(text)) return { metric_type: 'bath', value: '1', unit: 'count', isMetric: true, personType };
+  if (/potty/i.test(text)) return { metric_type: 'potty', value: '1', unit: 'count', isMetric: true, personType };
+  if (/oil/i.test(text)) return { metric_type: 'oil', value: '1', unit: 'count', isMetric: true, personType };
 
-  // Sleep - flexible with missing spaces/periods
   match = text.match(/sleep[\s.]*(\d+)[\s.]*(hour|hr)?/i) || text.match(/(\d+)[\s.]*(hour|hr)[\s.]*sleep/i) || text.match(/(\d+)[\s.]*(hour|hr)/i);
-  if (match) return { metric_type: 'sleep', value: match[1], unit: 'hours', isMetric: true };
+  if (match) return { metric_type: 'sleep', value: match[1], unit: 'hours', isMetric: true, personType };
 
   return null;
 }
@@ -91,7 +134,6 @@ export async function POST(request: NextRequest) {
 
     console.log('[WA-MSG]', { messageBody, fromPhone });
 
-    // Normalize phone number (remove spaces, handle various formats)
     const normalizedPhone = fromPhone.replace(/\s+/g, '');
     const isAuthorized = AUTHORIZED_NUMBERS.some(num => {
       const normalizedNum = num.replace(/\s+/g, '');
@@ -99,91 +141,54 @@ export async function POST(request: NextRequest) {
     });
 
     if (!isAuthorized) {
-      console.log('[WA-UNAUTH]', { fromPhone, normalizedPhone, authorized: AUTHORIZED_NUMBERS });
-      const response = '<?xml version="1.0" encoding="UTF-8"?><Response><Message>Not authorized: ' + normalizedPhone + '</Message></Response>';
-      return new NextResponse(response, { status: 200, headers: { 'Content-Type': 'application/xml' } });
+      console.log('[WA-UNAUTH]', { fromPhone });
+      return new NextResponse('<?xml version="1.0" encoding="UTF-8"?><Response><Message>Not authorized</Message></Response>', { status: 200, headers: { 'Content-Type': 'application/xml' } });
     }
 
     const appointmentData = parseAppointmentMessage(messageBody);
-    console.log('[WA-PARSED]', appointmentData);
-
     if (appointmentData && appointmentData.isAppointment) {
       try {
-        const appointmentDateObj = new Date(appointmentData.appointment_date);
-        const dateOnly = appointmentDateObj.toISOString().split('T')[0];
-        const timeOnly = appointmentDateObj.toISOString().split('T')[1].substring(0, 5);
-
-        const { data, error } = await supabase
-          .from('appointments')
-          .insert({
-            user_id: 'df3d99a8-f7a2-44cf-bcb4-9c5f3300caa6',
-            doctor: appointmentData.title,
-            reason: appointmentData.description,
-            appointment_date: dateOnly,
-            appointment_time: timeOnly,
-            appointee_for: appointmentData.description,
-            notes: `Created via WhatsApp from ${fromPhone}`
-          })
-          .select();
-
-        console.log('[WA-INSERT]', { data, error });
+        const { data, error } = await supabase.from('appointments').insert({
+          user_id: 'df3d99a8-f7a2-44cf-bcb4-9c5f3300caa6',
+          doctor: appointmentData.title,
+          reason: appointmentData.description,
+          appointment_date: appointmentData.appointment_date.split('T')[0],
+          notes: `WhatsApp`
+        }).select();
 
         if (error) throw error;
-
-        const response = `<?xml version="1.0" encoding="UTF-8"?><Response><Message>Appointment logged: ${appointmentData.title} - ${appointmentData.description}</Message></Response>`;
-        return new NextResponse(response, {
-          status: 200,
-          headers: { 'Content-Type': 'application/xml' }
-        });
-      } catch (dbError: any) {
-        console.error('[APPOINTMENT-ERROR]', dbError);
-        const errMsg = dbError?.message || String(dbError) || 'Unknown error';
-        const response = `<?xml version="1.0" encoding="UTF-8"?><Response><Message>Error: ${errMsg.substring(0, 50)}</Message></Response>`;
-        return new NextResponse(response, {
-          status: 200,
-          headers: { 'Content-Type': 'application/xml' }
-        });
+        return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>✓ Appt: ${appointmentData.title}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
+      } catch (e: any) {
+        console.error('[APT-ERR]', e);
+        return new NextResponse('<?xml version="1.0" encoding="UTF-8"?><Response><Message>Appt error</Message></Response>', { status: 200, headers: { 'Content-Type': 'application/xml' } });
       }
     }
 
     const metricData = parseMetric(messageBody);
     if (metricData && metricData.isMetric) {
       try {
-        const { data, error } = await supabase
-          .from('baby_metrics')
-          .insert({
-            family_id: FAMILY_ID,
-            baby_id: BABY_ID,
-            metric_type: metricData.metric_type,
-            value: metricData.value,
-            unit: metricData.unit,
-            sent_from_phone: fromPhone
-          })
-          .select();
+        const { error } = await supabase.from('baby_metrics').insert({
+          family_id: FAMILY_ID,
+          baby_id: metricData.personType === 'baby' ? BABY_ID : null,
+          metric_type: metricData.metric_type,
+          value: metricData.value,
+          unit: metricData.unit,
+          person_type: metricData.personType,
+          sent_from_phone: fromPhone
+        });
 
         if (error) throw error;
-
-        const response = `<?xml version="1.0" encoding="UTF-8"?><Response><Message>Logged: ${metricData.metric_type} ${metricData.value}${metricData.unit}</Message></Response>`;
-        return new NextResponse(response, { status: 200, headers: { 'Content-Type': 'application/xml' } });
-      } catch (dbError: any) {
-        console.error('[METRIC-ERROR]', dbError);
-        const response = '<?xml version="1.0" encoding="UTF-8"?><Response><Message>Error saving metric</Message></Response>';
-        return new NextResponse(response, { status: 200, headers: { 'Content-Type': 'application/xml' } });
+        return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>✓ ${metricData.value}${metricData.unit} ${metricData.metric_type}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
+      } catch (e: any) {
+        console.error('[METRIC-ERR]', e);
+        return new NextResponse('<?xml version="1.0" encoding="UTF-8"?><Response><Message>Metric error</Message></Response>', { status: 200, headers: { 'Content-Type': 'application/xml' } });
       }
     }
 
-    const helpResponse = '<?xml version="1.0" encoding="UTF-8"?><Response><Message>Try: 30 ml formula | 5.5 kg weight | vaccine | diaper | bath | potty | oil | sleep 2 hours</Message></Response>';
-    return new NextResponse(helpResponse, {
-      status: 200,
-      headers: { 'Content-Type': 'application/xml' }
-    });
+    return new NextResponse('<?xml version="1.0" encoding="UTF-8"?><Response><Message>Baby: 30ml formula|5.5kg weight|vaccine|diaper|bath|sleep 2h. Wellness: shiva/mom steps 5000|shiva mood happy|shiva energy 7|shiva pain 3|shiva medication 2|shiva sleep 8. Rishi/Dad & Ichi/Grandmom: same. Appt: Appointment- [desc] [day] [month] [HH:MM am/pm] [title]</Message></Response>', { status: 200, headers: { 'Content-Type': 'application/xml' } });
 
   } catch (error) {
-    console.error('[WHATSAPP-ERROR]', error);
-    const errorResponse = '<?xml version="1.0" encoding="UTF-8"?><Response><Message>Error processing message</Message></Response>';
-    return new NextResponse(errorResponse, {
-      status: 200,
-      headers: { 'Content-Type': 'application/xml' }
-    });
+    console.error('[ERROR]', error);
+    return new NextResponse('<?xml version="1.0" encoding="UTF-8"?><Response><Message>Error</Message></Response>', { status: 200, headers: { 'Content-Type': 'application/xml' } });
   }
 }
