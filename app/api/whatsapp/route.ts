@@ -66,6 +66,9 @@ async function getTodayVsYesterdayReport(): Promise<string> {
 
     if (allData && allData.length > 0) {
       allData.forEach((m: any) => {
+        // Only include baby metrics, skip family wellness metrics
+        if (m.person_type && m.person_type !== 'baby') return;
+        
         const metricDate = new Date(m.created_at).toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
         const value = parseFloat(m.value);
         if (!isNaN(value) && m.metric_type !== 'weight') {
@@ -80,11 +83,11 @@ async function getTodayVsYesterdayReport(): Promise<string> {
       });
     }
 
-    let report = `📊 Today vs Yesterday\n\nToday (${todayStr}):\n`;
+    let report = `📊 Jaian (Baby) - Today vs Yesterday\n\nToday (${todayStr}):\n`;
     const allMetrics = new Set([...Object.keys(todayMetrics), ...Object.keys(yesterdayMetrics)]);
     
     if (allMetrics.size === 0) {
-      report += 'No metrics logged\n';
+      report += 'No baby metrics logged\n';
     } else {
       allMetrics.forEach((type) => {
         const todayTotal = (todayMetrics[type] || []).reduce((a: number, b: number) => a + b, 0) || 0;
