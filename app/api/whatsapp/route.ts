@@ -167,21 +167,31 @@ export async function POST(request: NextRequest) {
     const metricData = parseMetric(messageBody);
     if (metricData && metricData.isMetric) {
       try {
-        const { error } = await supabase.from('baby_metrics').insert({
+        const insertData: any = {
           family_id: FAMILY_ID,
-          baby_id: metricData.personType === 'baby' ? BABY_ID : null,
           metric_type: metricData.metric_type,
           value: metricData.value,
           unit: metricData.unit,
           person_type: metricData.personType,
           sent_from_phone: fromPhone
-        });
+        };
+        
+        // Only add baby_id for baby metrics
+        if (metricData.personType === 'baby') {
+          insertData.baby_id = BABY_ID;
+        }
+        
+        const { data, error } = await supabase.from('baby_metrics').insert([insertData]).select();
 
-        if (error) throw error;
+        if (error) {
+          console.error('[INSERT-ERR]', { error: error.message, insertData });
+          throw error;
+        }
+        
         return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>✓ ${metricData.value}${metricData.unit} ${metricData.metric_type}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
       } catch (e: any) {
-        console.error('[METRIC-ERR]', e);
-        return new NextResponse('<?xml version="1.0" encoding="UTF-8"?><Response><Message>Metric error</Message></Response>', { status: 200, headers: { 'Content-Type': 'application/xml' } });
+        console.error('[METRIC-ERR]', { error: e.message, metricData });
+        return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>Error: ${e.message?.substring(0, 30) || 'metric error'}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
       }
     }
 
@@ -192,3 +202,4 @@ export async function POST(request: NextRequest) {
     return new NextResponse('<?xml version="1.0" encoding="UTF-8"?><Response><Message>Error</Message></Response>', { status: 200, headers: { 'Content-Type': 'application/xml' } });
   }
 }
+
