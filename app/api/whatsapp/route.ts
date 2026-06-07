@@ -52,11 +52,13 @@ function parseAppointmentMessage(text: string): any {
 async function getTodayVsYesterdayReport(): Promise<string> {
   try {
     const now = new Date();
-    const londonTime = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/London' }));
-    const todayStr = londonTime.toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
     
-    const yesterdayDate = new Date(londonTime);
-    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+    // Get today's date in London timezone (do NOT re-parse with new Date())
+    const todayStr = now.toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
+    
+    // Get yesterday's date by subtracting milliseconds from UTC time
+    const yesterdayMs = now.getTime() - (24 * 60 * 60 * 1000);
+    const yesterdayDate = new Date(yesterdayMs);
     const yesterdayStr = yesterdayDate.toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
 
     const { data: allData } = await supabase.from('baby_metrics').select('*').eq('family_id', FAMILY_ID).order('created_at', { ascending: false }).limit(500);
