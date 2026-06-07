@@ -49,7 +49,7 @@ function parseAppointmentMessage(text: string): any {
   };
 }
 
-function getTodayVsYesterdayReport(): string {
+async function getTodayVsYesterdayReport(): Promise<string> {
   try {
     const now = new Date();
     const londonTime = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/London' }));
@@ -59,14 +59,44 @@ function getTodayVsYesterdayReport(): string {
     yesterdayDate.setDate(yesterdayDate.getDate() - 1);
     const yesterdayStr = yesterdayDate.toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
 
-    return `📊 Today vs Yesterday (GMT+1)
-    
-Today (${todayStr}): Checking data...
-Yesterday (${yesterdayStr}): Checking data...
+    const { data: allData } = await supabase.from('baby_metrics').select('*').eq('family_id', FAMILY_ID).order('created_at', { ascending: false }).limit(500);
 
-Please log metrics and check dashboard for comparison.`;
+    const todayMetrics: Record<string, number[]> = {};
+    const yesterdayMetrics: Record<string, number[]> = {};
+
+    if (allData && allData.length > 0) {
+      allData.forEach((m: any) => {
+        const metricDate = new Date(m.created_at).toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
+        const value = parseFloat(m.value);
+        if (!isNaN(value) && m.metric_type !== 'weight') {
+          if (metricDate === todayStr) {
+            todayMetrics[m.metric_type] = todayMetrics[m.metric_type] || [];
+            todayMetrics[m.metric_type].push(value);
+          } else if (metricDate === yesterdayStr) {
+            yesterdayMetrics[m.metric_type] = yesterdayMetrics[m.metric_type] || [];
+            yesterdayMetrics[m.metric_type].push(value);
+          }
+        }
+      });
+    }
+
+    let report = `📊 Today vs Yesterday\n\nToday (${todayStr}):\n`;
+    const allMetrics = new Set([...Object.keys(todayMetrics), ...Object.keys(yesterdayMetrics)]);
+    
+    if (allMetrics.size === 0) {
+      report += 'No metrics logged\n';
+    } else {
+      allMetrics.forEach((type) => {
+        const todayTotal = (todayMetrics[type] || []).reduce((a: number, b: number) => a + b, 0) || 0;
+        const yesterdayTotal = (yesterdayMetrics[type] || []).reduce((a: number, b: number) => a + b, 0) || 0;
+        report += `  ${type}: ${todayTotal} (yesterday: ${yesterdayTotal})\n`;
+      });
+    }
+
+    return report;
   } catch (error) {
-    return 'Error generating report';
+    console.error('[REPORT-ERR]', error);
+    return 'Report: Check dashboard for latest metrics';
   }
 }
 function parseMetric(text: string): any {
@@ -186,7 +216,7 @@ export async function POST(request: NextRequest) {
 
         // Handle report command
     if (messageBody.toLowerCase().includes('report')) {
-      const report = getTodayVsYesterdayReport();
+      const report = await getTodayVsYesterdayReport();
       return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${report}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
     }
 
