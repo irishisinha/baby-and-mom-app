@@ -155,9 +155,21 @@ function parseMetric(text: string): any {
   let match = text.match(/formula[\s.]*(\d+)[\s.]*(ml)?/i) || text.match(/(\d+)[\s.]*(ml)[\s.]*formula/i);
   if (match) return { metric_type: 'formula', value: match[1], unit: 'ml', isMetric: true, personType };
 
-  match = text.match(/breastmilk[\s.]*(\d+)[\s.]*(ml)?/i) || text.match(/(\d+)[\s.]*(ml)[\s.]*breastmilk/i);
+  // Breastmilk - "pumped 20ml", "20ml pumped", "breast milk 20"  
+  match = text.match(/pumped[\s.]*(\d+)[\s.]*(ml)?/i) || 
+          text.match(/(\d+)[\s.]*(ml)[\s.]*pumped/i) ||
+          text.match(/breast[\s.]*milk[\s.]*(\d+)[\s.]*(ml)?/i) || 
+          text.match(/(\d+)[\s.]*(ml)[\s.]*breast[\s.]*milk/i) ||
+          text.match(/breastmilk[\s.]*(\d+)[\s.]*(ml)?/i) || 
+          text.match(/(\d+)[\s.]*(ml)[\s.]*breastmilk/i);
   if (match) return { metric_type: 'breastmilk', value: match[1], unit: 'ml', isMetric: true, personType };
 
+  // WeightMetric: true, personType };
+
+
+  // Breastmilk - pumped, breast milk variations
+  match = text.match(/pumped[s.]*(d+)[s.]*(ml)?/i) || text.match(/(d+)[s.]*(ml)[s.]*pumped/i) || text.match(/breast[s.]*milk[s.]*(d+)[s.]*(ml)?/i) || text.match(/(d+)[s.]*(ml)[s.]*breast[s.]*milk/i) || text.match(/breastmilk[s.]*(d+)[s.]*(ml)?/i) || text.match(/(d+)[s.]*(ml)[s.]*breastmilk/i);
+  if (match) return { metric_type: 'breastmilk', value: match[1], unit: 'ml', isMetric: true, personType };
   match = text.match(/(\d+(?:[.,]\d+)?)[\s.]*(kg)[\s.]*(w(eight|right)?)?/i) || text.match(/(w(eight|right)?)[\s.]*(\d+(?:[.,]\d+)?)[\s.]*(kg)?/i);
   if (match) {
     let val = match[1] || match[3];
