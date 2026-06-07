@@ -707,11 +707,11 @@ export default function Dashboard() {
                       </div>
                       <div className="flex gap-1 ml-2">
                         <button
-                          onClick={() => window.location.href = `/dashboard/appointments?edit=${a.id}`}
-                          className="text-xs bg-white bg-opacity-70 hover:bg-opacity-100 px-2 py-1 rounded"
+                          onClick={() => alert('Go to Appointments page to edit: /dashboard/appointments')}
+                          className="text-xs bg-blue-600 text-white px-2 py-1 rounded font-semibold hover:bg-blue-700"
                           title="Edit"
                         >
-                          ✏️
+                          ✏️ Edit
                         </button>
                         <button
                           onClick={() => deleteAppointment(a.id)}
