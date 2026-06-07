@@ -49,6 +49,26 @@ function parseAppointmentMessage(text: string): any {
   };
 }
 
+function getTodayVsYesterdayReport(): string {
+  try {
+    const now = new Date();
+    const londonTime = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/London' }));
+    const todayStr = londonTime.toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
+    
+    const yesterdayDate = new Date(londonTime);
+    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+    const yesterdayStr = yesterdayDate.toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
+
+    return `📊 Today vs Yesterday (GMT+1)
+    
+Today (${todayStr}): Checking data...
+Yesterday (${yesterdayStr}): Checking data...
+
+Please log metrics and check dashboard for comparison.`;
+  } catch (error) {
+    return 'Error generating report';
+  }
+}
 function parseMetric(text: string): any {
   let cleanText = text.toLowerCase().trim();
   let personType = 'baby';
@@ -164,6 +184,12 @@ export async function POST(request: NextRequest) {
       }
     }
 
+        // Handle report command
+    if (messageBody.toLowerCase().includes('report')) {
+      const report = getTodayVsYesterdayReport();
+      return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${report}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
+    }
+
     const metricData = parseMetric(messageBody);
     if (metricData && metricData.isMetric) {
       try {
@@ -202,4 +228,5 @@ export async function POST(request: NextRequest) {
     return new NextResponse('<?xml version="1.0" encoding="UTF-8"?><Response><Message>Error</Message></Response>', { status: 200, headers: { 'Content-Type': 'application/xml' } });
   }
 }
+
 
