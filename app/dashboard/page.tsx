@@ -43,6 +43,8 @@ export default function Dashboard() {
   const [summaryStats, setSummaryStats] = useState<SummaryStats>({});
   const [dayComparison, setDayComparison] = useState<DayComparison>({});
   const [lastWeight, setLastWeight] = useState<{ value: string; date: string } | null>(null);
+  const [editingAppointmentId, setEditingAppointmentId] = useState<string | null>(null);
+  const [editAppointmentData, setEditAppointmentData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [newMetric, setNewMetric] = useState({
     type: 'breastmilk',
@@ -418,6 +420,55 @@ export default function Dashboard() {
   };
 
   if (loading) {
+
+    const updateAppointment = async (id: string) => {
+    if (!editAppointmentData.doctor || !editAppointmentData.appointment_date || !editAppointmentData.appointment_time) {
+      alert('Please fill required fields');
+      return;
+    }
+    try {
+      const response = await fetch('/api/appointments/update', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id,
+          doctor: editAppointmentData.doctor,
+          reason: editAppointmentData.reason,
+          appointment_date: editAppointmentData.appointment_date,
+          appointment_time: editAppointmentData.appointment_time,
+          notes: editAppointmentData.notes
+        })
+      });
+      if (response.ok) {
+        setEditingAppointmentId(null);
+        setEditAppointmentData(null);
+        await fetchAppointments();
+      }
+    } catch (error) {
+      console.error('Error updating:', error);
+    }
+  };
+
+  const deleteAppointmentFromDashboard = async (id: string) => {
+    if (confirm('Delete this appointment?')) {
+      try {
+        await fetch(`/api/appointments/${id}`, { method: 'DELETE' });
+        setAppointments(appointments.filter(a => a.id !== id));
+      } catch (error) {
+        console.error('Error deleting:', error);
+      }
+    }
+  };
+
+  const fetchAppointments = async () => {
+    try {
+      const response = await fetch('/api/appointments');
+      const result = await response.json();
+      if (result.data) setAppointments(result.data);
+    } catch (error) {
+      console.error('Error fetching appointments:', error);
+    }
+  };
 
     return (
       <div className="p-6 bg-gray-50 min-h-screen flex items-center justify-center">
