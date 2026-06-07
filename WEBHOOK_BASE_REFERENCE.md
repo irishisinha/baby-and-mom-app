@@ -149,3 +149,36 @@ When modifying this webhook:
 - Mother Wellness: `app/dashboard/mother/page.tsx` (displays family wellness)
 - Report API: Handled in same route (GET not used, POST only)
 
+
+---
+
+## TIMEZONE FIX (CRITICAL)
+
+**Issue:** Report was showing incorrect date (tomorrow instead of today)
+
+**Root Cause:** 
+The original code was doing:
+```javascript
+const londonTime = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/London' }));
+```
+This converts the UTC time to a London string, then RE-PARSES it as a Date object
+using the browser's local timezone (not London). This caused date offset errors.
+
+**Correct Implementation:**
+```javascript
+// Get today's date in London timezone (do NOT re-parse with new Date())
+const todayStr = now.toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
+
+// Get yesterday's date by subtracting milliseconds from UTC time
+const yesterdayMs = now.getTime() - (24 * 60 * 60 * 1000);
+const yesterdayDate = new Date(yesterdayMs);
+const yesterdayStr = yesterdayDate.toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
+```
+
+**Key Rule:** 
+NEVER re-parse locale strings as Date objects! 
+Use toLocaleDateString() for formatting ONLY.
+Always work with UTC timestamps for calculations, then format to local timezone.
+
+**Updated:** 2026-06-08
+
