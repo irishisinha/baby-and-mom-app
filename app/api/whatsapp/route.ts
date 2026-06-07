@@ -91,9 +91,17 @@ export async function POST(request: NextRequest) {
 
     console.log('[WA-MSG]', { messageBody, fromPhone });
 
-    if (!AUTHORIZED_NUMBERS.includes(fromPhone)) {
-      const response = '<?xml version="1.0" encoding="UTF-8"?><Response><Message>Not authorized</Message></Response>';
-      return new NextResponse(response, { status: 403, headers: { 'Content-Type': 'application/xml' } });
+    // Normalize phone number (remove spaces, handle various formats)
+    const normalizedPhone = fromPhone.replace(/\s+/g, '');
+    const isAuthorized = AUTHORIZED_NUMBERS.some(num => {
+      const normalizedNum = num.replace(/\s+/g, '');
+      return normalizedPhone === normalizedNum || normalizedPhone.includes(normalizedNum) || normalizedNum.includes(normalizedPhone);
+    });
+
+    if (!isAuthorized) {
+      console.log('[WA-UNAUTH]', { fromPhone, normalizedPhone, authorized: AUTHORIZED_NUMBERS });
+      const response = '<?xml version="1.0" encoding="UTF-8"?><Response><Message>Not authorized: ' + normalizedPhone + '</Message></Response>';
+      return new NextResponse(response, { status: 200, headers: { 'Content-Type': 'application/xml' } });
     }
 
     const appointmentData = parseAppointmentMessage(messageBody);
