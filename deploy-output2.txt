@@ -1,0 +1,120 @@
+<claude-code-hint v="1" type="plugin" value="vercel@claude-plugins-official" />
+Vercel CLI 54.6.1 (Node.js 24.16.0)
+Retrieving project…
+Deploying rishisinhax-4807s-projects/baby-and-mom-app
+Uploading [--------------------] (0.0B/35.8KB)
+Uploading [===========---------] (20.9KB/35.8KB)
+Uploading [==============------] (26.5KB/35.8KB)
+Uploading [====================] (35.8KB/35.8KB)
+  Inspect     https://vercel.com/rishisinhax-4807s-projects/baby-and-mom-app/4fADYyzPnZUDgepk8xGLdsVazvJD
+▲ Production  https://baby-and-mom-leiurp8vh-rishisinhax-4807s-projects.vercel.app
+Building…
+Building…
+Running build in Washington, D.C., USA (East) – iad1
+Build machine configuration: 2 cores, 8 GB
+Retrieving list of deployment files...
+Downloading 135 deployment files...
+Restored build cache from previous deployment (89N2rrxQJQhnKeUwrxg6WLyJaPXv)
+Running "vercel build"
+Vercel CLI 54.9.0
+Installing dependencies...
+up to date in 1s
+138 packages are looking for funding
+run `npm fund` for details
+Detected Next.js version: 14.2.35
+Running "npm run build"
+> baby-and-mom-app@0.1.0 build
+> next build
+▲ Next.js 14.2.35
+Creating an optimized production build ...
+> [PWA] Compile server
+> [PWA] Compile server
+> [PWA] Compile client (static)
+> [PWA] Auto register service worker with: /vercel/path0/node_modules/next-pwa/register.js
+> [PWA] Service worker: /vercel/path0/public/sw.js
+> [PWA]   url: /sw.js
+> [PWA]   scope: /
+✓ Compiled successfully
+Linting and checking validity of types ...
+Collecting page data ...
+Generating static pages (0/37) ...
+Generating static pages (9/37)
+Generating static pages (18/37)
+Generating static pages (27/37)
+✓ Generating static pages (37/37)
+Finalizing page optimization ...
+Collecting build traces ...
+Route (app)                              Size     First Load JS
+┌ ○ /                                    670 B            88 kB
+├ ○ /_not-found                          873 B          88.2 kB
+├ ƒ /api/admin/cleanup                   0 B                0 B
+├ ƒ /api/admin/direct-login              0 B                0 B
+├ ƒ /api/admin/generate-magic-link       0 B                0 B
+├ ƒ /api/admin/setup-auth-users          0 B                0 B
+├ ƒ /api/appointments                    0 B                0 B
+├ ƒ /api/appointments/[id]               0 B                0 B
+├ ƒ /api/appointments/reminders          0 B                0 B
+├ ƒ /api/appointments/update             0 B                0 B
+├ ○ /api/crons/appointment-reminders     0 B                0 B
+├ ○ /api/crons/daily-summary             0 B                0 B
+├ ƒ /api/fcm/register-token              0 B                0 B
+├ ƒ /api/notifications/daily-summary     0 B                0 B
+├ ƒ /api/notifications/send              0 B                0 B
+├ ƒ /api/reports/daily                   0 B                0 B
+├ ƒ /api/setup/appointments              0 B                0 B
+├ ƒ /api/setup/auth-user                 0 B                0 B
+├ ƒ /api/setup/check                     0 B                0 B
+├ ƒ /api/whatsapp                        0 B                0 B
+├ ƒ /api/whatsapp/log-metric             0 B                0 B
+├ ƒ /api/whatsapp/reports/daily          0 B                0 B
+├ ƒ /api/whatsapp/webhook                0 B                0 B
+├ ○ /auth/callback                       2.6 kB          150 kB
+├ ○ /auth/direct-callback                2.23 kB         150 kB
+├ ○ /auth/password-login                 2.68 kB         150 kB
+├ ○ /dashboard                           3.15 kB         160 kB
+├ ○ /dashboard/appointments              2.22 kB         150 kB
+├ ○ /dashboard/baby                      2.14 kB         150 kB
+├ ○ /dashboard/family                    3.3 kB          151 kB
+├ ○ /dashboard/metrics                   2.91 kB         151 kB
+├ ○ /dashboard/mom                       3.11 kB         151 kB
+├ ○ /dashboard/mother                    4.25 kB         152 kB
+├ ○ /dashboard/reminders                 2 kB            150 kB
+├ ○ /dashboard/reports                   2.93 kB         151 kB
+├ ○ /login                               1.44 kB        88.8 kB
+└ ○ /onboarding                          1.97 kB         150 kB
++ First Load JS shared by all            87.3 kB
+├ chunks/117-fd9c0a2752c516e6.js       31.7 kB
+├ chunks/fd9d1056-1c95739e2cd4d4c3.js  53.6 kB
+└ other shared chunks (total)          1.95 kB
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+Traced Next.js server files in: 49.183ms
+Created all serverless functions in: 891.578ms
+Collected static files (public/, static/, .next/static): 5.838ms
+Build Completed in /vercel/output [35s]
+Deploying outputs...
+[2K[1A[2K[G▲ Production  https://baby-and-mom-leiurp8vh-rishisinhax-4807s-projects.vercel.app
+Completing…
+▲ Aliased     https://jaianshiva.app
+{
+  "status": "ok",
+  "deployment": {
+    "id": "dpl_4fADYyzPnZUDgepk8xGLdsVazvJD",
+    "url": "https://baby-and-mom-leiurp8vh-rishisinhax-4807s-projects.vercel.app",
+    "inspectorUrl": "https://vercel.com/rishisinhax-4807s-projects/baby-and-mom-app/4fADYyzPnZUDgepk8xGLdsVazvJD",
+    "readyState": "READY",
+    "target": "production",
+    "deploymentApiUrl": "https://api.vercel.com/v13/deployments/dpl_4fADYyzPnZUDgepk8xGLdsVazvJD"
+  },
+  "message": "Deployment baby-and-mom-leiurp8vh-rishisinhax-4807s-projects.vercel.app ready.",
+  "next": [
+    {
+      "command": "vercel inspect baby-and-mom-leiurp8vh-rishisinhax-4807s-projects.vercel.app",
+      "when": "Inspect deployment"
+    },
+    {
+      "command": "vercel deploy --prod",
+      "when": "Promote to production"
+    }
+  ]
+}

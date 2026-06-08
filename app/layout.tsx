@@ -1,10 +1,10 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import "./globals.css";
 import { SessionProvider } from "./providers";
 import { NotificationProvider } from "./components/NotificationProvider";
 
 export const metadata: Metadata = {
-  title: "Baby & Mom Care",
+  title: "Shiva & Jaian Care",
   description: "Real-time baby care tracking",
 };
 
@@ -28,3 +28,4 @@ export default function RootLayout({
     </html>
   );
 }
+

@@ -1,92 +1,60 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
-import { PILOT_USER_ID } from '@/lib/pilot-user';
+import { createClient } from '@supabase/supabase-js';
+import Link from 'next/link';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+);
+
+interface Appointment {
+  id: string;
+  title?: string;
+  doctor?: string;
+  description?: string;
+  reason?: string;
+  appointment_date: string;
+  appointment_time?: string;
+  notes?: string;
+}
 
 export default function AppointmentsPage() {
-  const [userId, setUserId] = useState<string | null>(null);
-  const [appointments, setAppointments] = useState<any[]>([]);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editData, setEditData] = useState<any>(null);
-  const [showForm, setShowForm] = useState(false);
-
-  const [form, setForm] = useState({
-    doctor: '',
-    reason: '',
-    date: '',
-    time: '',
-    notes: ''
+  const [editForm, setEditForm] = useState<any>(null);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [createForm, setCreateForm] = useState({ 
+    doctor: '', 
+    reason: '', 
+    appointment_date: '', 
+    appointment_time: '' 
   });
+  const [loading, setLoading] = useState(true);
+
+  const FAMILY_ID = 'df3d99a8-f7a2-44cf-bcb4-9c5f3300caa6';
+  const BABY_ID = 'e8a7c56c-62c6-442c-94ac-518928c8c07b';
 
   useEffect(() => {
-    const fetch = async () => {
-      setUserId(PILOT_USER_ID);
-
-      const { data } = await supabase
-        .from('appointments')
-        .select('*')
-        .eq('user_id', PILOT_USER_ID)
-        .order('appointment_date', { ascending: true });
-
-      setAppointments(data || []);
-    };
-    fetch();
+    loadAppointments();
   }, []);
 
-  const handleAdd = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!userId || !form.doctor || !form.date) return;
-
-    const { data } = await supabase
-      .from('appointments')
-      .insert([{
-        user_id: userId,
-        doctor: form.doctor,
-        reason: form.reason,
-        appointment_date: form.date,
-        appointment_time: form.time,
-        notes: form.notes
-      }])
-      .select();
-
-    if (data) {
-      setAppointments([...appointments, data[0]]);
-      setForm({ doctor: '', reason: '', date: '', time: '', notes: '' });
-      setShowForm(false);
+  const loadAppointments = async () => {
+    try {
+      const response = await fetch('/api/appointments');
+      const result = await response.json();
+      if (result.data) setAppointments(result.data);
+    } catch (error) {
+      console.error('Error:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleQuickAdd = async (forWho: string) => {
-    const date = prompt('Enter appointment date (YYYY-MM-DD):');
-    if (!date) return;
-    const time = prompt('Enter appointment time (HH:MM):', '10:00');
-    const reason = prompt('Reason for appointment:', '');
-    const doctor = prompt('Doctor/Clinic name:', forWho + ' Appointment');
-    
-    if (doctor && date) {
-      const { data } = await supabase
-        .from('appointments')
-        .insert([{
-          user_id: userId,
-          doctor: doctor,
-          reason: reason || '',
-          appointment_date: date,
-          appointment_time: time || '',
-          notes: `For: ${forWho}`
-        }])
-        .select();
-
-      if (data) {
-        setAppointments([...appointments, data[0]]);
-      }
-    }
-  };
-
-  const handleUpdate = async (id: string) => {
-    if (!editData.doctor || !editData.date || !editData.time) {
-      alert('Please fill required fields');
+  const saveEdit = async () => {
+    if (!editForm.doctor || !editForm.appointment_date || !editForm.appointment_time) {
+      alert('Title, date, time required');
       return;
     }
     try {
@@ -94,168 +62,237 @@ export default function AppointmentsPage() {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          id,
-          doctor: editData.doctor,
-          reason: editData.reason || '',
-          appointment_date: editData.date,
-          appointment_time: editData.time,
-          notes: editData.notes || ''
+          id: editingId,
+          doctor: editForm.doctor,
+          reason: editForm.reason || '',
+          appointment_date: editForm.appointment_date,
+          appointment_time: editForm.appointment_time,
+          notes: editForm.notes || ''
         })
       });
       if (response.ok) {
+        alert('Updated!');
         setEditingId(null);
-        setEditData(null);
-        // Reload appointments
-        const response = await fetch('/api/appointments');
-        const result = await response.json();
-        if (result.data) setAppointments(result.data);
-        alert('Appointment updated!');
+        await loadAppointments();
       }
     } catch (error) {
-      console.error('Error updating:', error);
-      alert('Error updating appointment');
+      alert('Error updating');
     }
   };
 
-  const handleDelete = async (apptId: string) => {
-    if (confirm('Delete?')) {
-      await supabase.from('appointments').delete().eq('id', apptId);
-      setAppointments(appointments.filter(a => a.id !== apptId));
+  const deleteAppointment = async (id: string, title: string) => {
+    if (!confirm(`Delete "${title}"?`)) return;
+    try {
+      await fetch(`/api/appointments/${id}`, { method: 'DELETE' });
+      alert('Deleted!');
+      await loadAppointments();
+    } catch (error) {
+      alert('Error deleting');
     }
   };
 
-  // Separate upcoming and past appointments
-  const now = new Date();
-  const upcomingAppts = appointments.filter(a => new Date(a.appointment_date) >= now).sort((a, b) => new Date(a.appointment_date).getTime() - new Date(b.appointment_date).getTime());
-  const pastAppts = appointments.filter(a => new Date(a.appointment_date) < now).sort((a, b) => new Date(b.appointment_date).getTime() - new Date(a.appointment_date).getTime());
+  const createAppointment = async () => {
+    if (!createForm.doctor || !createForm.appointment_date || !createForm.appointment_time) {
+      alert('Title, date, time required');
+      return;
+    }
+    try {
+      const response = await fetch('/api/appointments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          family_id: FAMILY_ID,
+          baby_id: BABY_ID,
+          title: createForm.doctor,
+          description: createForm.reason,
+          appointment_date: `${createForm.appointment_date}T${createForm.appointment_time}:00`
+        })
+      });
+      if (response.ok) {
+        alert('Created!');
+        setShowCreateForm(false);
+        setCreateForm({ doctor: '', reason: '', appointment_date: '', appointment_time: '' });
+        await loadAppointments();
+      }
+    } catch (error) {
+      alert('Error creating');
+    }
+  };
+
+  // Get today's date in London timezone
+  const getLondonToday = () => {
+    const now = new Date();
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Europe/London',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).format(now);
+  };
+
+  const today = getLondonToday();
+  
+  // Split appointments into upcoming and previous
+  const upcoming = appointments
+    .filter((appt) => appt.appointment_date.split('T')[0] >= today)
+    .sort((a, b) => a.appointment_date.localeCompare(b.appointment_date));
+
+  const previous = appointments
+    .filter((appt) => appt.appointment_date.split('T')[0] < today)
+    .sort((a, b) => b.appointment_date.localeCompare(a.appointment_date));
+
+  if (loading) return <div className="p-4 text-center">Loading...</div>;
+
+  const AppointmentCard = (appt: Appointment) => (
+    <div key={appt.id}>
+      {editingId === appt.id ? (
+        <div className="bg-yellow-50 p-4 rounded border-2 border-yellow-300">
+          <h3 className="font-bold mb-3">Editing: {appt.doctor}</h3>
+          <div className="space-y-2">
+            <input 
+              type="text" 
+              value={editForm.doctor} 
+              onChange={(e) => setEditForm({ ...editForm, doctor: e.target.value })} 
+              className="w-full border rounded px-2 py-1 text-sm" 
+            />
+            <input 
+              type="text" 
+              value={editForm.reason} 
+              onChange={(e) => setEditForm({ ...editForm, reason: e.target.value })} 
+              className="w-full border rounded px-2 py-1 text-sm" 
+            />
+            <input 
+              type="date" 
+              value={editForm.appointment_date} 
+              onChange={(e) => setEditForm({ ...editForm, appointment_date: e.target.value })} 
+              className="w-full border rounded px-2 py-1 text-sm" 
+            />
+            <input 
+              type="time" 
+              value={editForm.appointment_time} 
+              onChange={(e) => setEditForm({ ...editForm, appointment_time: e.target.value })} 
+              className="w-full border rounded px-2 py-1 text-sm" 
+            />
+            <div className="flex gap-2">
+              <button 
+                onClick={saveEdit} 
+                className="flex-1 bg-green-600 text-white py-1 rounded text-sm font-semibold hover:bg-green-700"
+              >
+                Save
+              </button>
+              <button 
+                onClick={() => setEditingId(null)} 
+                className="flex-1 bg-gray-400 text-white py-1 rounded text-sm hover:bg-gray-500"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="border-l-4 border-blue-500 bg-blue-50 p-4 rounded flex justify-between items-start">
+          <div className="flex-1">
+            <h3 className="font-bold text-lg">{appt.doctor}</h3>
+            <p className="text-sm text-gray-600">{appt.reason}</p>
+            <p className="text-xs text-gray-500 mt-1">
+              {new Date(appt.appointment_date).toLocaleDateString()} at {appt.appointment_time}
+            </p>
+            {appt.notes && <p className="text-xs bg-yellow-100 p-1 rounded mt-2">{appt.notes}</p>}
+          </div>
+          <div className="flex gap-2 ml-2">
+            <button 
+              onClick={() => { setEditingId(appt.id); setEditForm(appt); }} 
+              className="bg-blue-600 text-white px-2 py-1 rounded text-sm font-semibold hover:bg-blue-700"
+            >
+              ✏️
+            </button>
+            <button 
+              onClick={() => deleteAppointment(appt.id, appt.doctor || 'Appointment')} 
+              className="bg-red-600 text-white px-2 py-1 rounded text-sm font-semibold hover:bg-red-700"
+            >
+              🗑️
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6">📅 Appointments</h1>
-
-      {/* Quick Action Buttons */}
-      <div className="mb-8 p-4 bg-blue-50 rounded-lg">
-        <p className="text-sm font-semibold text-gray-700 mb-3">Quick Schedule:</p>
-        <div className="flex flex-wrap gap-2">
-          <button onClick={() => handleQuickAdd('Jaian (Baby)')} className="px-4 py-2 bg-pink-500 text-white rounded-lg hover:bg-pink-600 font-semibold text-sm">+ Baby Appointment</button>
-          <button onClick={() => handleQuickAdd('Shiva (Mom)')} className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 font-semibold text-sm">+ Mom Appointment</button>
-          <button onClick={() => handleQuickAdd('Rishi (Dad)')} className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 font-semibold text-sm">+ Dad Appointment</button>
-          <button onClick={() => handleQuickAdd('Grandmom')} className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 font-semibold text-sm">+ Grandmom Appointment</button>
-          <button onClick={() => setShowForm(!showForm)} className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 font-semibold text-sm">✏️ Custom</button>
-        </div>
+    <div className="pb-24 md:pb-0 p-4 max-w-4xl mx-auto">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">Appointments</h1>
+        <button 
+          onClick={() => setShowCreateForm(!showCreateForm)} 
+          className="bg-green-600 text-white px-4 py-2 rounded font-semibold hover:bg-green-700"
+        >
+          {showCreateForm ? 'Cancel' : 'New'}
+        </button>
       </div>
 
-      {/* Custom Form */}
-      {showForm && (
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <h2 className="text-2xl font-bold mb-4">Add Custom Appointment</h2>
-          <form onSubmit={handleAdd} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <input type="text" value={form.doctor} onChange={e => setForm({...form, doctor: e.target.value})} placeholder="Doctor/Clinic" required className="px-4 py-2 border rounded" />
-            <input type="text" value={form.reason} onChange={e => setForm({...form, reason: e.target.value})} placeholder="Reason" className="px-4 py-2 border rounded" />
-            <input type="date" value={form.date} onChange={e => setForm({...form, date: e.target.value})} required className="px-4 py-2 border rounded" />
-            <input type="time" value={form.time} onChange={e => setForm({...form, time: e.target.value})} className="px-4 py-2 border rounded" />
-            <textarea value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} placeholder="Notes" className="md:col-span-2 px-4 py-2 border rounded" />
-            <button type="submit" className="bg-blue-600 text-white font-bold py-2 rounded">Save</button>
-            <button type="button" onClick={() => setShowForm(false)} className="bg-gray-400 text-white font-bold py-2 rounded">Cancel</button>
-          </form>
-        </div>
-      )}
-
-      {/* Upcoming Appointments */}
-      {editingId && editData && (
-        <div className="bg-yellow-50 border-2 border-yellow-300 rounded-lg p-6 mb-6">
-          <h2 className="text-2xl font-bold mb-4 text-yellow-900">Edit Appointment</h2>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-semibold mb-1">Title *</label>
-              <input type="text" value={editData.doctor} onChange={(e) => setEditData({...editData, doctor: e.target.value})} className="w-full border rounded px-3 py-2" />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold mb-1">Reason</label>
-              <input type="text" value={editData.reason || ''} onChange={(e) => setEditData({...editData, reason: e.target.value})} className="w-full border rounded px-3 py-2" />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-semibold mb-1">Date *</label>
-                <input type="date" value={editData.date} onChange={(e) => setEditData({...editData, date: e.target.value})} className="w-full border rounded px-3 py-2" />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold mb-1">Time *</label>
-                <input type="time" value={editData.time} onChange={(e) => setEditData({...editData, time: e.target.value})} className="w-full border rounded px-3 py-2" />
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-semibold mb-1">Notes</label>
-              <textarea value={editData.notes || ''} onChange={(e) => setEditData({...editData, notes: e.target.value})} className="w-full border rounded px-3 py-2" rows={3} />
-            </div>
-            <div className="flex gap-2">
-              <button onClick={() => handleUpdate(editingId)} className="px-4 py-2 bg-green-600 text-white rounded font-semibold">Save</button>
-              <button onClick={() => { setEditingId(null); setEditData(null); }} className="px-4 py-2 bg-gray-400 text-white rounded font-semibold">Cancel</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {upcomingAppts.length > 0 && (
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold mb-4 text-blue-600">⏰ Upcoming</h2>
+      {showCreateForm && (
+        <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-6 mb-6">
+          <h2 className="text-xl font-bold mb-4">Create Appointment</h2>
           <div className="space-y-3">
-            {upcomingAppts.map(appt => {
-              const apptDate = new Date(appt.appointment_date);
-              const daysUntil = Math.ceil((apptDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-              return (
-                <div key={appt.id} className="bg-blue-50 border-l-4 border-blue-600 rounded-lg p-4">
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <p className="font-bold text-lg">{appt.doctor}</p>
-                      {appt.reason && <p className="text-sm text-gray-600">Reason: {appt.reason}</p>}
-                      <p className="text-sm text-gray-600 mt-1">📅 {apptDate.toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })} {appt.appointment_time && 'at ' + appt.appointment_time}</p>
-                      <p className="text-xs text-blue-600 font-semibold mt-1">{daysUntil === 0 ? 'Today!' : daysUntil === 1 ? 'Tomorrow' : `In ${daysUntil} days`}</p>
-                      {appt.notes && <p className="text-sm text-gray-600 mt-2">📝 {appt.notes}</p>}
-                    </div>
-                    <div className="flex gap-2">
-                      <button onClick={() => { setEditingId(appt.id); setEditData({ doctor: appt.doctor, reason: appt.reason, date: appt.appointment_date, time: appt.appointment_time, notes: appt.notes }); }} className="px-3 py-1 bg-blue-600 text-white rounded text-sm font-semibold">Edit</button>
-                      <button onClick={() => handleDelete(appt.id)} className="px-3 py-1 bg-red-600 text-white rounded text-sm font-semibold">Delete</button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+            <input 
+              type="text" 
+              placeholder="Title" 
+              value={createForm.doctor} 
+              onChange={(e) => setCreateForm({ ...createForm, doctor: e.target.value })} 
+              className="w-full border rounded px-3 py-2" 
+            />
+            <input 
+              type="text" 
+              placeholder="Description" 
+              value={createForm.reason} 
+              onChange={(e) => setCreateForm({ ...createForm, reason: e.target.value })} 
+              className="w-full border rounded px-3 py-2" 
+            />
+            <input 
+              type="date" 
+              value={createForm.appointment_date} 
+              onChange={(e) => setCreateForm({ ...createForm, appointment_date: e.target.value })} 
+              className="w-full border rounded px-3 py-2" 
+            />
+            <input 
+              type="time" 
+              value={createForm.appointment_time} 
+              onChange={(e) => setCreateForm({ ...createForm, appointment_time: e.target.value })} 
+              className="w-full border rounded px-3 py-2" 
+            />
+            <button 
+              onClick={createAppointment} 
+              className="w-full bg-green-600 text-white py-2 rounded font-semibold hover:bg-green-700"
+            >
+              Save
+            </button>
           </div>
         </div>
       )}
 
-      {/* Past Appointments */}
-      {pastAppts.length > 0 && (
-        <div>
-          <h2 className="text-2xl font-bold mb-4 text-gray-600">✅ Past Appointments</h2>
+      {/* Upcoming Appointments - Earliest to Latest */}
+      <div className="bg-white rounded-lg p-6 mb-6 shadow">
+        <h2 className="text-2xl font-bold mb-4">📅 Upcoming Appointments (Earliest First)</h2>
+        {upcoming.length === 0 ? (
+          <p className="text-gray-500">No upcoming appointments</p>
+        ) : (
           <div className="space-y-3">
-            {pastAppts.map(appt => (
-              <div key={appt.id} className="bg-gray-50 border-l-4 border-gray-400 rounded-lg p-4">
-                <div className="flex justify-between items-start">
-                  <div className="flex-1 opacity-75">
-                    <p className="font-bold text-lg">{appt.doctor}</p>
-                    {appt.reason && <p className="text-sm text-gray-600">Reason: {appt.reason}</p>}
-                    <p className="text-sm text-gray-600 mt-1">📅 {new Date(appt.appointment_date).toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })} {appt.appointment_time && 'at ' + appt.appointment_time}</p>
-                    {appt.notes && <p className="text-sm text-gray-600 mt-2">📝 {appt.notes}</p>}
-                  </div>
-                  <div className="flex gap-2">
-                      <button onClick={() => { setEditingId(appt.id); setEditData({ doctor: appt.doctor, reason: appt.reason, date: appt.appointment_date, time: appt.appointment_time, notes: appt.notes }); }} className="px-3 py-1 bg-blue-600 text-white rounded text-sm font-semibold">Edit</button>
-                      <button onClick={() => handleDelete(appt.id)} className="px-3 py-1 bg-red-600 text-white rounded text-sm font-semibold">Delete</button>
-                    </div>
-                </div>
-              </div>
-            ))}
+            {upcoming.map(AppointmentCard)}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
-      {appointments.length === 0 && (
-        <div className="text-center py-12 bg-gray-50 rounded-lg">
-          <p className="text-gray-500 text-lg">No appointments scheduled yet</p>
-          <p className="text-gray-400 text-sm mt-2">Use quick buttons above to schedule one!</p>
-        </div>
-      )}
+      {/* Previous Appointments - Latest to Earliest */}
+      <div className="bg-white rounded-lg p-6 shadow">
+        <h2 className="text-2xl font-bold mb-4">📋 Previous Appointments (Latest First)</h2>
+        {previous.length === 0 ? (
+          <p className="text-gray-500">No previous appointments</p>
+        ) : (
+          <div className="space-y-3">
+            {previous.map(AppointmentCard)}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

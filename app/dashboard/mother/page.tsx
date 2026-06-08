@@ -19,6 +19,7 @@ interface WellnessSummary {
   pain: number[];
   recovery: { [key: string]: number };
   exercise: number;
+  steps: number;
   medication: number;
   health_checks: number;
 }
@@ -33,6 +34,7 @@ export default function MotherWellnessPage() {
     pain: [],
     recovery: {},
     exercise: 0,
+      steps: 0,
     medication: 0,
     health_checks: 0,
   });
@@ -97,6 +99,7 @@ export default function MotherWellnessPage() {
       pain: [],
       recovery: {},
       exercise: 0,
+      steps: 0,
       medication: 0,
       health_checks: 0,
     };
@@ -204,6 +207,7 @@ export default function MotherWellnessPage() {
       recovery: '💪',
       medication: '💊',
       exercise: '🏃',
+      steps: '👟',
       health_check: '🏥',
       sleep: '😴',
     };
@@ -395,6 +399,7 @@ export default function MotherWellnessPage() {
               <option value="wellness_pain">Pain (1-10)</option>
               <option value="wellness_recovery">Recovery</option>
               <option value="wellness_exercise">Exercise (mins)</option>
+              <option value="wellness_steps">Steps</option>
               <option value="wellness_medication">Medication</option>
               <option value="wellness_health_check">Health Check</option>
               <option value="wellness_sleep">Sleep (hours)</option>
@@ -483,3 +488,5 @@ export default function MotherWellnessPage() {
     </div>
   );
 }
+
+

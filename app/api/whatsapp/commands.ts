@@ -2,11 +2,12 @@ import { supabaseAdmin } from '@/lib/supabase'
 
 export async function handleCommand(text: string, phone: string, familyId: string): Promise<string | null> {
   const cmd = text.toLowerCase().trim()
-  if (!cmd.match(/^(today|report)$/)) return null
+  if (!cmd.match(/^(today|report|appt)$/)) return null
 
   try {
     if (cmd === 'today') return 'Send metrics to log today activities'
     if (cmd === 'report') return await cmdReport(familyId)
+    if (cmd === 'appt') return await cmdAppt(familyId)
     return null
   } catch (err) {
     console.error('Command error:', err)
@@ -47,4 +48,36 @@ async function cmdReport(familyId: string): Promise<string> {
   })
   
   return r
+}
+
+async function cmdAppt(familyId: string): Promise<string> {
+  const today = new Date()
+  const todayStr = today.toLocaleDateString('en-CA', { timeZone: 'Europe/London' })
+  
+  try {
+    const { data: appointments } = await supabaseAdmin
+      .from('appointments')
+      .select('*')
+      .gte('appointment_date', todayStr)
+      .order('appointment_date', { ascending: true })
+      .limit(10)
+    
+    if (!appointments?.length) {
+      return 'No upcoming appointments scheduled'
+    }
+    
+    let r = 'Upcoming Appointments:\n\n'
+    appointments.forEach((apt: any, idx: number) => {
+      const dateStr = new Date(apt.appointment_date).toLocaleDateString('en-US', { 
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric'
+      })
+      r += `${idx + 1}. ${apt.doctor}\n   ${dateStr} at ${apt.appointment_time || ''}\n   ${apt.reason || ''}\n\n`
+    })
+    
+    return r
+  } catch (err) {
+    return 'Error fetching appointments'
+  }
 }
