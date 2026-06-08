@@ -215,23 +215,26 @@ export async function POST(request: NextRequest) {
     const appointmentData = parseAppointmentMessage(messageBody);
     if (appointmentData && appointmentData.isAppointment) {
       try {
+        const appointmentDateObj = new Date(appointmentData.appointment_date);
+        const dateOnly = appointmentDateObj.toISOString().split('T')[0];
+        const timeOnly = appointmentDateObj.toISOString().split('T')[1].substring(0, 5);
+
         const { data, error } = await supabase.from('appointments').insert({
-          user_id: 'df3d99a8-f7a2-44cf-bcb4-9c5f3300caa6',
           doctor: appointmentData.title,
           reason: appointmentData.description,
-          appointment_date: appointmentData.appointment_date.split('T')[0],
-          notes: `WhatsApp`
+          appointment_date: dateOnly,
+          appointment_time: timeOnly,
+          appointee_for: 'baby',
+          notes: 'WhatsApp'
         }).select();
 
         if (error) throw error;
-        return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>✓ Appt: ${appointmentData.title}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
+        return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>Appointment set: ${appointmentData.title} on ${dateOnly} at ${timeOnly}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
       } catch (e: any) {
         console.error('[APT-ERR]', e);
-        return new NextResponse('<?xml version="1.0" encoding="UTF-8"?><Response><Message>Appt error</Message></Response>', { status: 200, headers: { 'Content-Type': 'application/xml' } });
+        return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>Appointment error: ${e.message}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
       }
     }
-
-        // Handle report command
     if (messageBody.toLowerCase().includes('report')) {
       const report = await getTodayVsYesterdayReport();
       return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${report}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
