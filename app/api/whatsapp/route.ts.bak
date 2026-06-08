@@ -38,14 +38,13 @@ function parseAppointmentMessage(text: string): any {
   if (!monthNum) return null;
 
   const dateStr = `${currentYear}-${String(monthNum).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-  const timeStr = `${String(hours).padStart(2, '0')}:${minute}`;
+  const timeStr = `${String(hours).padStart(2, '0')}:${minute}:00`;
   const isoDateTime = `${dateStr}T${timeStr}`;
 
   return {
     title: title.trim(),
     description: description.trim(),
     appointment_date: isoDateTime,
-    appointment_time: timeStr,
     isAppointment: true
   };
 }
@@ -221,7 +220,6 @@ export async function POST(request: NextRequest) {
           doctor: appointmentData.title,
           reason: appointmentData.description,
           appointment_date: appointmentData.appointment_date.split('T')[0],
-          appointment_time: appointmentData.appointment_time,
           notes: `WhatsApp`
         }).select();
 
