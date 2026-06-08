@@ -1,6 +1,7 @@
 ﻿import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
+import { handleCommand } from './commands';
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -209,6 +210,12 @@ export async function POST(request: NextRequest) {
     });
 
     if (!isAuthorized) {
+    
+    // Handle commands first
+    const cmdResponse = await handleCommand(messageBody, fromPhone, FAMILY_ID);
+    if (cmdResponse) {
+      return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${cmdResponse}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
+    }
       console.log('[WA-UNAUTH]', { fromPhone });
       return new NextResponse('<?xml version="1.0" encoding="UTF-8"?><Response><Message>Not authorized</Message></Response>', { status: 200, headers: { 'Content-Type': 'application/xml' } });
     }
@@ -226,7 +233,7 @@ export async function POST(request: NextRequest) {
         }).select();
 
         if (error) throw error;
-        return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>✓ Appt: ${appointmentData.title}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
+        return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>✓ Appointment saved: ${appointmentData.title} on ${appointmentData.appointment_date.split('T')[0]} at ${appointmentData.appointment_time}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
       } catch (e: any) {
         console.error('[APT-ERR]', e);
         return new NextResponse('<?xml version="1.0" encoding="UTF-8"?><Response><Message>Appt error</Message></Response>', { status: 200, headers: { 'Content-Type': 'application/xml' } });
