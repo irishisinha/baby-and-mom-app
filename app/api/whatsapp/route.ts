@@ -213,12 +213,14 @@ export async function POST(request: NextRequest) {
     
     // Handle commands first
     const cmdResponse = await handleCommand(messageBody, fromPhone, FAMILY_ID);
-    if (cmdResponse) {
-      return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${cmdResponse}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
     }
-      console.log('[WA-UNAUTH]', { fromPhone });
-      return new NextResponse('<?xml version="1.0" encoding="UTF-8"?><Response><Message>Not authorized</Message></Response>', { status: 200, headers: { 'Content-Type': 'application/xml' } });
+    
+    // Handle commands first
+    const cmdResp = await handleCommand(messageBody, fromPhone, FAMILY_ID);
+    if (cmdResp) {
+      return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${cmdResp}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
     }
+
 
     const appointmentData = parseAppointmentMessage(messageBody);
     if (appointmentData && appointmentData.isAppointment) {
