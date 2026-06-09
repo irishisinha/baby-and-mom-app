@@ -106,6 +106,30 @@ async function getTodayVsYesterdayReport(): Promise<string> {
     return 'Report: Check dashboard for latest metrics';
   }
 }
+// Extract time from message (e.g., "at 2:30 pm" or "14:30")
+function extractMetricTime(text: string): string | null {
+  const patterns = [
+    /ats+(d{1,2}):(d{2})s*(am|pm)/i,
+    /(d{1,2}):(d{2})s*(am|pm)/i,
+    /ats+(d{1,2}):(d{2})/,
+    /(d{1,2}):(d{2})(?!d)/
+  ];
+  for (const p of patterns) {
+    const m = text.match(p);
+    if (m) {
+      let h = parseInt(m[1]);
+      const min = m[2];
+      const ap = m[3];
+      if (ap) {
+        if (ap.toLowerCase() === "pm" && h !== 12) h += 12;
+        if (ap.toLowerCase() === "am" && h === 12) h = 0;
+      }
+      return String(h).padStart(2, "0") + ":" + min + ":00";
+    }
+  }
+  return null;
+}
+
 function parseMetric(text: string): any {
   let cleanText = text.toLowerCase().trim();
   let personType = 'baby';
