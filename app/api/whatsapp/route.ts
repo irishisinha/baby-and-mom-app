@@ -246,6 +246,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Handle feed command
+    if (messageBody.toLowerCase().trim() === 'feed') {
+      const feedList = await handleCommand(messageBody, fromPhone, FAMILY_ID);
+      if (feedList) {
+        return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${feedList}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
+      }
+    }
+
     const appointmentData = parseAppointmentMessage(messageBody);
     if (appointmentData && appointmentData.isAppointment) {
       try {
