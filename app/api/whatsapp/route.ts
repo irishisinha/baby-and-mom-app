@@ -219,7 +219,6 @@ export async function POST(request: NextRequest) {
         return new NextResponse('<?xml version="1.0" encoding="UTF-8"?><Response><Message>Appt error</Message></Response>', { status: 200, headers: { 'Content-Type': 'application/xml' } });
       }
     }
-
         // Handle report command
     if (messageBody.toLowerCase().includes('status')) {
       return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>Formula: 300ml
@@ -227,7 +226,6 @@ Breastmilk: 0ml
 Total: 300ml</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
     }
 
-    }
 
     const metricData = parseMetric(messageBody);
     if (metricData && metricData.isMetric) {
