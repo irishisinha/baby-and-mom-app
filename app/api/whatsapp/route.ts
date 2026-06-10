@@ -76,6 +76,58 @@ function extractMetricTime(text: string): string | null {
   return null;
 }
 
+
+function extractTimeFromMessage(text: string): Date | null {
+  // Regex patterns for various time formats
+  // Matches: 2:47pm, 2:47 pm, 14:47, 2:47, 14:47:30, etc
+  const timePatterns = [
+    /(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(?:am|pm|a\.m\.|p\.m\.)?/i, // 2:47pm, 14:47
+    /(\d{1,2})\.(\d{2})\s*(?:am|pm)?/i, // 2.47 format
+  ]
+  
+  let timeMatch = null
+  let meridiem = ''
+  
+  for (const pattern of timePatterns) {
+    const match = text.match(pattern)
+    if (match) {
+      timeMatch = match
+      // Check for am/pm after the time
+      const afterTime = text.substring(match.index + match[0].length, match.index + match[0].length + 5)
+      if (afterTime.toLowerCase().includes('pm') || afterTime.toLowerCase().includes('p.m')) meridiem = 'PM'
+      else if (afterTime.toLowerCase().includes('am') || afterTime.toLowerCase().includes('a.m')) meridiem = 'AM'
+      else if (match[0].toLowerCase().includes('pm')) meridiem = 'PM'
+      else if (match[0].toLowerCase().includes('am')) meridiem = 'AM'
+      break
+    }
+  }
+  
+  if (!timeMatch) return null
+  
+  let hours = parseInt(timeMatch[1])
+  const minutes = parseInt(timeMatch[2])
+  
+  // Handle 12-hour format
+  if (meridiem === 'PM' && hours !== 12) hours += 12
+  if (meridiem === 'AM' && hours === 12) hours = 0
+  
+  // If no meridiem and hours < 12, assume AM; if >= 12 assume PM
+  if (!meridiem && hours < 12) {
+    // Could be either, but assume same day
+    // If hours >= 13, it's 24-hour format
+  }
+  
+  const now = new Date()
+  const date = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, 0)
+  
+  // If extracted time is in the future, it's probably yesterday's time
+  if (date > now) {
+    date.setDate(date.getDate() - 1)
+  }
+  
+  return date
+}
+
 function parseMetric(text: string): any {
   let cleanText = text.toLowerCase().trim();
   let personType = 'baby';
@@ -237,13 +289,15 @@ Total: 300ml</Message></Response>`, { status: 200, headers: { 'Content-Type': 'a
     const metricData = parseMetric(messageBody);
     if (metricData && metricData.isMetric) {
       try {
+        const extractedTime = extractTimeFromMessage(messageBody)
         const insertData: any = {
           family_id: FAMILY_ID,
           metric_type: metricData.metric_type,
           value: metricData.value,
           unit: metricData.unit,
           person_type: metricData.personType,
-          sent_from_phone: fromPhone
+          sent_from_phone: fromPhone,
+          created_at: extractedTime ? extractedTime.toISOString() : new Date().toISOString()
         };
         
         // Only add baby_id for baby metrics
