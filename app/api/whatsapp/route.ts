@@ -284,7 +284,7 @@ export async function POST(request: NextRequest) {
       
       const { data: allData } = await supabase.from('baby_metrics').select('*').eq('family_id', FAMILY_ID).limit(500);
       
-      const today = {}; const yest = {};
+      const today: Record<string, number> = {}; const yest: Record<string, number> = {};
       if (allData) {
         allData.forEach((m: any) => {
           if (m.metric_type !== 'formula' && m.metric_type !== 'breastmilk') return;
