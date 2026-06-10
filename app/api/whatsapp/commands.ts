@@ -85,8 +85,17 @@ async function cmdAppt(familyId: string): Promise<string> {
 
 
 async function cmdFeed(familyId: string): Promise<string> {
-  const today = new Date()
-  const todayStr = today.toLocaleDateString('en-CA', { timeZone: 'Europe/London' })
+  const now = new Date()
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    timeZone: 'Europe/London'
+  })
+  const [year, month, day] = formatter.format(now).split('-')
+  const todayStart = new Date(`${year}-${month}-${day}T00:00:00Z`)
+  const todayEnd = new Date(todayStart.getTime() + 86400000)
+  const todayStr = `${year}-${month}-${day}`
   
   let response = `Today's Feeds - ${todayStr}
 
@@ -98,8 +107,8 @@ async function cmdFeed(familyId: string): Promise<string> {
       .select('metric_type, value, unit, metric_time, created_at')
       .eq('family_id', familyId)
       .in('metric_type', ['formula', 'breastmilk'])
-      .gte('created_at', new Date(today.getTime()).toISOString())
-      .lt('created_at', new Date(today.getTime() + 86400000).toISOString())
+      .gte('created_at', todayStart.toISOString())
+      .lt('created_at', todayEnd.toISOString())
       .order('created_at', { ascending: true })
     
     if (error) {
