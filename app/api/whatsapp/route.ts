@@ -241,7 +241,7 @@ export async function POST(request: NextRequest) {
         });
       }
       
-      let report = `📊 Jaian (Baby) - Today vs Yesterday
+      let report = `TEST_VERSION_1781086661
 
 Today (${todayStr}):
 `;
