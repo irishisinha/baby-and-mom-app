@@ -198,6 +198,7 @@ export async function POST(request: NextRequest) {
       if (feedList) {
         return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${feedList}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
       }
+    }
 
     // Handle report command
     if (messageBody.toLowerCase().trim() === 'report') {
@@ -212,7 +213,6 @@ export async function POST(request: NextRequest) {
     if (appointmentData && appointmentData.isAppointment) {
       try {
         const { data, error } = await supabase.from('appointments').insert({
-          user_id: 'df3d99a8-f7a2-44cf-bcb4-9c5f3300caa6',
           doctor: appointmentData.title,
           reason: appointmentData.description,
           appointment_date: appointmentData.appointment_date.split('T')[0],
