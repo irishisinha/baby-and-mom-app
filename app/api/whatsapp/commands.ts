@@ -115,7 +115,7 @@ async function cmdFeed(familyId: string): Promise<string> {
   try {
     const { data: metrics, error } = await supabaseAdmin
       .from('baby_metrics')
-      .select('metric_type, value, unit, metric_time, created_at')
+      .select('metric_type, value, unit, created_at')
       .eq('family_id', familyId)
       .in('metric_type', ['formula', 'breastmilk'])
       .gte('created_at', todayStart.toISOString())
