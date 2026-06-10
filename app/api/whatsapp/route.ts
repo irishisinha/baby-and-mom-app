@@ -277,7 +277,31 @@ export async function POST(request: NextRequest) {
 
         // Handle report command
     if (messageBody.toLowerCase().includes('report')) {
-      const report = await getTodayVsYesterdayReport();
+      const now = new Date();
+      const todayStr = now.toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
+      const yesterday = new Date(now); yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = yesterday.toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
+      
+      const { data: allData } = await supabase.from('baby_metrics').select('*').eq('family_id', FAMILY_ID).limit(500);
+      
+      const today = {}; const yest = {};
+      if (allData) {
+        allData.forEach((m: any) => {
+          if (m.metric_type !== 'formula' && m.metric_type !== 'breastmilk') return;
+          const d = new Date(m.created_at).toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
+          const v = parseFloat(m.value) || 0;
+          if (d === todayStr) { today[m.metric_type] = (today[m.metric_type] || 0) + v; }
+          else if (d === yesterdayStr) { yest[m.metric_type] = (yest[m.metric_type] || 0) + v; }
+        });
+      }
+      
+      let report = `📊 Jaian (Baby) - Today vs Yesterday
+
+Today (${todayStr}):
+`;
+      const types = ['formula', 'breastmilk'];
+      types.forEach((t) => { const tv = today[t] || 0; const yv = yest[t] || 0; report += `  ${t}: ${tv} (yesterday: ${yv})
+`; });
       return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${report}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
     }
 
