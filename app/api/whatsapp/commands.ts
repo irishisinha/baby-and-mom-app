@@ -24,42 +24,57 @@ async function cmdReport(familyId: string): Promise<string> {
     day: '2-digit',
     timeZone: 'Europe/London'
   })
+  
   const [year, month, day] = formatter.format(now).split('-')
   const todayStart = new Date(`${year}-${month}-${day}T00:00:00Z`)
   const todayEnd = new Date(todayStart.getTime() + 86400000)
-  const todayStr = `${year}-${month}-${day}`
   
-  let r = `Daily Report - ${todayStr}\n\n`
+  const yesterday = new Date(now)
+  yesterday.setDate(yesterday.getDate() - 1)
+  const [yYear, yMonth, yDay] = formatter.format(yesterday).split('-')
+  const yesterdayStart = new Date(`${yYear}-${yMonth}-${yDay}T00:00:00Z`)
+  const yesterdayEnd = new Date(yesterdayStart.getTime() + 86400000)
   
-  const { data: events } = await supabaseAdmin
+  const { data: todayData } = await supabaseAdmin
     .from('baby_metrics')
     .select('metric_type, value')
     .eq('family_id', familyId)
-    .in('metric_type', ['formula', 'breastmilk'])
     .gte('created_at', todayStart.toISOString())
     .lt('created_at', todayEnd.toISOString())
   
-  if (!events?.length) {
-    return `No entries logged yet on ${todayStr}`
+  const { data: yesterdayData } = await supabaseAdmin
+    .from('baby_metrics')
+    .select('metric_type, value')
+    .eq('family_id', familyId)
+    .gte('created_at', yesterdayStart.toISOString())
+    .lt('created_at', yesterdayEnd.toISOString())
+  
+  const todayTotals: Record<string, number> = {}
+  const yesterdayTotals: Record<string, number> = {}
+  
+  if (todayData) {
+    todayData.forEach((m: any) => {
+      const val = parseFloat(m.value) || 0
+      todayTotals[m.metric_type] = (todayTotals[m.metric_type] || 0) + val
+    })
   }
   
-  const counts: Record<string, any> = {}
-  events.forEach(e => {
-    if (!counts[e.metric_type]) counts[e.metric_type] = { count: 0, values: [] }
-    counts[e.metric_type].count++
-    if (e.value) counts[e.metric_type].values.push(e.value)
+  if (yesterdayData) {
+    yesterdayData.forEach((m: any) => {
+      const val = parseFloat(m.value) || 0
+      yesterdayTotals[m.metric_type] = (yesterdayTotals[m.metric_type] || 0) + val
+    })
+  }
+  
+  let msg = `📊 Jaian (Baby) - Today vs Yesterday\n\nToday (${year}-${month}-${day}):\n`
+  const types = ['formula', 'breastmilk', 'vaccine', 'potty', 'bath']
+  types.forEach((t) => {
+    const tv = todayTotals[t] || 0
+    const yv = yesterdayTotals[t] || 0
+    msg += `  ${t}: ${tv} (yesterday: ${yv})\n`
   })
   
-  r += `Baby - Jaian\n`
-  Object.entries(counts).forEach(([type, data]: [string, any]) => {
-    if (data.values.length > 0) {
-      r += `  • ${type}: ${data.values.join(', ')}\n`
-    } else {
-      r += `  • ${type}: ${data.count}\n`
-    }
-  })
-  
-  return r
+  return msg
 }
 
 async function cmdAppt(familyId: string): Promise<string> {
