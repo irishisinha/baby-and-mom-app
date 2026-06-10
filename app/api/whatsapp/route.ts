@@ -227,10 +227,12 @@ export async function POST(request: NextRequest) {
       const yesterdayStr = yesterday.toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
       
       const { data: allData } = await supabase.from('baby_metrics').select('*').eq('family_id', FAMILY_ID).limit(500);
+      console.log("[REPORT-DATA] allData length:", allData?.length);
       
       const today: Record<string, number> = {}; const yest: Record<string, number> = {};
       if (allData) {
         allData.forEach((m: any) => {
+        console.log("[REPORT-RECORD]", m.metric_type, m.value, m.created_at);
           if (m.metric_type !== 'formula' && m.metric_type !== 'breastmilk') return;
           const d = new Date(m.created_at).toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
           const v = parseFloat(m.value) || 0;
