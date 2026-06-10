@@ -17,16 +17,27 @@ export async function handleCommand(text: string, phone: string, familyId: strin
 }
 
 async function cmdReport(familyId: string): Promise<string> {
-  const today = new Date()
-  const todayStr = today.toLocaleDateString('en-CA', { timeZone: 'Europe/London' })
+  const now = new Date()
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    timeZone: 'Europe/London'
+  })
+  const [year, month, day] = formatter.format(now).split('-')
+  const todayStart = new Date(`${year}-${month}-${day}T00:00:00Z`)
+  const todayEnd = new Date(todayStart.getTime() + 86400000)
+  const todayStr = `${year}-${month}-${day}`
   
   let r = `Daily Report - ${todayStr}\n\n`
   
   const { data: events } = await supabaseAdmin
-    .from('baby_metrics').select('metric_type, value')
+    .from('baby_metrics')
+    .select('metric_type, value')
     .eq('family_id', familyId)
-    .gte('created_at', new Date(today).toISOString())
-    .lt('created_at', new Date(Date.now() + 86400000).toISOString())
+    .in('metric_type', ['formula', 'breastmilk'])
+    .gte('created_at', todayStart.toISOString())
+    .lt('created_at', todayEnd.toISOString())
   
   if (!events?.length) {
     return `No entries logged yet on ${todayStr}`
