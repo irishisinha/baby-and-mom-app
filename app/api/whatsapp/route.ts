@@ -51,62 +51,6 @@ function parseAppointmentMessage(text: string): any {
   };
 }
 
-async function getTodayVsYesterdayReport(): Promise<string> {
-  try {
-    const now = new Date();
-    
-    // Get today's date in London timezone (do NOT re-parse with new Date())
-    const todayStr = now.toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
-    
-    // Get yesterday's date by subtracting milliseconds from UTC time
-    const yesterdayMs = now.getTime() - (24 * 60 * 60 * 1000);
-    const yesterdayDate = new Date(yesterdayMs);
-    const yesterdayStr = yesterdayDate.toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
-
-    const { data: allData } = await supabase.from('baby_metrics').select('*').eq('family_id', FAMILY_ID).order('created_at', { ascending: false }).limit(500);
-
-    const todayMetrics: Record<string, number[]> = {};
-    const yesterdayMetrics: Record<string, number[]> = {};
-
-    if (allData && allData.length > 0) {
-      allData.forEach((m: any) => {
-        // Only include baby metrics, skip family wellness metrics
-        if (m.person_type && m.person_type !== 'baby') return;
-        
-        const metricDate = new Date(m.created_at).toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
-        const value = parseFloat(m.value);
-        if (!isNaN(value) && m.metric_type !== 'weight') {
-          if (metricDate === todayStr) {
-            todayMetrics[m.metric_type] = todayMetrics[m.metric_type] || [];
-            todayMetrics[m.metric_type].push(value);
-          } else if (metricDate === yesterdayStr) {
-            yesterdayMetrics[m.metric_type] = yesterdayMetrics[m.metric_type] || [];
-            yesterdayMetrics[m.metric_type].push(value);
-          }
-        }
-      });
-    }
-
-    let report = `📊 Jaian (Baby) - Today vs Yesterday\n\nToday (${todayStr}):\n`;
-    const allMetrics = new Set([...Object.keys(todayMetrics), ...Object.keys(yesterdayMetrics)]);
-    
-    if (allMetrics.size === 0) {
-      report += 'No baby metrics logged\n';
-    } else {
-      const feedMetrics = ['formula', 'breastmilk'];
-      feedMetrics.forEach((type) => {
-        const todayTotal = (todayMetrics[type] || []).reduce((a: number, b: number) => a + b, 0) || 0;
-        const yesterdayTotal = (yesterdayMetrics[type] || []).reduce((a: number, b: number) => a + b, 0) || 0;
-        report += `  ${type}: ${todayTotal} (yesterday: ${yesterdayTotal})\n`;
-      });
-    }
-
-    return report;
-  } catch (error) {
-    console.error('[REPORT-ERR]', error);
-    return 'Report: Check dashboard for latest metrics';
-  }
-}
 // Extract time from message (e.g., "at 2:30 pm" or "14:30")
 function extractMetricTime(text: string): string | null {
   const patterns = [
