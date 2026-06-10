@@ -93,7 +93,8 @@ async function getTodayVsYesterdayReport(): Promise<string> {
     if (allMetrics.size === 0) {
       report += 'No baby metrics logged\n';
     } else {
-      allMetrics.forEach((type) => {
+      const feedMetrics = ['formula', 'breastmilk'];
+      feedMetrics.forEach((type) => {
         const todayTotal = (todayMetrics[type] || []).reduce((a: number, b: number) => a + b, 0) || 0;
         const yesterdayTotal = (yesterdayMetrics[type] || []).reduce((a: number, b: number) => a + b, 0) || 0;
         report += `  ${type}: ${todayTotal} (yesterday: ${yesterdayTotal})\n`;
