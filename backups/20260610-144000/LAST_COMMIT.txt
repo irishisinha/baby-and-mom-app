@@ -1,0 +1,2 @@
+b5ca472 fix: Update report format to show Today vs Yesterday summary
+b5ca4724e49caf0f840809dedd44fd75cd2cddb1
