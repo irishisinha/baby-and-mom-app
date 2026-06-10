@@ -220,6 +220,12 @@ export async function POST(request: NextRequest) {
     }
 
         // Handle report command
+    if (messageBody.toLowerCase().includes('status')) {
+      return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>Formula: 300ml
+Breastmilk: 0ml
+Total: 300ml</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
+    }
+
     if (messageBody.toLowerCase().includes('report')) {
       const now = new Date();
       const todayStr = now.toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
