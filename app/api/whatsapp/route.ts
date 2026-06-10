@@ -207,7 +207,6 @@ export async function POST(request: NextRequest) {
         return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${report}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
       }
     }
-    }
 
     const appointmentData = parseAppointmentMessage(messageBody);
     if (appointmentData && appointmentData.isAppointment) {
