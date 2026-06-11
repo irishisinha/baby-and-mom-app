@@ -181,6 +181,14 @@ function parseMetric(text: string): any {
   let match = text.match(/formula[\s.]*(\d+)[\s.]*(ml)?/i) || text.match(/(\d+)[\s.]*(ml)[\s.]*formula/i);
   if (match) return { metric_type: 'formula', value: match[1], unit: 'ml', isMetric: true, personType };
 
+  // Baby Medicine - "paracetamol", "medicine paracetamol", "0810- paracetamol"
+  if (cleanText.match(/medicine|paracetamol|ibuprofen|calpol|aspirin|antibiotic/i)) {
+    const medicineMatch = cleanText.match(/([a-z]+)/i);
+    if (medicineMatch) {
+      return { metric_type: 'medicine', value: medicineMatch[1], unit: 'given', isMetric: true, personType };
+    }
+  }
+
   // Breastmilk - "pumped 20ml", "20ml pumped", "breast milk 20"  
   match = text.match(/pumped[\s.]*(\d+)[\s.]*(ml)?/i) || 
           text.match(/(\d+)[\s.]*(ml)[\s.]*pumped/i) ||
