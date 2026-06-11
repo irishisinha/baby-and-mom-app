@@ -77,55 +77,91 @@ function extractMetricTime(text: string): string | null {
 }
 
 
+// Convert an Europe/London wall-clock time (hours/minutes) into the correct
+// UTC Date instant, using `referenceNow` to determine the current London
+// calendar date and DST offset (matches the Europe/London convention used
+// throughout this app, e.g. commands.ts / dashboard).
+function londonWallTimeToUTC(hours: number, minutes: number, referenceNow: Date): Date {
+  const ymdFormatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/London',
+    year: 'numeric', month: '2-digit', day: '2-digit'
+  })
+  const [y, mo, d] = ymdFormatter.format(referenceNow).split('-').map(Number)
+
+  const offsetFormatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Europe/London',
+    timeZoneName: 'shortOffset'
+  })
+  const tzPart = offsetFormatter.formatToParts(referenceNow).find(p => p.type === 'timeZoneName')?.value || 'GMT+0'
+  const offsetMatch = tzPart.match(/GMT([+-]\d+)?/)
+  const offsetMinutes = (offsetMatch && offsetMatch[1] ? parseInt(offsetMatch[1], 10) : 0) * 60
+
+  let result = new Date(Date.UTC(y, mo - 1, d, hours, minutes, 0) - offsetMinutes * 60000)
+
+  // If extracted time is in the future, it's probably yesterday's time
+  if (result > referenceNow) {
+    result = new Date(result.getTime() - 86400000)
+  }
+
+  return result
+}
+
 function extractTimeFromMessage(text: string): Date | null {
-  // Regex patterns for various time formats
-  // Matches: 2:47pm, 2:47 pm, 14:47, 2:47, 14:47:30, etc
-  const timePatterns = [
-    /(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(?:am|pm|a\.m\.|p\.m\.)?/i, // 2:47pm, 14:47
-    /(\d{1,2})\.(\d{2})\s*(?:am|pm)?/i, // 2.47 format
-  ]
-  
-  let timeMatch = null
+  const trimmed = text.trim()
+
+  // Family convention: "HHMM[ am/pm] - description" or "HHMM- description"
+  // e.g. "0640 pm - 90 ml formula", "0810- paracetamol", "640pm-90ml formula"
+  const prefixMatch = trimmed.match(/^(\d{3,4})\s*(am|pm|a\.m\.|p\.m\.)?\s*[-:]\s*/i)
+
+  let hours: number | null = null
+  let minutes: number | null = null
   let meridiem = ''
-  
-  for (const pattern of timePatterns) {
-    const match = text.match(pattern)
-    if (match) {
-      timeMatch = match
-      // Check for am/pm after the time
-      const afterTime = text.substring(match.index + match[0].length, match.index + match[0].length + 5)
-      if (afterTime.toLowerCase().includes('pm') || afterTime.toLowerCase().includes('p.m')) meridiem = 'PM'
-      else if (afterTime.toLowerCase().includes('am') || afterTime.toLowerCase().includes('a.m')) meridiem = 'AM'
-      else if (match[0].toLowerCase().includes('pm')) meridiem = 'PM'
-      else if (match[0].toLowerCase().includes('am')) meridiem = 'AM'
-      break
+
+  if (prefixMatch) {
+    const digits = prefixMatch[1]
+    const h = digits.length === 4 ? parseInt(digits.slice(0, 2), 10) : parseInt(digits.slice(0, 1), 10)
+    const m = digits.length === 4 ? parseInt(digits.slice(2), 10) : parseInt(digits.slice(1), 10)
+
+    if (h <= 23 && m <= 59) {
+      hours = h
+      minutes = m
+      const ampm = (prefixMatch[2] || '').toLowerCase().replace(/\./g, '')
+      if (ampm === 'pm') meridiem = 'PM'
+      else if (ampm === 'am') meridiem = 'AM'
     }
   }
-  
-  if (!timeMatch) return null
-  
-  let hours = parseInt(timeMatch[1])
-  const minutes = parseInt(timeMatch[2])
-  
+
+  if (hours === null) {
+    // Fallback: time mentioned anywhere in the message, e.g. "2:47pm", "14:47", "2.47pm"
+    const timePatterns = [
+      /(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(?:am|pm|a\.m\.|p\.m\.)?/i, // 2:47pm, 14:47
+      /(\d{1,2})\.(\d{2})\s*(?:am|pm)?/i, // 2.47 format
+    ]
+
+    for (const pattern of timePatterns) {
+      const match = trimmed.match(pattern)
+      if (match) {
+        // Check for am/pm after the time
+        const afterTime = trimmed.substring(match.index! + match[0].length, match.index! + match[0].length + 5)
+        if (afterTime.toLowerCase().includes('pm') || afterTime.toLowerCase().includes('p.m')) meridiem = 'PM'
+        else if (afterTime.toLowerCase().includes('am') || afterTime.toLowerCase().includes('a.m')) meridiem = 'AM'
+        else if (match[0].toLowerCase().includes('pm')) meridiem = 'PM'
+        else if (match[0].toLowerCase().includes('am')) meridiem = 'AM'
+
+        hours = parseInt(match[1], 10)
+        minutes = parseInt(match[2], 10)
+        break
+      }
+    }
+  }
+
+  if (hours === null || minutes === null) return null
+
   // Handle 12-hour format
   if (meridiem === 'PM' && hours !== 12) hours += 12
   if (meridiem === 'AM' && hours === 12) hours = 0
-  
-  // If no meridiem and hours < 12, assume AM; if >= 12 assume PM
-  if (!meridiem && hours < 12) {
-    // Could be either, but assume same day
-    // If hours >= 13, it's 24-hour format
-  }
-  
-  const now = new Date()
-  const date = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, 0)
-  
-  // If extracted time is in the future, it's probably yesterday's time
-  if (date > now) {
-    date.setDate(date.getDate() - 1)
-  }
-  
-  return date
+
+  return londonWallTimeToUTC(hours, minutes, new Date())
 }
 
 function parseMetric(text: string): any {
