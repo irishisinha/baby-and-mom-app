@@ -2,8 +2,16 @@
 
 import { useState, useEffect } from 'react'
 
+interface Reminder {
+  id: string
+  type: string
+  reminder_time: string
+  message: string
+  enabled: boolean
+}
+
 export default function RemindersPage() {
-  const [reminders, setReminders] = useState([])
+  const [reminders, setReminders] = useState<Reminder[]>([])
   const [loading, setLoading] = useState(true)
   const [newReminder, setNewReminder] = useState({
     type: 'feed',
@@ -50,7 +58,7 @@ export default function RemindersPage() {
     }
   }
 
-  const toggleReminder = async (id, enabled) => {
+  const toggleReminder = async (id: string, enabled: boolean) => {
     try {
       await fetch('/api/reminders', {
         method: 'PUT',
@@ -63,7 +71,7 @@ export default function RemindersPage() {
     }
   }
 
-  const deleteReminder = async (id) => {
+  const deleteReminder = async (id: string) => {
     try {
       await fetch(`/api/reminders?id=${id}`, { method: 'DELETE' })
       setReminders(reminders.filter(r => r.id !== id))
