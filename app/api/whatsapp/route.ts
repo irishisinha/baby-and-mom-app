@@ -69,7 +69,7 @@ function parseAppointmentMessage(text: string): any {
   if (!/\bappointment\b/i.test(trimmed)) return null;
 
   const naturalMatch = trimmed.match(new RegExp(
-    `^(?:(.+?)\\s+)?appointment\\b\\s*(?:on\\s+|for\\s+)?(?:the\\s+)?(?:` +
+    `^(?:(.+?)\\s+)?appointment\\b\\s*(?:on\\s+|for\\s+)?(?:the\\s+)?(?:([A-Za-z][A-Za-z\\s]*?)\\s+)?(?:` +
       `(\\d{1,2})(?:st|nd|rd|th)?\\s+(?:of\\s+)?(${MONTH_PATTERN})` +
       `|(${MONTH_PATTERN})\\s+(\\d{1,2})(?:st|nd|rd|th)?` +
     `)\\s*(?:at\\s+)?(\\d{1,2})(?:[:.](\\d{2}))?\\s*(am|pm|a\\.m\\.|p\\.m\\.)?\\s*(.*)$`,
@@ -77,7 +77,7 @@ function parseAppointmentMessage(text: string): any {
   ));
   if (!naturalMatch) return null;
 
-  const [, rawTitle, day1, month1, month2, day2, hourStr, minuteStr, ampmRaw, rest] = naturalMatch;
+  const [, leadingTitle, middleTitle, day1, month1, month2, day2, hourStr, minuteStr, ampmRaw, rest] = naturalMatch;
   const day = day1 || day2;
   if (parseInt(day, 10) < 1 || parseInt(day, 10) > 31) return null;
   const monthNum = MONTH_MAP[(month1 || month2).toLowerCase()];
@@ -91,7 +91,7 @@ function parseAppointmentMessage(text: string): any {
   if (ampm === 'pm' && hours !== 12) hours += 12;
   if (ampm === 'am' && hours === 12) hours = 0;
 
-  return buildAppointment(rawTitle || 'Appointment', rest.trim() || 'Appointment', day, monthNum, hours, minutes);
+  return buildAppointment(leadingTitle || middleTitle || 'Appointment', rest.trim() || 'Appointment', day, monthNum, hours, minutes);
 }
 
 // Extract time from message (e.g., "at 2:30 pm" or "14:30")
