@@ -15,11 +15,15 @@ echo "Deploying to production..."
 DEPLOY_OUTPUT=$(vercel --prod 2>&1)
 echo "$DEPLOY_OUTPUT"
 
-# Extract the deployment URL from output
-DEPLOYMENT_URL=$(echo "$DEPLOY_OUTPUT" | grep -oP 'https://baby-and-mom-\w+-rishisinhax-4807s-projects\.vercel\.app' | head -1)
+# Extract the deployment URL from output (use -E, not -P: PCRE isn't
+# available in the grep bundled with Git Bash on Windows)
+DEPLOYMENT_URL=$(echo "$DEPLOY_OUTPUT" | grep -oE 'https://baby-and-mom-[A-Za-z0-9]+-rishisinhax-4807s-projects\.vercel\.app' | head -1)
 
 if [ -z "$DEPLOYMENT_URL" ]; then
-    echo "Error: Could not extract deployment URL"
+    echo "Error: Could not extract deployment URL from vercel output above."
+    echo "The build above may still have succeeded - copy the 'Production:' URL"
+    echo "from it manually and run:"
+    echo "  vercel alias set <that-url> baby-and-mom-app.vercel.app"
     exit 1
 fi
 
