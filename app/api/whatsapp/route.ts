@@ -46,6 +46,7 @@ function buildAppointment(title: string, description: string, day: string, month
 
 function parseAppointmentMessage(text: string): any {
   const trimmed = text.trim();
+  console.log('[APT-PARSE]', { text, trimmed });
 
   // Legacy format: "Appointment- [desc] [day] [month] [HH:MM am/pm] [title]"
   const strictMatch = trimmed.match(/^Appointment-\s*(.+)$/i);
@@ -66,7 +67,10 @@ function parseAppointmentMessage(text: string): any {
 
   // Natural format: "[title] appointment [on] [DD(st/nd/rd/th)] [of] [month] [at] [H[:MM][am/pm]] [description]"
   // e.g. "Shiva appointment 9th July 3pm", "appointment for Shiva on 9 July at 3:30pm with Dr Smith"
-  if (!/\bappointment\b/i.test(trimmed)) return null;
+  if (!/\bappointment\b/i.test(trimmed)) {
+    console.log('[APT-PARSE] No "appointment" keyword');
+    return null;
+  }
 
   const naturalMatch = trimmed.match(new RegExp(
     `^(?:(?!appointment\\b)(.+?)\\s+)?appointment\\b\\s*(?:on\\s+|for\\s+)?(?:the\\s+)?(?:([A-Za-z][A-Za-z\\s]*?)\\s+)?(?:` +
@@ -75,7 +79,11 @@ function parseAppointmentMessage(text: string): any {
     `)\\s*(?:at\\s+)?(\\d{1,2})(?:[:.](\\d{2}))?\\s*(am|pm|a\\.m\\.|p\\.m\\.)?\\s*(.*)$`,
     'i'
   ));
-  if (!naturalMatch) return null;
+  console.log('[APT-PARSE] naturalMatch:', naturalMatch ? 'YES' : 'NO');
+  if (!naturalMatch) {
+    console.log('[APT-PARSE] Returning null - no natural match');
+    return null;
+  }
 
   const [, leadingTitle, middleTitle, day1, month1, month2, day2, hourStr, minuteStr, ampmRaw, rest] = naturalMatch;
   const day = day1 || day2;
