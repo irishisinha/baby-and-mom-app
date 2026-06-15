@@ -82,7 +82,8 @@ function parseAppointmentMessage(text: string): any {
   console.log('[APT-PARSE] naturalMatch:', naturalMatch ? 'YES' : 'NO');
   if (!naturalMatch) {
     console.log('[APT-PARSE] Returning null - no natural match');
-    return null;
+    const codes = trimmed.split('').map(c => c.charCodeAt(0)).join(',');
+    return { debugFail: 'no-natural-match', trimmed: JSON.stringify(trimmed), codes };
   }
 
   const [, leadingTitle, middleTitle, day1, month1, month2, day2, hourStr, minuteStr, ampmRaw, rest] = naturalMatch;
@@ -349,6 +350,9 @@ export async function POST(request: NextRequest) {
     }
 
     const appointmentData = parseAppointmentMessage(messageBody);
+    if (appointmentData && appointmentData.debugFail) {
+      return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>DBG ${appointmentData.debugFail}: ${appointmentData.trimmed} | codes: ${appointmentData.codes}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
+    }
     if (appointmentData && appointmentData.isAppointment) {
       try {
         const { data, error } = await supabase.from('appointments').insert({
