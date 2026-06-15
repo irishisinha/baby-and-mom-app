@@ -91,7 +91,7 @@ export default function DashboardPage() {
 
   const fetchData = async () => {
     try {
-      await Promise.all([fetchMetrics(), fetchAppointments()]);
+      await Promise.all([fetchMetrics(), fetchAppointments(), fetchLastWeight()]);
       setLastUpdate(formatLondonTime(new Date()));
     } finally {
       setLoading(false);
@@ -110,7 +110,21 @@ export default function DashboardPage() {
       setMetrics(data as Metric[]);
       calculateSummaryStats(data as Metric[]);
       calculateDayComparison(data as Metric[]);
-      calculateLastWeight(data as Metric[]);
+    }
+  };
+
+  const fetchLastWeight = async () => {
+    const { data, error } = await supabase
+      .from('baby_metrics')
+      .select('*')
+      .eq('baby_id', BABY_ID)
+      .eq('metric_type', 'weight')
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    if (data && data.length > 0 && !error) {
+      const date = formatLondonDate(data[0].created_at);
+      setLastWeight(`${data[0].value} ${data[0].unit} (${date})`);
     }
   };
 
@@ -211,14 +225,6 @@ export default function DashboardPage() {
     setDayComparison(comparison);
   };
 
-  const calculateLastWeight = (metricsData: Metric[]) => {
-    const weightMetric = metricsData.find((m) => m.metric_type === 'weight');
-    if (weightMetric) {
-      const date = formatLondonDate(weightMetric.created_at);
-      setLastWeight(`${weightMetric.value} ${weightMetric.unit} (${date})`);
-    }
-  };
-
   const setupSubscriptions = () => {
     const metricsSubscription = supabase
       .channel('baby_metrics_channel')
@@ -227,6 +233,7 @@ export default function DashboardPage() {
         { event: 'INSERT', schema: 'public', table: 'baby_metrics', filter: `baby_id=eq.${BABY_ID}` },
         () => {
           fetchMetrics();
+          fetchLastWeight();
           setLastUpdate(formatLondonTime(new Date()));
         }
       )

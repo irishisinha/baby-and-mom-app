@@ -276,16 +276,10 @@ function parseMetric(text: string): any {
           text.match(/(\d+)[\s.]*(ml)[\s.]*breastmilk/i);
   if (match) return { metric_type: 'breastmilk', value: match[1], unit: 'ml', isMetric: true, personType };
 
-  // WeightMetric: true, personType };
-
-
-  // Breastmilk - pumped, breast milk variations
-  match = text.match(/pumped[s.]*(d+)[s.]*(ml)?/i) || text.match(/(d+)[s.]*(ml)[s.]*pumped/i) || text.match(/breast[s.]*milk[s.]*(d+)[s.]*(ml)?/i) || text.match(/(d+)[s.]*(ml)[s.]*breast[s.]*milk/i) || text.match(/breastmilk[s.]*(d+)[s.]*(ml)?/i) || text.match(/(d+)[s.]*(ml)[s.]*breastmilk/i);
-  if (match) return { metric_type: 'breastmilk', value: match[1], unit: 'ml', isMetric: true, personType };
+  // Weight - "5.5kg", "5.5 kg weight", "weight 5.5kg"
   match = text.match(/(\d+(?:[.,]\d+)?)[\s.]*(kg)[\s.]*(w(eight|right)?)?/i) || text.match(/(w(eight|right)?)[\s.]*(\d+(?:[.,]\d+)?)[\s.]*(kg)?/i);
   if (match) {
-    let val = match[1] || match[3];
-    val = val.replace(',', '.');
+    const val = (/^\d/.test(match[1]) ? match[1] : match[3]).replace(',', '.');
     return { metric_type: 'weight', value: val, unit: 'kg', isMetric: true, personType };
   }
 
