@@ -151,15 +151,33 @@ export default function DashboardPage() {
     });
 
     const stats: SummaryStats = {};
+
+    // Formula/breastmilk are logged per-feed, but the "7 day average" should
+    // represent a typical day's total intake, not the average size of a
+    // single feed. So sum per day first, then average those daily totals.
+    const DAILY_TOTAL_TYPES = ['formula', 'breastmilk'];
+
     const grouped = last7Days.reduce((acc, m) => {
       acc[m.metric_type] = acc[m.metric_type] || [];
-      acc[m.metric_type].push(parseFloat(m.value));
+      acc[m.metric_type].push(m);
       return acc;
-    }, {} as Record<string, number[]>);
+    }, {} as Record<string, Metric[]>);
 
-    Object.entries(grouped).forEach(([type, values]) => {
-      const avg = values.reduce((a, b) => a + b, 0) / values.length;
-      stats[type] = { avg: parseFloat(avg.toFixed(2)), count: values.length };
+    Object.entries(grouped).forEach(([type, entries]) => {
+      if (DAILY_TOTAL_TYPES.includes(type)) {
+        const dailyTotals: Record<string, number> = {};
+        entries.forEach((m) => {
+          const day = formatLondonDate(m.created_at);
+          dailyTotals[day] = (dailyTotals[day] || 0) + parseFloat(m.value);
+        });
+        const totals = Object.values(dailyTotals);
+        const avg = totals.reduce((a, b) => a + b, 0) / totals.length;
+        stats[type] = { avg: parseFloat(avg.toFixed(2)), count: totals.length };
+      } else {
+        const values = entries.map((m) => parseFloat(m.value));
+        const avg = values.reduce((a, b) => a + b, 0) / values.length;
+        stats[type] = { avg: parseFloat(avg.toFixed(2)), count: values.length };
+      }
     });
 
     setSummaryStats(stats);
@@ -325,7 +343,9 @@ export default function DashboardPage() {
               <div key={type} className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-4 border border-green-200">
                 <p className="text-sm text-gray-600 capitalize">{type}</p>
                 <p className="text-2xl font-bold text-green-600">{data.avg}</p>
-                <p className="text-xs text-gray-500 mt-1">avg ({data.count} entries)</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  avg ({data.count} {['formula', 'breastmilk'].includes(type) ? 'days' : 'entries'})
+                </p>
               </div>
             ))}
           </div>
