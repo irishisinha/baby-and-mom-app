@@ -13,43 +13,85 @@ const AUTHORIZED_NUMBERS = ['+919604898762', '+919871319008', '+919914789171'];
 const FAMILY_ID = 'df3d99a8-f7a2-44cf-bcb4-9c5f3300caa6';
 const BABY_ID = 'e8a7c56c-62c6-442c-94ac-518928c8c07b';
 
-function parseAppointmentMessage(text: string): any {
-  const appointmentMatch = text.match(/^Appointment-\s*(.+)$/i);
-  if (!appointmentMatch) return null;
+const MONTH_MAP: { [key: string]: number } = {
+  jan: 1, january: 1,
+  feb: 2, february: 2,
+  mar: 3, march: 3,
+  apr: 4, april: 4,
+  may: 5,
+  jun: 6, june: 6,
+  jul: 7, july: 7,
+  aug: 8, august: 8,
+  sep: 9, sept: 9, september: 9,
+  oct: 10, october: 10,
+  nov: 11, november: 11,
+  dec: 12, december: 12,
+};
 
-  const content = appointmentMatch[1].trim();
-  const detailsMatch = content.match(/^(.+?)\s+(\d{1,2})\s+(\w+)\s+(\d{1,2}):(\d{2})\s*(am|pm)\s+(.+)$/i);
-  
-  if (!detailsMatch) return null;
+const MONTH_PATTERN = '(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t|tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)';
 
-  const [, description, day, month, hour, minute, ampm, title] = detailsMatch;
-  
-  let hours = parseInt(hour);
-  if (ampm.toLowerCase() === 'pm' && hours !== 12) hours += 12;
-  if (ampm.toLowerCase() === 'am' && hours === 12) hours = 0;
-  
-  const now = new Date();
-  const currentYear = now.getFullYear();
-  
-  const monthMap: { [key: string]: number } = {
-    january: 1, february: 2, march: 3, april: 4, may: 5, june: 6,
-    july: 7, august: 8, september: 9, october: 10, november: 11, december: 12
-  };
-  
-  const monthNum = monthMap[month.toLowerCase()];
-  if (!monthNum) return null;
-
+function buildAppointment(title: string, description: string, day: string, monthNum: number, hours: number, minutes: number): any {
+  const currentYear = new Date().getFullYear();
   const dateStr = `${currentYear}-${String(monthNum).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-  const timeStr = `${String(hours).padStart(2, '0')}:${minute}`;
-  const isoDateTime = `${dateStr}T${timeStr}`;
+  const timeStr = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
 
   return {
     title: title.trim(),
     description: description.trim(),
-    appointment_date: isoDateTime,
+    appointment_date: `${dateStr}T${timeStr}`,
     appointment_time: timeStr,
     isAppointment: true
   };
+}
+
+function parseAppointmentMessage(text: string): any {
+  const trimmed = text.trim();
+
+  // Legacy format: "Appointment- [desc] [day] [month] [HH:MM am/pm] [title]"
+  const strictMatch = trimmed.match(/^Appointment-\s*(.+)$/i);
+  if (strictMatch) {
+    const detailsMatch = strictMatch[1].trim().match(/^(.+?)\s+(\d{1,2})\s+(\w+)\s+(\d{1,2}):(\d{2})\s*(am|pm)\s+(.+)$/i);
+    if (!detailsMatch) return null;
+
+    const [, description, day, month, hour, minute, ampm, title] = detailsMatch;
+    const monthNum = MONTH_MAP[month.toLowerCase()];
+    if (!monthNum) return null;
+
+    let hours = parseInt(hour, 10);
+    if (ampm.toLowerCase() === 'pm' && hours !== 12) hours += 12;
+    if (ampm.toLowerCase() === 'am' && hours === 12) hours = 0;
+
+    return buildAppointment(title, description, day, monthNum, hours, parseInt(minute, 10));
+  }
+
+  // Natural format: "[title] appointment [on] [DD(st/nd/rd/th)] [of] [month] [at] [H[:MM][am/pm]] [description]"
+  // e.g. "Shiva appointment 9th July 3pm", "appointment for Shiva on 9 July at 3:30pm with Dr Smith"
+  if (!/\bappointment\b/i.test(trimmed)) return null;
+
+  const naturalMatch = trimmed.match(new RegExp(
+    `^(?:(.+?)\\s+)?appointment\\b\\s*(?:on\\s+|for\\s+)?(?:the\\s+)?(?:` +
+      `(\\d{1,2})(?:st|nd|rd|th)?\\s+(?:of\\s+)?(${MONTH_PATTERN})` +
+      `|(${MONTH_PATTERN})\\s+(\\d{1,2})(?:st|nd|rd|th)?` +
+    `)\\s*(?:at\\s+)?(\\d{1,2})(?:[:.](\\d{2}))?\\s*(am|pm|a\\.m\\.|p\\.m\\.)?\\s*(.*)$`,
+    'i'
+  ));
+  if (!naturalMatch) return null;
+
+  const [, rawTitle, day1, month1, month2, day2, hourStr, minuteStr, ampmRaw, rest] = naturalMatch;
+  const day = day1 || day2;
+  if (parseInt(day, 10) < 1 || parseInt(day, 10) > 31) return null;
+  const monthNum = MONTH_MAP[(month1 || month2).toLowerCase()];
+  if (!monthNum) return null;
+
+  let hours = parseInt(hourStr, 10);
+  const minutes = minuteStr ? parseInt(minuteStr, 10) : 0;
+  if (hours > 23 || minutes > 59) return null;
+
+  const ampm = (ampmRaw || '').toLowerCase().replace(/\./g, '');
+  if (ampm === 'pm' && hours !== 12) hours += 12;
+  if (ampm === 'am' && hours === 12) hours = 0;
+
+  return buildAppointment(rawTitle || 'Appointment', rest.trim() || 'Appointment', day, monthNum, hours, minutes);
 }
 
 // Extract time from message (e.g., "at 2:30 pm" or "14:30")
