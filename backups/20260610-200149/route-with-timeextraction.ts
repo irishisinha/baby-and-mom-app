@@ -1,0 +1,330 @@
+// Cache purged rebuild
+﻿import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
+import { handleCommand } from './commands';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  { auth: { persistSession: false } }
+);
+
+const AUTHORIZED_NUMBERS = ['+919604898762', '+919871319008', '+919914789171'];
+const FAMILY_ID = 'df3d99a8-f7a2-44cf-bcb4-9c5f3300caa6';
+const BABY_ID = 'e8a7c56c-62c6-442c-94ac-518928c8c07b';
+
+function parseAppointmentMessage(text: string): any {
+  const appointmentMatch = text.match(/^Appointment-\s*(.+)$/i);
+  if (!appointmentMatch) return null;
+
+  const content = appointmentMatch[1].trim();
+  const detailsMatch = content.match(/^(.+?)\s+(\d{1,2})\s+(\w+)\s+(\d{1,2}):(\d{2})\s*(am|pm)\s+(.+)$/i);
+  
+  if (!detailsMatch) return null;
+
+  const [, description, day, month, hour, minute, ampm, title] = detailsMatch;
+  
+  let hours = parseInt(hour);
+  if (ampm.toLowerCase() === 'pm' && hours !== 12) hours += 12;
+  if (ampm.toLowerCase() === 'am' && hours === 12) hours = 0;
+  
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  
+  const monthMap: { [key: string]: number } = {
+    january: 1, february: 2, march: 3, april: 4, may: 5, june: 6,
+    july: 7, august: 8, september: 9, october: 10, november: 11, december: 12
+  };
+  
+  const monthNum = monthMap[month.toLowerCase()];
+  if (!monthNum) return null;
+
+  const dateStr = `${currentYear}-${String(monthNum).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  const timeStr = `${String(hours).padStart(2, '0')}:${minute}`;
+  const isoDateTime = `${dateStr}T${timeStr}`;
+
+  return {
+    title: title.trim(),
+    description: description.trim(),
+    appointment_date: isoDateTime,
+    appointment_time: timeStr,
+    isAppointment: true
+  };
+}
+
+// Extract time from message (e.g., "at 2:30 pm" or "14:30")
+function extractMetricTime(text: string): string | null {
+  const patterns = [
+    /ats+(d{1,2}):(d{2})s*(am|pm)/i,
+    /(d{1,2}):(d{2})s*(am|pm)/i,
+    /ats+(d{1,2}):(d{2})/,
+    /(d{1,2}):(d{2})(?!d)/
+  ];
+  for (const p of patterns) {
+    const m = text.match(p);
+    if (m) {
+      let h = parseInt(m[1]);
+      const min = m[2];
+      const ap = m[3];
+      if (ap) {
+        if (ap.toLowerCase() === "pm" && h !== 12) h += 12;
+        if (ap.toLowerCase() === "am" && h === 12) h = 0;
+      }
+      return String(h).padStart(2, "0") + ":" + min + ":00";
+    }
+  }
+  return null;
+}
+
+
+function extractTimeFromMessage(text: string): Date | null {
+  // Regex patterns for various time formats
+  // Matches: 2:47pm, 2:47 pm, 14:47, 2:47, 14:47:30, etc
+  const timePatterns = [
+    /(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(?:am|pm|a\.m\.|p\.m\.)?/i, // 2:47pm, 14:47
+    /(\d{1,2})\.(\d{2})\s*(?:am|pm)?/i, // 2.47 format
+  ]
+  
+  let timeMatch = null
+  let meridiem = ''
+  
+  for (const pattern of timePatterns) {
+    const match = text.match(pattern)
+    if (match) {
+      timeMatch = match
+      // Check for am/pm after the time
+      const afterTime = text.substring(match.index + match[0].length, match.index + match[0].length + 5)
+      if (afterTime.toLowerCase().includes('pm') || afterTime.toLowerCase().includes('p.m')) meridiem = 'PM'
+      else if (afterTime.toLowerCase().includes('am') || afterTime.toLowerCase().includes('a.m')) meridiem = 'AM'
+      else if (match[0].toLowerCase().includes('pm')) meridiem = 'PM'
+      else if (match[0].toLowerCase().includes('am')) meridiem = 'AM'
+      break
+    }
+  }
+  
+  if (!timeMatch) return null
+  
+  let hours = parseInt(timeMatch[1])
+  const minutes = parseInt(timeMatch[2])
+  
+  // Handle 12-hour format
+  if (meridiem === 'PM' && hours !== 12) hours += 12
+  if (meridiem === 'AM' && hours === 12) hours = 0
+  
+  // If no meridiem and hours < 12, assume AM; if >= 12 assume PM
+  if (!meridiem && hours < 12) {
+    // Could be either, but assume same day
+    // If hours >= 13, it's 24-hour format
+  }
+  
+  const now = new Date()
+  const date = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, 0)
+  
+  // If extracted time is in the future, it's probably yesterday's time
+  if (date > now) {
+    date.setDate(date.getDate() - 1)
+  }
+  
+  return date
+}
+
+function parseMetric(text: string): any {
+  let cleanText = text.toLowerCase().trim();
+  let personType = 'baby';
+  
+  // Family members
+  if (cleanText.match(/^(shiva|mom|mother)\s+/)) {
+    personType = 'mom';
+    cleanText = cleanText.replace(/^(shiva|mom|mother)\s+/i, '').trim();
+  } else if (cleanText.match(/^(rishi|dad|father)\s+/)) {
+    personType = 'dad';
+    cleanText = cleanText.replace(/^(rishi|dad|father)\s+/i, '').trim();
+  } else if (cleanText.match(/^(ichi|grandmom|grandma)\s+/)) {
+    personType = 'grandmom';
+    cleanText = cleanText.replace(/^(ichi|grandmom|grandma)\s+/i, '').trim();
+  }
+  
+  // Wellness metrics
+  if (personType !== 'baby') {
+    if (cleanText.includes('mood')) {
+      const moodVal = cleanText.replace(/mood/i, '').trim().split(/\s+/)[0] || 'logged';
+      return { metric_type: 'wellness_mood', value: moodVal, unit: 'text', isMetric: true, personType };
+    }
+    if (cleanText.includes('steps')) {
+      const match = cleanText.match(/(\d+)/);
+      if (match) return { metric_type: 'wellness_steps', value: match[1], unit: 'steps', isMetric: true, personType };
+    }
+    if (cleanText.includes('energy')) {
+      const match = cleanText.match(/(\d+)/);
+      if (match) return { metric_type: 'wellness_energy', value: match[1], unit: '/10', isMetric: true, personType };
+    }
+    if (cleanText.includes('pain')) {
+      const match = cleanText.match(/(\d+)/);
+      if (match) return { metric_type: 'wellness_pain', value: match[1], unit: '/10', isMetric: true, personType };
+    }
+    if (cleanText.includes('sleep')) {
+      const match = cleanText.match(/(\d+)/);
+      if (match) return { metric_type: 'wellness_sleep', value: match[1], unit: 'hours', isMetric: true, personType };
+    }
+    if (cleanText.includes('exercise')) {
+      const match = cleanText.match(/(\d+)/);
+      if (match) return { metric_type: 'wellness_exercise', value: match[1], unit: 'mins', isMetric: true, personType };
+    }
+    if (cleanText.includes('medication')) {
+      const match = cleanText.match(/(\d+)/);
+      if (match) return { metric_type: 'wellness_medication', value: match[1], unit: 'count', isMetric: true, personType };
+    }
+    return null;
+  }
+
+  // Baby metrics
+  let match = text.match(/formula[\s.]*(\d+)[\s.]*(ml)?/i) || text.match(/(\d+)[\s.]*(ml)[\s.]*formula/i);
+  if (match) return { metric_type: 'formula', value: match[1], unit: 'ml', isMetric: true, personType };
+
+  // Breastmilk - "pumped 20ml", "20ml pumped", "breast milk 20"  
+  match = text.match(/pumped[\s.]*(\d+)[\s.]*(ml)?/i) || 
+          text.match(/(\d+)[\s.]*(ml)[\s.]*pumped/i) ||
+          text.match(/breast[\s.]*milk[\s.]*(\d+)[\s.]*(ml)?/i) || 
+          text.match(/(\d+)[\s.]*(ml)[\s.]*breast[\s.]*milk/i) ||
+          text.match(/breastmilk[\s.]*(\d+)[\s.]*(ml)?/i) || 
+          text.match(/(\d+)[\s.]*(ml)[\s.]*breastmilk/i);
+  if (match) return { metric_type: 'breastmilk', value: match[1], unit: 'ml', isMetric: true, personType };
+
+  // WeightMetric: true, personType };
+
+
+  // Breastmilk - pumped, breast milk variations
+  match = text.match(/pumped[s.]*(d+)[s.]*(ml)?/i) || text.match(/(d+)[s.]*(ml)[s.]*pumped/i) || text.match(/breast[s.]*milk[s.]*(d+)[s.]*(ml)?/i) || text.match(/(d+)[s.]*(ml)[s.]*breast[s.]*milk/i) || text.match(/breastmilk[s.]*(d+)[s.]*(ml)?/i) || text.match(/(d+)[s.]*(ml)[s.]*breastmilk/i);
+  if (match) return { metric_type: 'breastmilk', value: match[1], unit: 'ml', isMetric: true, personType };
+  match = text.match(/(\d+(?:[.,]\d+)?)[\s.]*(kg)[\s.]*(w(eight|right)?)?/i) || text.match(/(w(eight|right)?)[\s.]*(\d+(?:[.,]\d+)?)[\s.]*(kg)?/i);
+  if (match) {
+    let val = match[1] || match[3];
+    val = val.replace(',', '.');
+    return { metric_type: 'weight', value: val, unit: 'kg', isMetric: true, personType };
+  }
+
+  if (/vaccine/i.test(text)) return { metric_type: 'vaccine', value: '1', unit: 'count', isMetric: true, personType };
+  if (/diaper/i.test(text)) return { metric_type: 'diaper', value: '1', unit: 'count', isMetric: true, personType };
+  if (/bath/i.test(text)) return { metric_type: 'bath', value: '1', unit: 'count', isMetric: true, personType };
+  if (/potty/i.test(text)) return { metric_type: 'potty', value: '1', unit: 'count', isMetric: true, personType };
+  if (/oil/i.test(text)) return { metric_type: 'oil', value: '1', unit: 'count', isMetric: true, personType };
+
+  match = text.match(/sleep[\s.]*(\d+)[\s.]*(hour|hr)?/i) || text.match(/(\d+)[\s.]*(hour|hr)[\s.]*sleep/i) || text.match(/(\d+)[\s.]*(hour|hr)/i);
+  if (match) return { metric_type: 'sleep', value: match[1], unit: 'hours', isMetric: true, personType };
+
+  return null;
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.text();
+    const params = new URLSearchParams(body);
+    
+    const messageBody = params.get('Body') || '';
+    const fromPhone = params.get('From') || '';
+
+    console.log('[WA-MSG]', { messageBody, fromPhone });
+
+    const normalizedPhone = fromPhone.replace(/\s+/g, '');
+    const isAuthorized = AUTHORIZED_NUMBERS.some(num => {
+      const normalizedNum = num.replace(/\s+/g, '');
+      return normalizedPhone === normalizedNum || normalizedPhone.includes(normalizedNum) || normalizedNum.includes(normalizedPhone);
+    });
+
+    if (!isAuthorized) {
+      console.log('[WA-UNAUTH]', { fromPhone });
+      return new NextResponse('<?xml version="1.0" encoding="UTF-8"?><Response><Message>Not authorized</Message></Response>', { status: 200, headers: { 'Content-Type': 'application/xml' } });
+    }
+
+    // Handle appt command
+    if (messageBody.toLowerCase().trim() === 'appt') {
+      const apptList = await handleCommand(messageBody, fromPhone, FAMILY_ID);
+      if (apptList) {
+        return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${apptList}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
+      }
+    }
+
+    // Handle feed command
+    if (messageBody.toLowerCase().trim() === 'feed') {
+      const feedList = await handleCommand(messageBody, fromPhone, FAMILY_ID);
+      if (feedList) {
+        return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${feedList}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
+      }
+    }
+
+    // Handle report command
+    if (messageBody.toLowerCase().trim() === 'report') {
+      const report = await handleCommand(messageBody, fromPhone, FAMILY_ID);
+      if (report) {
+        return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${report}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
+      }
+    }
+
+    const appointmentData = parseAppointmentMessage(messageBody);
+    if (appointmentData && appointmentData.isAppointment) {
+      try {
+        const { data, error } = await supabase.from('appointments').insert({
+          doctor: appointmentData.title,
+          reason: appointmentData.description,
+          appointment_date: appointmentData.appointment_date.split('T')[0],
+          appointment_time: appointmentData.appointment_time,
+          notes: `WhatsApp`
+        }).select();
+
+        if (error) throw error;
+        return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>✓ Appt: ${appointmentData.title}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
+      } catch (e: any) {
+        console.error('[APT-ERR]', e);
+        return new NextResponse('<?xml version="1.0" encoding="UTF-8"?><Response><Message>Appt error</Message></Response>', { status: 200, headers: { 'Content-Type': 'application/xml' } });
+      }
+    }
+        // Handle report command
+    if (messageBody.toLowerCase().includes('status')) {
+      return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>Formula: 300ml
+Breastmilk: 0ml
+Total: 300ml</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
+    }
+
+
+    const metricData = parseMetric(messageBody);
+    if (metricData && metricData.isMetric) {
+      try {
+        const extractedTime = extractTimeFromMessage(messageBody)
+        const insertData: any = {
+          family_id: FAMILY_ID,
+          metric_type: metricData.metric_type,
+          value: metricData.value,
+          unit: metricData.unit,
+          person_type: metricData.personType,
+          sent_from_phone: fromPhone,
+          created_at: extractedTime ? extractedTime.toISOString() : new Date().toISOString()
+        };
+        
+        // Only add baby_id for baby metrics
+        if (metricData.personType === 'baby') {
+          insertData.baby_id = BABY_ID;
+        }
+        
+        const { data, error } = await supabase.from('baby_metrics').insert([insertData]).select();
+
+        if (error) {
+          console.error('[INSERT-ERR]', { error: error.message, insertData });
+          throw error;
+        }
+        
+        return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>✓ ${metricData.value}${metricData.unit} ${metricData.metric_type}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
+      } catch (e: any) {
+        console.error('[METRIC-ERR]', { error: e.message, metricData });
+        return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>Error: ${e.message?.substring(0, 30) || 'metric error'}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
+      }
+    }
+
+    return new NextResponse('<?xml version="1.0" encoding="UTF-8"?><Response><Message>Baby: 30ml formula|5.5kg weight|vaccine|diaper|bath|sleep 2h. Wellness: shiva/mom steps 5000|shiva mood happy|shiva energy 7|shiva pain 3|shiva medication 2|shiva sleep 8. Rishi/Dad & Ichi/Grandmom: same. Appt: Appointment- [desc] [day] [month] [HH:MM am/pm] [title]</Message></Response>', { status: 200, headers: { 'Content-Type': 'application/xml' } });
+
+  } catch (error) {
+    console.error('[ERROR]', error);
+    return new NextResponse('<?xml version="1.0" encoding="UTF-8"?><Response><Message>Error</Message></Response>', { status: 200, headers: { 'Content-Type': 'application/xml' } });
+  }
+}
+
+
