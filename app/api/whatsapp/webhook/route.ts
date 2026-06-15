@@ -172,6 +172,7 @@ export async function POST(request: NextRequest) {
     if (appointmentData && appointmentData.isAppointment) {
       try {
         const { error } = await supabase.from('appointments').insert({
+          user_id: PILOT_FAMILY_ID,
           doctor: appointmentData.title,
           reason: appointmentData.description,
           appointment_date: appointmentData.appointment_date.split('T')[0],
