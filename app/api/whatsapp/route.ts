@@ -30,6 +30,11 @@ const MONTH_MAP: { [key: string]: number } = {
 
 const MONTH_PATTERN = '(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t|tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)';
 
+// NOTE: Defined via regex literal .source (not a "\\b" string escape) because Next.js's
+// SWC compiler mis-serializes "\\b" inside template literals used with `new RegExp(...)`,
+// turning it into a literal backspace character and silently breaking word-boundary matches.
+const WORD_BOUNDARY = /\b/.source;
+
 function buildAppointment(title: string, description: string, day: string, monthNum: number, hours: number, minutes: number): any {
   const currentYear = new Date().getFullYear();
   const dateStr = `${currentYear}-${String(monthNum).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
@@ -46,7 +51,6 @@ function buildAppointment(title: string, description: string, day: string, month
 
 function parseAppointmentMessage(text: string): any {
   const trimmed = text.trim();
-  console.log('[APT-PARSE]', { text, trimmed });
 
   // Legacy format: "Appointment- [desc] [day] [month] [HH:MM am/pm] [title]"
   const strictMatch = trimmed.match(/^Appointment-\s*(.+)$/i);
@@ -67,24 +71,16 @@ function parseAppointmentMessage(text: string): any {
 
   // Natural format: "[title] appointment [on] [DD(st/nd/rd/th)] [of] [month] [at] [H[:MM][am/pm]] [description]"
   // e.g. "Shiva appointment 9th July 3pm", "appointment for Shiva on 9 July at 3:30pm with Dr Smith"
-  if (!/\bappointment\b/i.test(trimmed)) {
-    console.log('[APT-PARSE] No "appointment" keyword');
-    return null;
-  }
+  if (!/\bappointment\b/i.test(trimmed)) return null;
 
   const naturalMatch = trimmed.match(new RegExp(
-    `^(?:(?!appointment\\b)(.+?)\\s+)?appointment\\b\\s*(?:on\\s+|for\\s+)?(?:the\\s+)?(?:([A-Za-z][A-Za-z\\s]*?)\\s+)?(?:` +
+    `^(?:(?!appointment${WORD_BOUNDARY})(.+?)\\s+)?appointment${WORD_BOUNDARY}\\s*(?:on\\s+|for\\s+)?(?:the\\s+)?(?:([A-Za-z][A-Za-z\\s]*?)\\s+)?(?:` +
       `(\\d{1,2})(?:st|nd|rd|th)?\\s+(?:of\\s+)?(${MONTH_PATTERN})` +
       `|(${MONTH_PATTERN})\\s+(\\d{1,2})(?:st|nd|rd|th)?` +
     `)\\s*(?:at\\s+)?(\\d{1,2})(?:[:.](\\d{2}))?\\s*(am|pm|a\\.m\\.|p\\.m\\.)?\\s*(.*)$`,
     'i'
   ));
-  console.log('[APT-PARSE] naturalMatch:', naturalMatch ? 'YES' : 'NO');
-  if (!naturalMatch) {
-    console.log('[APT-PARSE] Returning null - no natural match');
-    const codes = trimmed.split('').map(c => c.charCodeAt(0)).join(',');
-    return { debugFail: 'no-natural-match', trimmed: JSON.stringify(trimmed), codes };
-  }
+  if (!naturalMatch) return null;
 
   const [, leadingTitle, middleTitle, day1, month1, month2, day2, hourStr, minuteStr, ampmRaw, rest] = naturalMatch;
   const day = day1 || day2;
@@ -350,9 +346,6 @@ export async function POST(request: NextRequest) {
     }
 
     const appointmentData = parseAppointmentMessage(messageBody);
-    if (appointmentData && appointmentData.debugFail) {
-      return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>DBG ${appointmentData.debugFail}: ${appointmentData.trimmed} | codes: ${appointmentData.codes}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
-    }
     if (appointmentData && appointmentData.isAppointment) {
       try {
         const { data, error } = await supabase.from('appointments').insert({
