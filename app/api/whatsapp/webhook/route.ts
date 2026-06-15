@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 const AUTHORIZED_NUMBERS = ['+919604898762', '+919871319008', '+919914789171'];
 const PILOT_FAMILY_ID = 'df3d99a8-f7a2-44cf-bcb4-9c5f3300caa6';
 const PILOT_BABY_ID = 'e8a7c56c-62c6-442c-94ac-518928c8c07b';
+const SYSTEM_USER_ID = '00000000-0000-0000-0000-000000000000';
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key');
 
@@ -172,6 +173,7 @@ export async function POST(request: NextRequest) {
     if (appointmentData && appointmentData.isAppointment) {
       try {
         const { error } = await supabase.from('appointments').insert({
+          user_id: SYSTEM_USER_ID,
           doctor: appointmentData.title,
           reason: appointmentData.description,
           appointment_date: appointmentData.appointment_date.split('T')[0],
