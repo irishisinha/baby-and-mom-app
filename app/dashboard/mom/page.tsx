@@ -142,6 +142,7 @@ export default function MomWellnessPage() {
                   )}
                   <p className="text-xs text-gray-400 ml-10 mt-1">
                     {new Date(event.occurred_at).toLocaleString('en-GB', {
+                      timeZone: 'Europe/London',
                       hour: '2-digit',
                       minute: '2-digit',
                       day: '2-digit',

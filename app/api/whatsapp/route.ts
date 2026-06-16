@@ -205,8 +205,9 @@ function extractTimeFromMessage(text: string): Date | null {
 
   if (hours === null || minutes === null) return null
 
-  // Handle 12-hour format
-  if (meridiem === 'PM' && hours !== 12) hours += 12
+  // Handle 12-hour format — only convert if hours is in 12h range (< 13)
+  // "1630 pm" should stay as 16:30 (already 24h), not become 28:30
+  if (meridiem === 'PM' && hours < 12) hours += 12
   if (meridiem === 'AM' && hours === 12) hours = 0
 
   return londonWallTimeToUTC(hours, minutes, new Date())

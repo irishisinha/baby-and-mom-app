@@ -122,7 +122,7 @@ export default function MetricsPage() {
               <>
                 <div>
                   <p className="font-bold">{m.metric_type}: {m.value} {m.unit}</p>
-                  <p className="text-xs text-gray-500">{new Date(m.created_at).toLocaleString()}</p>
+                  <p className="text-xs text-gray-500">{new Date(m.created_at).toLocaleString('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })}</p>
                   {m.notes && <p className="text-sm text-gray-600">Notes: {m.notes}</p>}
                 </div>
                 <div className="flex gap-2">

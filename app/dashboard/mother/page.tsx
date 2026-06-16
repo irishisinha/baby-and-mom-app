@@ -456,6 +456,7 @@ export default function MotherWellnessPage() {
                       </div>
                       <p className="text-xs text-gray-400 ml-11 mt-1">
                         {new Date(entry.created_at).toLocaleString('en-GB', {
+                          timeZone: 'Europe/London',
                           hour: '2-digit',
                           minute: '2-digit',
                           day: '2-digit',
