@@ -101,21 +101,23 @@ export default function AppointmentsPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          family_id: FAMILY_ID,
-          baby_id: BABY_ID,
           title: createForm.doctor,
           description: createForm.reason,
-          appointment_date: `${createForm.appointment_date}T${createForm.appointment_time}:00`
+          appointment_date: createForm.appointment_date,
+          appointment_time: createForm.appointment_time
         })
       });
+      const result = await response.json();
       if (response.ok) {
         alert('Created!');
         setShowCreateForm(false);
         setCreateForm({ doctor: '', reason: '', appointment_date: '', appointment_time: '' });
         await loadAppointments();
+      } else {
+        alert(`Error: ${result.error || 'Unknown error'}`);
       }
-    } catch (error) {
-      alert('Error creating');
+    } catch (error: any) {
+      alert(`Error creating: ${error.message}`);
     }
   };
 

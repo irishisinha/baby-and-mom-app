@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 
 const FAMILY_ID = 'df3d99a8-f7a2-44cf-bcb4-9c5f3300caa6';
 const BABY_ID = 'e8a7c56c-62c6-442c-94ac-518928c8c07b';
+const SYSTEM_USER_ID = '00000000-0000-0000-0000-000000000000';
 
 export async function GET() {
   try {
@@ -39,11 +40,15 @@ export async function POST(request: Request) {
     const doctor = body.doctor || body.title || '';
     const reason = body.reason || body.description || '';
     let appointmentDate = body.appointment_date || body.appointment_date_time || '';
-    const appointmentTime = body.appointment_time || '';
+    let appointmentTime = body.appointment_time || '';
 
-    // Extract date from datetime if needed
+    // Extract date and time from datetime if needed
     if (appointmentDate.includes('T')) {
-      appointmentDate = appointmentDate.split('T')[0];
+      const [datePart, timePart] = appointmentDate.split('T');
+      appointmentDate = datePart;
+      if (!appointmentTime && timePart) {
+        appointmentTime = timePart.substring(0, 5); // "HH:MM"
+      }
     }
 
     if (!doctor || !appointmentDate) {
@@ -61,6 +66,7 @@ export async function POST(request: Request) {
 
     // Insert with all possible field combinations
     const insertData: any = {
+      user_id: SYSTEM_USER_ID,
       doctor,
       reason,
       appointment_date: appointmentDate,
