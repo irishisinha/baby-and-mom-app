@@ -6,17 +6,10 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key'
 );
 
-// Vercel cron runs in UTC; fires at both 16:00 and 17:00 UTC to cover the
-// BST/GMT transition, but we only want to actually send once, at 5pm London.
-function getLondonHour(now: Date): number {
-  const hourStr = new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Europe/London',
-    hour: '2-digit',
-    hour12: false
-  }).format(now);
-  return parseInt(hourStr, 10);
-}
-
+// Vercel Hobby plan only allows one cron run per day, so this fires at a
+// fixed 16:00 UTC, which is 5pm London during BST (most of the year) but
+// 4pm during GMT (Oct-Mar) — there's no way to track the DST shift exactly
+// with a single fixed-UTC trigger on this plan.
 function getLondonMidnightUTC(now: Date): Date {
   const ymdFormatter = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Europe/London',
@@ -36,11 +29,6 @@ function getLondonMidnightUTC(now: Date): Date {
 export async function GET(request: NextRequest) {
   try {
     const now = new Date();
-
-    if (getLondonHour(now) !== 17) {
-      return NextResponse.json({ success: true, skipped: true, reason: 'not 5pm London time' });
-    }
-
     const todayMidnightUTC = getLondonMidnightUTC(now);
 
     const { data: metrics } = await supabase
