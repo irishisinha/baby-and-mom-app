@@ -6,6 +6,19 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key'
 );
 
+function getLondonHour(now: Date): number {
+  const hourStr = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/London',
+    hour: '2-digit',
+    hour12: false
+  }).format(now);
+  return parseInt(hourStr, 10);
+}
+
+function getLondonDateStr(date: Date): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/London' }).format(date);
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { data: appointments } = await supabase
@@ -13,27 +26,28 @@ export async function GET(request: NextRequest) {
       .select('*');
 
     const now = new Date();
-    const todayDate = now.toLocaleDateString();
-    const tomorrowDate = new Date(now.getTime() + 24 * 60 * 60 * 1000).toLocaleDateString();
+    const todayDate = getLondonDateStr(now);
+    const tomorrowDate = getLondonDateStr(new Date(now.getTime() + 24 * 60 * 60 * 1000));
 
     const notifications = [];
 
     for (const appt of appointments || []) {
-      const apptDate = new Date(appt.appointment_date).toLocaleDateString();
-      const apptHour = new Date(appt.appointment_date).getHours();
+      const apptDateTime = new Date(appt.appointment_date);
+      const apptDate = getLondonDateStr(apptDateTime);
+      const apptTime = apptDateTime.toLocaleTimeString('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit' });
 
       if (apptDate === tomorrowDate) {
         notifications.push({
           title: '📅 Appointment Tomorrow',
-          message: `${appt.title} at ${apptHour}:00`,
+          message: `${appt.title} at ${apptTime}`,
           type: 'tomorrow'
         });
       }
 
-      if (apptDate === todayDate && (now.getHours() === 8 || now.getHours() === 9)) {
+      if (apptDate === todayDate && (getLondonHour(now) === 8 || getLondonHour(now) === 9)) {
         notifications.push({
           title: '🔔 Appointment Today!',
-          message: `${appt.title} at ${apptHour}:00`,
+          message: `${appt.title} at ${apptTime}`,
           type: 'today'
         });
       }

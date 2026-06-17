@@ -7,10 +7,21 @@ const twilioAccountSid = process.env.TWILIO_ACCOUNT_SID || '';
 const twilioAuthToken = process.env.TWILIO_AUTH_TOKEN || '';
 const twilioWhatsAppNumber = process.env.TWILIO_WHATSAPP_NUMBER || '';
 
-function getLondonTime(): Date {
-  const now = new Date();
-  const londonTime = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/London' }));
-  return londonTime;
+// Returns the UTC instant for today's midnight in Europe/London (handles BST/GMT).
+function getLondonMidnightUTC(now: Date): Date {
+  const ymdFormatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/London',
+    year: 'numeric', month: '2-digit', day: '2-digit'
+  });
+  const [y, mo, d] = ymdFormatter.format(now).split('-').map(Number);
+  const offsetFormatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Europe/London',
+    timeZoneName: 'shortOffset'
+  });
+  const tzPart = offsetFormatter.formatToParts(now).find(p => p.type === 'timeZoneName')?.value || 'GMT+0';
+  const offsetMatch = tzPart.match(/GMT([+-]\d+)?/);
+  const offsetMinutes = (offsetMatch && offsetMatch[1] ? parseInt(offsetMatch[1], 10) : 0) * 60;
+  return new Date(Date.UTC(y, mo - 1, d, 0, 0, 0) - offsetMinutes * 60000);
 }
 
 async function sendTwilioMessage(to: string, message: string): Promise<void> {
@@ -29,11 +40,9 @@ async function sendTwilioMessage(to: string, message: string): Promise<void> {
 export async function POST(request: Request) {
   try {
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
-    const london = getLondonTime();
-    const today = new Date(london);
-    today.setHours(0, 0, 0, 0);
-    const tomorrowStart = new Date(today);
-    tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+    const now = new Date();
+    const today = getLondonMidnightUTC(now);
+    const tomorrowStart = new Date(today.getTime() + 24 * 60 * 60 * 1000);
     
     const { data: appointments, error } = await supabase
       .from('appointments')
@@ -53,7 +62,7 @@ export async function POST(request: Request) {
 
     for (const appointment of appointments) {
       const appointmentDate = new Date(appointment.appointment_date);
-      const timeDiffMs = appointmentDate.getTime() - london.getTime();
+      const timeDiffMs = appointmentDate.getTime() - now.getTime();
       const timeDiffHours = timeDiffMs / (1000 * 60 * 60);
 
       // Reminder 1 day before
@@ -66,7 +75,7 @@ export async function POST(request: Request) {
         if (members) {
           for (const member of members) {
             if (member.whatsapp_number) {
-              const msg = `📅 Appointment tomorrow at ${appointmentDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}\n${appointment.doctor_name || 'Doctor'}\n${appointment.location || 'Location TBD'}`;
+              const msg = `📅 Appointment tomorrow at ${appointmentDate.toLocaleTimeString('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit' })}\n${appointment.doctor_name || 'Doctor'}\n${appointment.location || 'Location TBD'}`;
               await sendTwilioMessage(member.whatsapp_number, msg);
               remindersSent++;
             }
@@ -84,7 +93,7 @@ export async function POST(request: Request) {
         if (members) {
           for (const member of members) {
             if (member.whatsapp_number) {
-              const msg = `🏥 Today's appointment at ${appointmentDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}\n${appointment.doctor_name || 'Doctor'}\n${appointment.location || 'Location TBD'}`;
+              const msg = `🏥 Today's appointment at ${appointmentDate.toLocaleTimeString('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit' })}\n${appointment.doctor_name || 'Doctor'}\n${appointment.location || 'Location TBD'}`;
               await sendTwilioMessage(member.whatsapp_number, msg);
               remindersSent++;
             }
