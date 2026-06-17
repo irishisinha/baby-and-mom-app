@@ -201,6 +201,17 @@ function extractTimeFromMessage(text: string): Date | null {
         break
       }
     }
+
+    // Bare hour + am/pm with no minutes, e.g. "11 am", "11am for 90 ml formula"
+    if (hours === null) {
+      const bareMatch = trimmed.match(/(\d{1,2})\s*(am|pm|a\.m\.|p\.m\.)/i)
+      if (bareMatch) {
+        hours = parseInt(bareMatch[1], 10)
+        minutes = 0
+        const ampm = bareMatch[2].toLowerCase().replace(/\./g, '')
+        meridiem = ampm === 'pm' ? 'PM' : 'AM'
+      }
+    }
   }
 
   if (hours === null || minutes === null) return null
