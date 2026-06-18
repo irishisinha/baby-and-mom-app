@@ -411,7 +411,8 @@ Total: 300ml</Message></Response>`, { status: 200, headers: { 'Content-Type': 'a
           throw error;
         }
         
-        return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>✓ ${metricData.value}${metricData.unit} ${metricData.metric_type} [DBG stored=${insertData.created_at}]</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
+        const roundTripped = data?.[0]?.created_at;
+        return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>✓ ${metricData.value}${metricData.unit} ${metricData.metric_type} [DBG sent=${insertData.created_at} db=${roundTripped}]</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
       } catch (e: any) {
         console.error('[METRIC-ERR]', { error: e.message, metricData });
         return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>Error: ${e.message?.substring(0, 30) || 'metric error'}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
