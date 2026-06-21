@@ -57,18 +57,6 @@ function formatLondonTime(date: Date | string): string {
   }).format(d);
 }
 
-function getLondonDate(): Date {
-  const londonDateStr = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Europe/London',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  }).format(new Date());
-  const d = new Date(londonDateStr);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
 export default function DashboardPage() {
   const [metrics, setMetrics] = useState<Metric[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -154,15 +142,17 @@ export default function DashboardPage() {
   };
 
   const calculateSummaryStats = (metricsData: Metric[]) => {
-    const londonToday = getLondonDate();
-    const sevenDaysAgo = new Date(londonToday);
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    // formatLondonDate returns "DD/MM/YYYY" (en-GB), which `new Date(...)` parses
+    // inconsistently (often as US MM/DD/YYYY), silently producing Invalid Date for
+    // any day-of-month > 12 and dropping that day's entries from the average.
+    // ISO ("YYYY-MM-DD") strings sort correctly with plain string comparison instead.
+    const isoLondonDate = (d: Date | string) => new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Europe/London', year: 'numeric', month: '2-digit', day: '2-digit'
+    }).format(typeof d === 'string' ? new Date(d) : d);
 
-    const last7Days = metricsData.filter((m) => {
-      const metricDateStr = formatLondonDate(m.created_at);
-      const metricDate = new Date(metricDateStr);
-      return metricDate >= sevenDaysAgo;
-    });
+    const sevenDaysAgoStr = isoLondonDate(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000));
+
+    const last7Days = metricsData.filter((m) => isoLondonDate(m.created_at) >= sevenDaysAgoStr);
 
     const stats: SummaryStats = {};
 
