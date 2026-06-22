@@ -146,8 +146,12 @@ function londonWallTimeToUTC(hours: number, minutes: number, referenceNow: Date)
 
   let result = new Date(Date.UTC(y, mo - 1, d, hours, minutes, 0) - offsetMinutes * 60000)
 
-  // If extracted time is in the future, it's probably yesterday's time
-  if (result > referenceNow) {
+  // If extracted time is meaningfully in the future, it's probably yesterday's
+  // time. Use a grace buffer (not an exact comparison) so a message processed
+  // a few seconds before the literal target minute — normal webhook/clock
+  // latency — doesn't get spuriously bumped back a whole day.
+  const FUTURE_GRACE_MS = 5 * 60 * 1000
+  if (result.getTime() > referenceNow.getTime() + FUTURE_GRACE_MS) {
     result = new Date(result.getTime() - 86400000)
   }
 
