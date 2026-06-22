@@ -158,7 +158,28 @@ function londonWallTimeToUTC(hours: number, minutes: number, referenceNow: Date)
   return result
 }
 
-function extractTimeFromMessage(text: string): Date | null {
+// Optional explicit date prefix ahead of the time, e.g. "22/06 2330 - 20ml formula"
+// or "22/06/2026 11:30pm - ...". Uses "/" specifically (never "-") since "-" is
+// already the family's time/description separator and would collide otherwise.
+function extractLeadingDate(text: string): { day: number; month: number; year: number | null; remainder: string } | null {
+  const m = text.match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\s+(.+)$/)
+  if (!m) return null
+
+  const day = parseInt(m[1], 10)
+  const month = parseInt(m[2], 10)
+  if (day < 1 || day > 31 || month < 1 || month > 12) return null
+
+  let year: number | null = null
+  if (m[3]) {
+    year = parseInt(m[3], 10)
+    if (year < 100) year += 2000
+  }
+
+  return { day, month, year, remainder: m[4] }
+}
+
+// Parses just the hour/minute-of-day out of text — no date, no UTC conversion.
+function parseTimeOfDay(text: string): { hours: number; minutes: number } | null {
   const trimmed = text.trim()
 
   // Family convention: "HHMM[ am/pm] - description" or "HHMM- description"
@@ -225,7 +246,40 @@ function extractTimeFromMessage(text: string): Date | null {
   if (meridiem === 'PM' && hours < 12) hours += 12
   if (meridiem === 'AM' && hours === 12) hours = 0
 
-  return londonWallTimeToUTC(hours, minutes, new Date())
+  return { hours, minutes }
+}
+
+// Builds the UTC instant for an explicit Europe/London calendar date + wall time.
+// No "is this in the future" guessing needed — the date was stated explicitly.
+function londonDateTimeToUTC(day: number, month: number, year: number, hours: number, minutes: number): Date {
+  // First pass at 0 offset, just to find the correct BST/GMT offset for that date
+  // (DST can differ from "now" if backdating across a March/October boundary).
+  const approx = new Date(Date.UTC(year, month - 1, day, hours, minutes, 0))
+  const offsetFormatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Europe/London',
+    timeZoneName: 'shortOffset'
+  })
+  const tzPart = offsetFormatter.formatToParts(approx).find(p => p.type === 'timeZoneName')?.value || 'GMT+0'
+  const offsetMatch = tzPart.match(/GMT([+-]\d+)?/)
+  const offsetMinutes = (offsetMatch && offsetMatch[1] ? parseInt(offsetMatch[1], 10) : 0) * 60
+
+  return new Date(approx.getTime() - offsetMinutes * 60000)
+}
+
+function extractTimeFromMessage(text: string): Date | null {
+  const trimmed = text.trim()
+  const dateMatch = extractLeadingDate(trimmed)
+  const searchText = dateMatch ? dateMatch.remainder : trimmed
+
+  const timeOfDay = parseTimeOfDay(searchText)
+  if (!timeOfDay) return null
+
+  if (dateMatch) {
+    const year = dateMatch.year ?? new Date().getFullYear()
+    return londonDateTimeToUTC(dateMatch.day, dateMatch.month, year, timeOfDay.hours, timeOfDay.minutes)
+  }
+
+  return londonWallTimeToUTC(timeOfDay.hours, timeOfDay.minutes, new Date())
 }
 
 function parseMetric(text: string): any {
@@ -389,7 +443,8 @@ Total: 300ml</Message></Response>`, { status: 200, headers: { 'Content-Type': 'a
     }
 
 
-    const metricData = parseMetric(messageBody);
+    const leadingDate = extractLeadingDate(messageBody.trim())
+    const metricData = parseMetric(leadingDate ? leadingDate.remainder : messageBody);
     if (metricData && metricData.isMetric) {
       try {
         const extractedTime = extractTimeFromMessage(messageBody)
