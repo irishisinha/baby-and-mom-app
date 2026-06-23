@@ -15,6 +15,9 @@ const METRIC_TYPES = [
   { type: 'vaccine', label: 'Vaccine', icon: '💉' },
 ];
 
+const FAMILY_ID = 'df3d99a8-f7a2-44cf-bcb4-9c5f3300caa6';
+const BABY_ID = 'e8a7c56c-62c6-442c-94ac-518928c8c07b';
+
 export default function MetricsPage() {
   const [metrics, setMetrics] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -65,7 +68,7 @@ export default function MetricsPage() {
     
     const { data, error } = await supabase
       .from('baby_metrics')
-      .insert([{ metric_type: type, value: parseFloat(value), unit, notes: '' }])
+      .insert([{ family_id: FAMILY_ID, baby_id: BABY_ID, person_type: 'baby', metric_type: type, value: parseFloat(value), unit, notes: '' }])
       .select();
 
     if (!error && data) {
