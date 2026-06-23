@@ -125,10 +125,14 @@ function extractMetricTime(text: string): string | null {
 }
 
 
-// Convert an Europe/London wall-clock time (hours/minutes) into the correct
-// UTC Date instant, using `referenceNow` to determine the current London
-// calendar date and DST offset (matches the Europe/London convention used
-// throughout this app, e.g. commands.ts / dashboard).
+// Convert a Europe/London wall-clock time (hours/minutes) into the correct
+// UTC Date instant. The calendar date is always the date the message was
+// received (`referenceNow`'s London date) — deliberately not guessed from
+// whether the time-of-day looks "in the future," since that heuristic was
+// itself a source of off-by-one-day bugs (e.g. a message processed a few
+// seconds before its literal target minute getting bumped back a day).
+// The family always logs feeds at/near the time they happen, so the date
+// stored is simply the date stated independently of the parsed time.
 function londonWallTimeToUTC(hours: number, minutes: number, referenceNow: Date): Date {
   const ymdFormatter = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Europe/London',
@@ -144,18 +148,7 @@ function londonWallTimeToUTC(hours: number, minutes: number, referenceNow: Date)
   const offsetMatch = tzPart.match(/GMT([+-]\d+)?/)
   const offsetMinutes = (offsetMatch && offsetMatch[1] ? parseInt(offsetMatch[1], 10) : 0) * 60
 
-  let result = new Date(Date.UTC(y, mo - 1, d, hours, minutes, 0) - offsetMinutes * 60000)
-
-  // If extracted time is meaningfully in the future, it's probably yesterday's
-  // time. Use a grace buffer (not an exact comparison) so a message processed
-  // a few seconds before the literal target minute — normal webhook/clock
-  // latency — doesn't get spuriously bumped back a whole day.
-  const FUTURE_GRACE_MS = 5 * 60 * 1000
-  if (result.getTime() > referenceNow.getTime() + FUTURE_GRACE_MS) {
-    result = new Date(result.getTime() - 86400000)
-  }
-
-  return result
+  return new Date(Date.UTC(y, mo - 1, d, hours, minutes, 0) - offsetMinutes * 60000)
 }
 
 // Optional explicit date prefix ahead of the time, e.g. "22/06 2330 - 20ml formula"
