@@ -347,10 +347,7 @@ function parseMetric(text: string): any {
 
   // Baby Medicine - "paracetamol", "medicine paracetamol", "0810- paracetamol"
   if (cleanText.match(/medicine|paracetamol|ibuprofen|calpol|aspirin|antibiotic/i)) {
-    const medicineMatch = cleanText.match(/([a-z]+)/i);
-    if (medicineMatch) {
-      return { metric_type: 'medicine', value: medicineMatch[1], unit: 'given', isMetric: true, personType };
-    }
+    return { metric_type: 'medicine', value: '1', unit: 'dose', isMetric: true, personType };
   }
 
   // Breastmilk - "pumped 20ml", "20ml pumped", "breast milk 20"  
