@@ -387,7 +387,9 @@ export async function POST(request: NextRequest) {
 
     // Handle appt command
     if (messageBody.toLowerCase().trim() === 'appt') {
+      console.log('[APPT-ROUTE] condition matched, calling handleCommand');
       const apptList = await handleCommand(messageBody, fromPhone, FAMILY_ID);
+      console.log('[APPT-ROUTE] apptList result:', apptList, 'truthy=', !!apptList);
       if (apptList) {
         return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${apptList}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
       }
