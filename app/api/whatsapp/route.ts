@@ -3,6 +3,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { handleCommand } from './commands';
 
+function escapeXml(str: string): string {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co',
   process.env.SUPABASE_SERVICE_ROLE_KEY || 'placeholder-service-role-key',
@@ -391,7 +400,7 @@ export async function POST(request: NextRequest) {
       const apptList = await handleCommand(messageBody, fromPhone, FAMILY_ID);
       console.log('[APPT-ROUTE] apptList result:', apptList, 'truthy=', !!apptList);
       if (apptList) {
-        return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${apptList}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
+        return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${escapeXml(apptList)}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
       }
     }
 
@@ -399,7 +408,7 @@ export async function POST(request: NextRequest) {
     if (messageBody.toLowerCase().trim() === 'feed') {
       const feedList = await handleCommand(messageBody, fromPhone, FAMILY_ID);
       if (feedList) {
-        return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${feedList}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
+        return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${escapeXml(feedList)}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
       }
     }
 
@@ -407,7 +416,7 @@ export async function POST(request: NextRequest) {
     if (messageBody.toLowerCase().trim() === 'report') {
       const report = await handleCommand(messageBody, fromPhone, FAMILY_ID);
       if (report) {
-        return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${report}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
+        return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${escapeXml(report)}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
       }
     }
 
@@ -424,7 +433,7 @@ export async function POST(request: NextRequest) {
         }).select();
 
         if (error) throw error;
-        return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>✓ Appt: ${appointmentData.title}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
+        return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${escapeXml(`✓ Appt: ${appointmentData.title}`)}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
       } catch (e: any) {
         console.error('[APT-ERR]', e);
         return new NextResponse('<?xml version="1.0" encoding="UTF-8"?><Response><Message>Appt error</Message></Response>', { status: 200, headers: { 'Content-Type': 'application/xml' } });
@@ -466,10 +475,10 @@ Total: 300ml</Message></Response>`, { status: 200, headers: { 'Content-Type': 'a
         }
         
         const roundTripped = data?.[0]?.created_at;
-        return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>✓ ${metricData.value}${metricData.unit} ${metricData.metric_type} [DBG sent=${insertData.created_at} db=${roundTripped}]</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
+        return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${escapeXml(`✓ ${metricData.value}${metricData.unit} ${metricData.metric_type} [DBG sent=${insertData.created_at} db=${roundTripped}]`)}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
       } catch (e: any) {
         console.error('[METRIC-ERR]', { error: e.message, metricData });
-        return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>Error: ${e.message?.substring(0, 30) || 'metric error'}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
+        return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${escapeXml(`Error: ${e.message?.substring(0, 30) || 'metric error'}`)}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
       }
     }
 
