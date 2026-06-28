@@ -80,31 +80,36 @@ async function cmdReport(familyId: string): Promise<string> {
 async function cmdAppt(familyId: string): Promise<string> {
   const today = new Date()
   const todayStr = today.toLocaleDateString('en-CA', { timeZone: 'Europe/London' })
-  
+
+  console.log('[APPT-CMD] familyId=', familyId, 'todayStr=', todayStr)
+
   try {
-    const { data: appointments } = await supabaseAdmin
+    const { data: appointments, error } = await supabaseAdmin
       .from('appointments')
       .select('*')
       .gte('appointment_date', todayStr)
       .order('appointment_date', { ascending: true })
       .limit(10)
-    
+
+    console.log('[APPT-QUERY] error=', error, 'count=', appointments?.length)
+
     if (!appointments?.length) {
       return 'No upcoming appointments scheduled'
     }
-    
+
     let r = 'Upcoming Appointments:\n\n'
     appointments.forEach((apt: any, idx: number) => {
-      const dateStr = new Date(apt.appointment_date).toLocaleDateString('en-US', { 
+      const dateStr = new Date(apt.appointment_date).toLocaleDateString('en-US', {
         weekday: 'short',
         month: 'short',
         day: 'numeric'
       })
       r += `${idx + 1}. ${apt.doctor}\n   ${dateStr} at ${apt.appointment_time || ''}\n   ${apt.reason || ''}\n\n`
     })
-    
+
     return r
   } catch (err) {
+    console.error('[APPT-ERR]', err)
     return 'Error fetching appointments'
   }
 }
