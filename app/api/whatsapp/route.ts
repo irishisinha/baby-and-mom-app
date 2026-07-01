@@ -449,9 +449,11 @@ Total: 300ml</Message></Response>`, { status: 200, headers: { 'Content-Type': 'a
 
     const leadingDate = extractLeadingDate(messageBody.trim())
     const metricData = parseMetric(leadingDate ? leadingDate.remainder : messageBody);
+    console.log('[METRIC-PARSE]', { messageBody, leadingDate: leadingDate?.day, metricData: metricData ? { type: metricData.metric_type, value: metricData.value } : null });
     if (metricData && metricData.isMetric) {
       try {
         const extractedTime = extractTimeFromMessage(messageBody)
+        console.log('[TIME-EXTRACT]', { extractedTime: extractedTime?.toISOString() });
         const insertData: any = {
           family_id: FAMILY_ID,
           metric_type: metricData.metric_type,
