@@ -196,6 +196,7 @@ export default function DashboardPage() {
 
     const comparison: DayComparison = {};
     const nonAdditiveMetrics = ["weight"];
+    const alwaysShowMetrics = ['formula', 'breastmilk'];
 
     metricsData.forEach((m) => {
       if (nonAdditiveMetrics.includes(m.metric_type)) return;
@@ -212,19 +213,32 @@ export default function DashboardPage() {
       }
     });
 
+    // Ensure formula and breastmilk always show, even if 0
+    alwaysShowMetrics.forEach((metric) => {
+      if (!comparison[metric]) {
+        comparison[metric] = { today: 0, yesterday: 0, unit: 'ml' };
+      }
+    });
+
     setDayComparison(comparison);
   };
 
   const setupSubscriptions = () => {
+    let metricsTimeout: ReturnType<typeof setTimeout> | null = null;
+
     const metricsSubscription = supabase
       .channel('baby_metrics_channel')
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'baby_metrics', filter: `baby_id=eq.${BABY_ID}` },
         () => {
-          fetchMetrics();
-          fetchLastWeight();
-          setLastUpdate(formatLondonTime(new Date()));
+          // Debounce rapid successive inserts (e.g., multiple messages sent together)
+          if (metricsTimeout) clearTimeout(metricsTimeout);
+          metricsTimeout = setTimeout(() => {
+            fetchMetrics();
+            fetchLastWeight();
+            setLastUpdate(formatLondonTime(new Date()));
+          }, 500);
         }
       )
       .subscribe();
