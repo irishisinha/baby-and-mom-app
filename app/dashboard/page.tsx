@@ -29,7 +29,7 @@ interface Appointment {
 }
 
 interface SummaryStats {
-  [key: string]: { avg: number; count: number };
+  [key: string]: { avg: number; count: number; prevWeekAvg?: number; change?: number };
 }
 
 interface DayComparison {
@@ -171,45 +171,58 @@ export default function DashboardPage() {
   };
 
   const calculateSummaryStats = (metricsData: Metric[]) => {
-    // formatLondonDate returns "DD/MM/YYYY" (en-GB), which `new Date(...)` parses
-    // inconsistently (often as US MM/DD/YYYY), silently producing Invalid Date for
-    // any day-of-month > 12 and dropping that day's entries from the average.
-    // ISO ("YYYY-MM-DD") strings sort correctly with plain string comparison instead.
     const isoLondonDate = (d: Date | string) => new Intl.DateTimeFormat('en-CA', {
       timeZone: 'Europe/London', year: 'numeric', month: '2-digit', day: '2-digit'
     }).format(typeof d === 'string' ? new Date(d) : d);
 
     const sevenDaysAgoStr = isoLondonDate(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000));
+    const fourteenDaysAgoStr = isoLondonDate(new Date(Date.now() - 14 * 24 * 60 * 60 * 1000));
 
     const last7Days = metricsData.filter((m) => isoLondonDate(m.created_at) >= sevenDaysAgoStr);
+    const prev7Days = metricsData.filter((m) => {
+      const dateStr = isoLondonDate(m.created_at);
+      return dateStr >= fourteenDaysAgoStr && dateStr < sevenDaysAgoStr;
+    });
 
     const stats: SummaryStats = {};
-
-    // Formula/breastmilk are logged per-feed, but the "7 day average" should
-    // represent a typical day's total intake, not the average size of a
-    // single feed. So sum per day first, then average those daily totals.
     const DAILY_TOTAL_TYPES = ['formula', 'breastmilk'];
 
-    const grouped = last7Days.reduce((acc, m) => {
-      acc[m.metric_type] = acc[m.metric_type] || [];
-      acc[m.metric_type].push(m);
-      return acc;
-    }, {} as Record<string, Metric[]>);
+    const calculateMetricStats = (entries: Metric[]) => {
+      const grouped = entries.reduce((acc, m) => {
+        acc[m.metric_type] = acc[m.metric_type] || [];
+        acc[m.metric_type].push(m);
+        return acc;
+      }, {} as Record<string, Metric[]>);
 
-    Object.entries(grouped).forEach(([type, entries]) => {
-      if (DAILY_TOTAL_TYPES.includes(type)) {
-        const dailyTotals: Record<string, number> = {};
-        entries.forEach((m) => {
-          const day = formatLondonDate(m.created_at);
-          dailyTotals[day] = (dailyTotals[day] || 0) + parseFloat(m.value);
-        });
-        const totals = Object.values(dailyTotals);
-        const avg = totals.reduce((a, b) => a + b, 0) / totals.length;
-        stats[type] = { avg: parseFloat(avg.toFixed(2)), count: totals.length };
-      } else {
-        const values = entries.map((m) => parseFloat(m.value));
-        const avg = values.reduce((a, b) => a + b, 0) / values.length;
-        stats[type] = { avg: parseFloat(avg.toFixed(2)), count: values.length };
+      const result: SummaryStats = {};
+      Object.entries(grouped).forEach(([type, typeEntries]) => {
+        if (DAILY_TOTAL_TYPES.includes(type)) {
+          const dailyTotals: Record<string, number> = {};
+          typeEntries.forEach((m) => {
+            const day = formatLondonDate(m.created_at);
+            dailyTotals[day] = (dailyTotals[day] || 0) + parseFloat(m.value);
+          });
+          const totals = Object.values(dailyTotals);
+          const avg = totals.reduce((a, b) => a + b, 0) / totals.length;
+          result[type] = { avg: parseFloat(avg.toFixed(2)), count: totals.length };
+        } else {
+          const values = typeEntries.map((m) => parseFloat(m.value));
+          const avg = values.reduce((a, b) => a + b, 0) / values.length;
+          result[type] = { avg: parseFloat(avg.toFixed(2)), count: values.length };
+        }
+      });
+      return result;
+    };
+
+    const currentWeekStats = calculateMetricStats(last7Days);
+    const prevWeekStats = calculateMetricStats(prev7Days);
+
+    // Merge and calculate week-over-week change
+    Object.entries(currentWeekStats).forEach(([type, data]) => {
+      stats[type] = { ...data };
+      if (prevWeekStats[type]) {
+        stats[type].prevWeekAvg = prevWeekStats[type].avg;
+        stats[type].change = parseFloat((data.avg - prevWeekStats[type].avg).toFixed(2));
       }
     });
 
@@ -386,6 +399,11 @@ export default function DashboardPage() {
                 <p className="text-xs text-gray-500 mt-1">
                   avg ({data.count} {['formula', 'breastmilk'].includes(type) ? 'days' : 'entries'})
                 </p>
+                {data.change !== undefined && (
+                  <p className={`text-xs font-semibold mt-2 ${data.change > 0 ? 'text-green-600' : data.change < 0 ? 'text-red-600' : 'text-gray-500'}`}>
+                    {data.change > 0 ? '+' : ''}{data.change} vs last week
+                  </p>
+                )}
               </div>
             ))}
           </div>
