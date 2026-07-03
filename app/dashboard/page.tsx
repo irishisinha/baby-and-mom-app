@@ -62,7 +62,7 @@ export default function DashboardPage() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [summaryStats, setSummaryStats] = useState<SummaryStats>({});
   const [dayComparison, setDayComparison] = useState<DayComparison>({});
-  const [lastWeight, setLastWeight] = useState<string | null>(null);
+  const [lastWeight, setLastWeight] = useState<{ current: string; previous?: string; change?: string; daysSince?: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<string>('');
   const [editingMetric, setEditingMetric] = useState<string | null>(null);
@@ -108,11 +108,31 @@ export default function DashboardPage() {
       .eq('baby_id', BABY_ID)
       .eq('metric_type', 'weight')
       .order('created_at', { ascending: false })
-      .limit(1);
+      .limit(2);
 
     if (data && data.length > 0 && !error) {
-      const date = formatLondonDate(data[0].created_at);
-      setLastWeight(`${data[0].value} ${data[0].unit} (${date})`);
+      const current = data[0];
+      const currentDate = formatLondonDate(current.created_at);
+      const currentStr = `${current.value} ${current.unit}`;
+
+      const weightData: { current: string; previous?: string; change?: string; daysSince?: number } = {
+        current: `${currentStr} (${currentDate})`
+      };
+
+      if (data.length > 1) {
+        const previous = data[1];
+        const previousDate = new Date(previous.created_at);
+        const currentDateObj = new Date(current.created_at);
+        const daysSince = Math.floor((currentDateObj.getTime() - previousDate.getTime()) / (1000 * 60 * 60 * 24));
+        const change = (parseFloat(current.value) - parseFloat(previous.value)).toFixed(2);
+        const changeSign = parseFloat(change) > 0 ? '+' : '';
+
+        weightData.previous = `${previous.value} ${previous.unit}`;
+        weightData.change = `${changeSign}${change}`;
+        weightData.daysSince = daysSince;
+      }
+
+      setLastWeight(weightData);
     }
   };
 
@@ -368,7 +388,15 @@ export default function DashboardPage() {
         <div className="bg-white rounded-lg p-6 mb-6 shadow">
           <h2 className="text-2xl font-bold mb-4">Last Weight Reading</h2>
           <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-4 border border-purple-200">
-            <p className="text-2xl font-bold text-purple-600">{lastWeight}</p>
+            <p className="text-2xl font-bold text-purple-600">{lastWeight.current}</p>
+            {lastWeight.change && (
+              <div className="mt-3 pt-3 border-t border-purple-200">
+                <p className="text-sm text-gray-600">Previous: {lastWeight.previous}</p>
+                <p className={`text-lg font-semibold ${parseFloat(lastWeight.change) > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                  Change: {lastWeight.change} kg ({lastWeight.daysSince} days ago)
+                </p>
+              </div>
+            )}
           </div>
         </div>
       )}
