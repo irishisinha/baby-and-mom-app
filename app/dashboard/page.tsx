@@ -57,6 +57,13 @@ function formatLondonTime(date: Date | string): string {
   }).format(d);
 }
 
+function getWeightChangeColor(weeklyAvgGainStr: string): string {
+  const weeklyAvgGain = parseFloat(weeklyAvgGainStr);
+  if (weeklyAvgGain >= 160 && weeklyAvgGain <= 200) return 'text-green-600';
+  if (weeklyAvgGain < 160) return 'text-red-600';
+  return 'text-orange-600'; // above 200
+}
+
 export default function DashboardPage() {
   const [metrics, setMetrics] = useState<Metric[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -124,11 +131,13 @@ export default function DashboardPage() {
         const previousDate = new Date(previous.created_at);
         const currentDateObj = new Date(current.created_at);
         const daysSince = Math.floor((currentDateObj.getTime() - previousDate.getTime()) / (1000 * 60 * 60 * 24));
-        const change = (parseFloat(current.value) - parseFloat(previous.value)).toFixed(2);
-        const changeSign = parseFloat(change) > 0 ? '+' : '';
+        const changeGrams = parseFloat(current.value) * 1000 - parseFloat(previous.value) * 1000;
+
+        // Calculate weekly average gain (g/week)
+        const weeklyAvgGain = daysSince > 0 ? (changeGrams / daysSince) * 7 : 0;
 
         weightData.previous = `${previous.value} ${previous.unit}`;
-        weightData.change = `${changeSign}${change}`;
+        weightData.change = `${weeklyAvgGain.toFixed(0)}g/week`;
         weightData.daysSince = daysSince;
       }
 
@@ -392,8 +401,8 @@ export default function DashboardPage() {
             {lastWeight.change && (
               <div className="mt-3 pt-3 border-t border-purple-200">
                 <p className="text-sm text-gray-600">Previous: {lastWeight.previous}</p>
-                <p className={`text-lg font-semibold ${parseFloat(lastWeight.change) > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                  Change: {lastWeight.change} kg ({lastWeight.daysSince} days ago)
+                <p className={`text-lg font-semibold ${getWeightChangeColor(lastWeight.change)}`}>
+                  Weekly Avg: {lastWeight.change} ({lastWeight.daysSince} days since last)
                 </p>
               </div>
             )}
