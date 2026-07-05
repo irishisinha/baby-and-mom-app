@@ -471,6 +471,7 @@ Total: 300ml</Message></Response>`, { status: 200, headers: { 'Content-Type': 'a
 
 
     const metricData = parseMetric(messageBody);
+    console.log('[PARSE-METRIC]', { messageBody, metricData });
     if (metricData && metricData.isMetric) {
       try {
         const extractedTime = extractTimeFromMessage(messageBody)
@@ -496,7 +497,9 @@ Total: 300ml</Message></Response>`, { status: 200, headers: { 'Content-Type': 'a
           throw error;
         }
         
-        return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>✓ ${metricData.value}${metricData.unit} ${metricData.metric_type}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
+        const responseMsg = `✓ ${metricData.value}${metricData.unit} ${metricData.metric_type}`;
+        console.log('[METRIC-SUCCESS]', { responseMsg, metricData });
+        return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${escapeXml(responseMsg)}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
       } catch (e: any) {
         console.error('[METRIC-ERR]', { error: e.message, metricData });
         return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>Error: ${e.message?.substring(0, 30) || 'metric error'}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
