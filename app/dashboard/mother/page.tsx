@@ -45,12 +45,14 @@ export default function MotherWellnessPage() {
   });
   const [weight, setWeight] = useState<{ current: string; previous?: string; change?: string; daysSince?: number } | null>(null);
   const [measurements, setMeasurements] = useState<Record<string, { current: string; change?: string }>>({});
+  const [exercises, setExercises] = useState<Array<{ type: string; duration: number; date: string }>>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchWellnessData();
     fetchMomWeight();
     fetchMomMeasurements();
+    fetchMomExercises();
   }, []);
 
   const getUTCDate = (daysOffset = 0) => {
@@ -176,6 +178,39 @@ export default function MotherWellnessPage() {
     }
   };
 
+  const fetchMomExercises = async () => {
+    try {
+      const sevenDaysAgo = getUTCDate(7);
+      const { data } = await supabase
+        .from('baby_metrics')
+        .select('*')
+        .eq('family_id', PILOT_FAMILY_ID)
+        .eq('metric_type', 'wellness_exercise')
+        .eq('person_type', 'mom')
+        .gte('created_at', sevenDaysAgo)
+        .order('created_at', { ascending: false });
+
+      if (data) {
+        const exerciseList = data.map((entry: any) => {
+          const dateStr = new Date(entry.created_at).toLocaleDateString('en-GB', {
+            timeZone: 'Europe/London',
+            month: 'short',
+            day: 'numeric'
+          });
+          const [type, duration] = entry.value.includes(':') ? entry.value.split(':') : ['exercise', entry.value];
+          return {
+            type: type.charAt(0).toUpperCase() + type.slice(1),
+            duration: parseInt(duration || entry.value),
+            date: dateStr
+          };
+        });
+        setExercises(exerciseList);
+      }
+    } catch (err) {
+      console.error('Error fetching exercises:', err);
+    }
+  };
+
   const calculateSummary = (entries: WellnessEntry[]) => {
     const result: WellnessSummary = {
       mood: {},
@@ -206,7 +241,8 @@ export default function MotherWellnessPage() {
           result.recovery[value] = (result.recovery[value] || 0) + 1;
           break;
         case 'exercise':
-          result.exercise += parseInt(value) || 0;
+          const duration = value.includes(':') ? parseInt(value.split(':')[1]) : parseInt(value);
+          result.exercise += duration || 0;
           break;
         case 'medication':
           result.medication++;
@@ -433,6 +469,30 @@ export default function MotherWellnessPage() {
                   </div>
                 ))}
               </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {exercises.length > 0 && (
+        <div className="bg-white rounded-lg shadow p-6 mb-6">
+          <h2 className="text-xl font-bold mb-4">🏃 Exercise Activity (Last 7 Days)</h2>
+          <div className="space-y-2">
+            {exercises.map((ex, idx) => (
+              <div key={idx} className="flex justify-between items-center p-3 bg-orange-50 rounded-lg border border-orange-200">
+                <div>
+                  <p className="font-semibold text-gray-900">{ex.type}</p>
+                  <p className="text-sm text-gray-600">{ex.date}</p>
+                </div>
+                <p className="text-lg font-bold text-orange-600">{ex.duration} min</p>
+              </div>
+            ))}
+            {summary.exercise > 0 && (
+              <div className="mt-4 p-3 bg-orange-100 rounded-lg border border-orange-300">
+                <p className="text-sm font-semibold text-orange-900">
+                  Weekly Total: {summary.exercise} minutes
+                </p>
+              </div>
             )}
           </div>
         </div>

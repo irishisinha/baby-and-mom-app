@@ -36,6 +36,46 @@ const MONTH_PATTERN = '(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|j
 // turning it into a literal backspace character and silently breaking word-boundary matches.
 const WORD_BOUNDARY = /\b/.source;
 
+const COMMANDS_HELP = `📋 AVAILABLE COMMANDS:
+
+👶 BABY METRICS (default person if not specified):
+• Formula: "30ml formula" or "formula 30"
+• Breastmilk: "20ml breast milk" or "pumped 20"
+• Weight: "5.5kg" or "weight 5.5"
+• Medicine: "paracetamol" or "ibuprofen"
+• Vaccine: "vaccine"
+• Diaper: "diaper" or "nappy"
+• Bath: "bath"
+• Potty: "potty"
+• Oil: "oil"
+• Sleep: "sleep 2 hours" or "2hr sleep"
+• Time format: "0640 pm - 90ml formula" or "0810- paracetamol"
+
+👩 MOM/SHIVA METRICS (start with "shiva", "mom", or "mother"):
+• Weight: "shiva weight 65kg"
+• Measurements: "shiva chest 90cm|waist 70cm|hips 95cm|bust 95cm"
+• Steps: "shiva steps 5000"
+• Energy: "shiva energy 7" (1-10 scale)
+• Pain: "shiva pain 3" (1-10 scale)
+• Sleep: "shiva sleep 8" (hours)
+• Mood: "shiva mood happy" or "tired" etc.
+• Medication: "shiva medication 2" (count)
+• Exercise: "shiva exercise 30" OR "shiva yoga 45" OR "shiva running 30"
+  Types: yoga|running|walking|cycling|gym|swimming|pilates|dance|cardio|strength|stretching|hiking
+
+👨 DAD/RISHI & 👵 GRANDMOM/ICHI:
+Same format as MOM: "rishi steps 5000" or "ichi mood happy"
+
+📅 APPOINTMENTS:
+"Appointment- [description] [DD] [month] [HH:MM am/pm] [title]"
+Example: "Appointment- checkup 15 July 2:30pm Pediatrician"
+
+🔍 COMMANDS:
+• "appt" - Show upcoming appointments
+• "feed" - Show today's feed logs
+• "report" - Show today vs yesterday summary`;
+
+
 function buildAppointment(title: string, description: string, day: string, monthNum: number, hours: number, minutes: number): any {
   const currentYear = new Date().getFullYear();
   const dateStr = `${currentYear}-${String(monthNum).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
@@ -224,6 +264,15 @@ function extractTimeFromMessage(text: string): Date | null {
   return londonWallTimeToUTC(hours, minutes, new Date())
 }
 
+function escapeXml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
 function parseMetric(text: string): any {
   let cleanText = text.toLowerCase().trim();
   let personType = 'baby';
@@ -265,6 +314,17 @@ function parseMetric(text: string): any {
     if (cleanText.includes('exercise')) {
       const match = cleanText.match(/(\d+)/);
       if (match) return { metric_type: 'wellness_exercise', value: match[1], unit: 'mins', isMetric: true, personType };
+    }
+    // Exercise types: "yoga 45", "running 30", "walking 20", "gym 60", etc.
+    const exerciseTypes = ['yoga', 'running', 'walking', 'cycling', 'gym', 'swimming', 'pilates', 'dance', 'cardio', 'strength', 'stretching', 'hiking'];
+    for (const exType of exerciseTypes) {
+      if (cleanText.includes(exType)) {
+        const match = cleanText.match(/(\d+)/);
+        if (match) {
+          const duration = match[1];
+          return { metric_type: 'wellness_exercise', value: `${exType}:${duration}`, unit: 'mins', isMetric: true, personType };
+        }
+      }
     }
     if (cleanText.includes('medication')) {
       const match = cleanText.match(/(\d+)/);
@@ -428,7 +488,7 @@ Total: 300ml</Message></Response>`, { status: 200, headers: { 'Content-Type': 'a
       }
     }
 
-    return new NextResponse('<?xml version="1.0" encoding="UTF-8"?><Response><Message>Baby: 30ml formula|5.5kg weight|vaccine|diaper|bath|sleep 2h. Mom: shiva weight 65kg|shiva chest 90cm|shiva waist 70cm|shiva hips 95cm|shiva steps 5000|shiva mood happy|shiva energy 7|shiva pain 3|shiva medication 2|shiva sleep 8. Rishi/Dad & Ichi/Grandmom: same. Appt: Appointment- [desc] [day] [month] [HH:MM am/pm] [title]</Message></Response>', { status: 200, headers: { 'Content-Type': 'application/xml' } });
+    return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${escapeXml(COMMANDS_HELP)}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
 
   } catch (error) {
     console.error('[ERROR]', error);
