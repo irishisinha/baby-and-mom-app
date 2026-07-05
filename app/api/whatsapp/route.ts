@@ -484,7 +484,7 @@ Total: 300ml</Message></Response>`, { status: 200, headers: { 'Content-Type': 'a
       }
     }
 
-    return new NextResponse('<?xml version="1.0" encoding="UTF-8"?><Response><Message>Baby: 30ml formula|5.5kg weight|vaccine|diaper|bath|sleep 2h. Wellness: shiva/mom steps 5000|shiva mood happy|shiva energy 7|shiva pain 3|shiva medication 2|shiva sleep 8. Rishi/Dad & Ichi/Grandmom: same. Appt: Appointment- [desc] [day] [month] [HH:MM am/pm] [title]</Message></Response>', { status: 200, headers: { 'Content-Type': 'application/xml' } });
+    return new NextResponse('<?xml version="1.0" encoding="UTF-8"?><Response><Message>Baby: 30ml formula|5.5kg weight|vaccine|diaper|bath|sleep 2h. Mom: shiva weight 65kg|shiva steps 5000|shiva mood happy|shiva energy 7|shiva pain 3|shiva medication 2|shiva sleep 8. Rishi/Dad & Ichi/Grandmom: same. Appt: Appointment- [desc] [day] [month] [HH:MM am/pm] [title]</Message></Response>', { status: 200, headers: { 'Content-Type': 'application/xml' } });
 
   } catch (error) {
     console.error('[ERROR]', error);
