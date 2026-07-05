@@ -44,11 +44,15 @@ export default function MotherWellnessPage() {
     value: '',
   });
   const [weight, setWeight] = useState<{ current: string; previous?: string; change?: string; daysSince?: number } | null>(null);
+  const [measurements, setMeasurements] = useState<Record<string, { current: string; change?: string }>>({});
+  const [exercises, setExercises] = useState<Array<{ type: string; duration: number; date: string }>>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchWellnessData();
     fetchMomWeight();
+    fetchMomMeasurements();
+    fetchMomExercises();
   }, []);
 
   const getUTCDate = (daysOffset = 0) => {
@@ -139,6 +143,74 @@ export default function MotherWellnessPage() {
     }
   };
 
+  const fetchMomMeasurements = async () => {
+    try {
+      const measurementTypes = ['chest', 'waist', 'hips', 'bust'];
+      const allMeasurements: Record<string, { current: string; change?: string }> = {};
+
+      for (const type of measurementTypes) {
+        const { data } = await supabase
+          .from('baby_metrics')
+          .select('*')
+          .eq('family_id', PILOT_FAMILY_ID)
+          .eq('metric_type', `measurement_${type}`)
+          .eq('person_type', 'mom')
+          .order('created_at', { ascending: false })
+          .limit(2);
+
+        if (data && data.length > 0) {
+          const current = data[0];
+          const currentStr = `${current.value}${current.unit}`;
+          allMeasurements[type] = { current: currentStr };
+
+          if (data.length > 1) {
+            const previous = data[1];
+            const change = (parseFloat(current.value) - parseFloat(previous.value)).toFixed(1);
+            const changeStr = parseFloat(change) > 0 ? `+${change}` : change;
+            allMeasurements[type].change = changeStr;
+          }
+        }
+      }
+
+      setMeasurements(allMeasurements);
+    } catch (err) {
+      console.error('Error fetching measurements:', err);
+    }
+  };
+
+  const fetchMomExercises = async () => {
+    try {
+      const sevenDaysAgo = getUTCDate(7);
+      const { data } = await supabase
+        .from('baby_metrics')
+        .select('*')
+        .eq('family_id', PILOT_FAMILY_ID)
+        .eq('metric_type', 'wellness_exercise')
+        .eq('person_type', 'mom')
+        .gte('created_at', sevenDaysAgo)
+        .order('created_at', { ascending: false });
+
+      if (data) {
+        const exerciseList = data.map((entry: any) => {
+          const dateStr = new Date(entry.created_at).toLocaleDateString('en-GB', {
+            timeZone: 'Europe/London',
+            month: 'short',
+            day: 'numeric'
+          });
+          const [type, duration] = entry.value.includes(':') ? entry.value.split(':') : ['exercise', entry.value];
+          return {
+            type: type.charAt(0).toUpperCase() + type.slice(1),
+            duration: parseInt(duration || entry.value),
+            date: dateStr
+          };
+        });
+        setExercises(exerciseList);
+      }
+    } catch (err) {
+      console.error('Error fetching exercises:', err);
+    }
+  };
+
   const calculateSummary = (entries: WellnessEntry[]) => {
     const result: WellnessSummary = {
       mood: {},
@@ -169,7 +241,8 @@ export default function MotherWellnessPage() {
           result.recovery[value] = (result.recovery[value] || 0) + 1;
           break;
         case 'exercise':
-          result.exercise += parseInt(value) || 0;
+          const duration = value.includes(':') ? parseInt(value.split(':')[1]) : parseInt(value);
+          result.exercise += duration || 0;
           break;
         case 'medication':
           result.medication++;
@@ -367,14 +440,57 @@ export default function MotherWellnessPage() {
 
       {weight && (
         <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <h2 className="text-xl font-bold mb-4">Weight Tracking</h2>
-          <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-4 border border-purple-200">
-            <p className="text-2xl font-bold text-purple-600">{weight.current}</p>
-            {weight.change && (
-              <div className="mt-3 pt-3 border-t border-purple-200">
-                <p className="text-sm text-gray-600">Previous: {weight.previous}</p>
-                <p className="text-lg font-semibold text-green-600">
-                  Weekly Avg: {weight.change} ({weight.daysSince} days since last)
+          <h2 className="text-xl font-bold mb-4">Body Metrics</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-4 border border-purple-200">
+              <p className="text-sm text-gray-600 mb-2">Weight</p>
+              <p className="text-2xl font-bold text-purple-600">{weight.current}</p>
+              {weight.change && (
+                <div className="mt-2 pt-2 border-t border-purple-200">
+                  <p className="text-xs text-gray-600">Previous: {weight.previous}</p>
+                  <p className="text-sm font-semibold text-green-600">
+                    {weight.change} ({weight.daysSince} days ago)
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {Object.entries(measurements).length > 0 && (
+              <>
+                {Object.entries(measurements).map(([type, data]) => (
+                  <div key={type} className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-lg p-4 border border-blue-200">
+                    <p className="text-sm text-gray-600 mb-2 capitalize">{type}</p>
+                    <p className="text-2xl font-bold text-blue-600">{data.current}</p>
+                    {data.change && (
+                      <p className={`text-sm font-semibold mt-2 ${parseFloat(data.change) > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                        {data.change}cm
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {exercises.length > 0 && (
+        <div className="bg-white rounded-lg shadow p-6 mb-6">
+          <h2 className="text-xl font-bold mb-4">🏃 Exercise Activity (Last 7 Days)</h2>
+          <div className="space-y-2">
+            {exercises.map((ex, idx) => (
+              <div key={idx} className="flex justify-between items-center p-3 bg-orange-50 rounded-lg border border-orange-200">
+                <div>
+                  <p className="font-semibold text-gray-900">{ex.type}</p>
+                  <p className="text-sm text-gray-600">{ex.date}</p>
+                </div>
+                <p className="text-lg font-bold text-orange-600">{ex.duration} min</p>
+              </div>
+            ))}
+            {summary.exercise > 0 && (
+              <div className="mt-4 p-3 bg-orange-100 rounded-lg border border-orange-300">
+                <p className="text-sm font-semibold text-orange-900">
+                  Weekly Total: {summary.exercise} minutes
                 </p>
               </div>
             )}

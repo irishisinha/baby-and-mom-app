@@ -3,15 +3,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { handleCommand } from './commands';
 
-function escapeXml(str: string): string {
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
-}
-
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co',
   process.env.SUPABASE_SERVICE_ROLE_KEY || 'placeholder-service-role-key',
@@ -44,6 +35,46 @@ const MONTH_PATTERN = '(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|j
 // SWC compiler mis-serializes "\\b" inside template literals used with `new RegExp(...)`,
 // turning it into a literal backspace character and silently breaking word-boundary matches.
 const WORD_BOUNDARY = /\b/.source;
+
+const COMMANDS_HELP = `📋 AVAILABLE COMMANDS:
+
+👶 BABY METRICS (default person if not specified):
+• Formula: "30ml formula" or "formula 30"
+• Breastmilk: "20ml breast milk" or "pumped 20"
+• Weight: "5.5kg" or "weight 5.5"
+• Medicine: "paracetamol" or "ibuprofen"
+• Vaccine: "vaccine"
+• Diaper: "diaper" or "nappy"
+• Bath: "bath"
+• Potty: "potty"
+• Oil: "oil"
+• Sleep: "sleep 2 hours" or "2hr sleep"
+• Time format: "0640 pm - 90ml formula" or "0810- paracetamol"
+
+👩 MOM/SHIVA METRICS (start with "shiva", "mom", or "mother"):
+• Weight: "shiva weight 65kg"
+• Measurements: "shiva chest 90cm|waist 70cm|hips 95cm|bust 95cm"
+• Steps: "shiva steps 5000"
+• Energy: "shiva energy 7" (1-10 scale)
+• Pain: "shiva pain 3" (1-10 scale)
+• Sleep: "shiva sleep 8" (hours)
+• Mood: "shiva mood happy" or "tired" etc.
+• Medication: "shiva medication 2" (count)
+• Exercise: "shiva exercise 30" OR "shiva yoga 45" OR "shiva running 30"
+  Types: yoga|running|walking|cycling|gym|swimming|pilates|dance|cardio|strength|stretching|hiking
+
+👨 DAD/RISHI & 👵 GRANDMOM/ICHI:
+Same format as MOM: "rishi steps 5000" or "ichi mood happy"
+
+📅 APPOINTMENTS:
+"Appointment- [description] [DD] [month] [HH:MM am/pm] [title]"
+Example: "Appointment- checkup 15 July 2:30pm Pediatrician"
+
+🔍 COMMANDS:
+• "appt" - Show upcoming appointments
+• "feed" - Show today's feed logs
+• "report" - Show today vs yesterday summary`;
+
 
 function buildAppointment(title: string, description: string, day: string, monthNum: number, hours: number, minutes: number): any {
   const currentYear = new Date().getFullYear();
@@ -134,14 +165,10 @@ function extractMetricTime(text: string): string | null {
 }
 
 
-// Convert a Europe/London wall-clock time (hours/minutes) into the correct
-// UTC Date instant. The calendar date is always the date the message was
-// received (`referenceNow`'s London date) — deliberately not guessed from
-// whether the time-of-day looks "in the future," since that heuristic was
-// itself a source of off-by-one-day bugs (e.g. a message processed a few
-// seconds before its literal target minute getting bumped back a day).
-// The family always logs feeds at/near the time they happen, so the date
-// stored is simply the date stated independently of the parsed time.
+// Convert an Europe/London wall-clock time (hours/minutes) into the correct
+// UTC Date instant, using `referenceNow` to determine the current London
+// calendar date and DST offset (matches the Europe/London convention used
+// throughout this app, e.g. commands.ts / dashboard).
 function londonWallTimeToUTC(hours: number, minutes: number, referenceNow: Date): Date {
   const ymdFormatter = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Europe/London',
@@ -157,31 +184,17 @@ function londonWallTimeToUTC(hours: number, minutes: number, referenceNow: Date)
   const offsetMatch = tzPart.match(/GMT([+-]\d+)?/)
   const offsetMinutes = (offsetMatch && offsetMatch[1] ? parseInt(offsetMatch[1], 10) : 0) * 60
 
-  return new Date(Date.UTC(y, mo - 1, d, hours, minutes, 0) - offsetMinutes * 60000)
-}
+  let result = new Date(Date.UTC(y, mo - 1, d, hours, minutes, 0) - offsetMinutes * 60000)
 
-// Optional explicit date prefix ahead of the time, e.g. "22/06 2330 - 20ml formula"
-// or "22/06/2026 11:30pm - ...". Uses "/" specifically (never "-") since "-" is
-// already the family's time/description separator and would collide otherwise.
-function extractLeadingDate(text: string): { day: number; month: number; year: number | null; remainder: string } | null {
-  const m = text.match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\s+(.+)$/)
-  if (!m) return null
-
-  const day = parseInt(m[1], 10)
-  const month = parseInt(m[2], 10)
-  if (day < 1 || day > 31 || month < 1 || month > 12) return null
-
-  let year: number | null = null
-  if (m[3]) {
-    year = parseInt(m[3], 10)
-    if (year < 100) year += 2000
+  // If extracted time is in the future, it's probably yesterday's time
+  if (result > referenceNow) {
+    result = new Date(result.getTime() - 86400000)
   }
 
-  return { day, month, year, remainder: m[4] }
+  return result
 }
 
-// Parses just the hour/minute-of-day out of text — no date, no UTC conversion.
-function parseTimeOfDay(text: string): { hours: number; minutes: number } | null {
+function extractTimeFromMessage(text: string): Date | null {
   const trimmed = text.trim()
 
   // Family convention: "HHMM[ am/pm] - description" or "HHMM- description"
@@ -248,40 +261,16 @@ function parseTimeOfDay(text: string): { hours: number; minutes: number } | null
   if (meridiem === 'PM' && hours < 12) hours += 12
   if (meridiem === 'AM' && hours === 12) hours = 0
 
-  return { hours, minutes }
+  return londonWallTimeToUTC(hours, minutes, new Date())
 }
 
-// Builds the UTC instant for an explicit Europe/London calendar date + wall time.
-// No "is this in the future" guessing needed — the date was stated explicitly.
-function londonDateTimeToUTC(day: number, month: number, year: number, hours: number, minutes: number): Date {
-  // First pass at 0 offset, just to find the correct BST/GMT offset for that date
-  // (DST can differ from "now" if backdating across a March/October boundary).
-  const approx = new Date(Date.UTC(year, month - 1, day, hours, minutes, 0))
-  const offsetFormatter = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'Europe/London',
-    timeZoneName: 'shortOffset'
-  })
-  const tzPart = offsetFormatter.formatToParts(approx).find(p => p.type === 'timeZoneName')?.value || 'GMT+0'
-  const offsetMatch = tzPart.match(/GMT([+-]\d+)?/)
-  const offsetMinutes = (offsetMatch && offsetMatch[1] ? parseInt(offsetMatch[1], 10) : 0) * 60
-
-  return new Date(approx.getTime() - offsetMinutes * 60000)
-}
-
-function extractTimeFromMessage(text: string): Date | null {
-  const trimmed = text.trim()
-  const dateMatch = extractLeadingDate(trimmed)
-  const searchText = dateMatch ? dateMatch.remainder : trimmed
-
-  const timeOfDay = parseTimeOfDay(searchText)
-  if (!timeOfDay) return null
-
-  if (dateMatch) {
-    const year = dateMatch.year ?? new Date().getFullYear()
-    return londonDateTimeToUTC(dateMatch.day, dateMatch.month, year, timeOfDay.hours, timeOfDay.minutes)
-  }
-
-  return londonWallTimeToUTC(timeOfDay.hours, timeOfDay.minutes, new Date())
+function escapeXml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
 }
 
 function parseMetric(text: string): any {
@@ -326,9 +315,35 @@ function parseMetric(text: string): any {
       const match = cleanText.match(/(\d+)/);
       if (match) return { metric_type: 'wellness_exercise', value: match[1], unit: 'mins', isMetric: true, personType };
     }
+    // Exercise types: "yoga 45", "running 30", "walking 20", "gym 60", etc.
+    const exerciseTypes = ['yoga', 'running', 'walking', 'cycling', 'gym', 'swimming', 'pilates', 'dance', 'cardio', 'strength', 'stretching', 'hiking'];
+    for (const exType of exerciseTypes) {
+      if (cleanText.includes(exType)) {
+        const match = cleanText.match(/(\d+)/);
+        if (match) {
+          const duration = match[1];
+          return { metric_type: 'wellness_exercise', value: `${exType}:${duration}`, unit: 'mins', isMetric: true, personType };
+        }
+      }
+    }
     if (cleanText.includes('medication')) {
       const match = cleanText.match(/(\d+)/);
       if (match) return { metric_type: 'wellness_medication', value: match[1], unit: 'count', isMetric: true, personType };
+    }
+    // Weight and measurements for family members (mom, dad, grandmom)
+    let match = cleanText.match(/(\d+(?:[.,]\d+)?)[\s.]*(kg)[\s.]*(w(eight|right)?)?/i) || cleanText.match(/(w(eight|right)?)[\s.]*(\d+(?:[.,]\d+)?)[\s.]*(kg)?/i);
+    if (match) {
+      const val = (/^\d/.test(match[1]) ? match[1] : match[3]).replace(',', '.');
+      return { metric_type: 'weight', value: val, unit: 'kg', isMetric: true, personType };
+    }
+
+    match = cleanText.match(/(chest|waist|hips|bust)[\s.]*(\d+(?:[.,]\d+)?)[\s.]*(cm)?/i) || cleanText.match(/(\d+(?:[.,]\d+)?)[\s.]*(cm)[\s.]*(chest|waist|hips|bust)/i);
+    if (match) {
+      const measureType = (/^\d/.test(match[1]) ? match[3] : match[1]).toLowerCase();
+      const val = (/^\d/.test(match[1]) ? match[1] : match[2]).replace(',', '.');
+      if (['chest', 'waist', 'hips', 'bust'].includes(measureType)) {
+        return { metric_type: `measurement_${measureType}`, value: val, unit: 'cm', isMetric: true, personType };
+      }
     }
     return null;
   }
@@ -359,6 +374,16 @@ function parseMetric(text: string): any {
   if (match) {
     const val = (/^\d/.test(match[1]) ? match[1] : match[3]).replace(',', '.');
     return { metric_type: 'weight', value: val, unit: 'kg', isMetric: true, personType };
+  }
+
+  // Measurements - "chest 90cm", "waist 70cm", "hips 95cm", "bust 95cm"
+  match = text.match(/(chest|waist|hips|bust)[\s.]*(\d+(?:[.,]\d+)?)[\s.]*(cm)?/i) || text.match(/(\d+(?:[.,]\d+)?)[\s.]*(cm)[\s.]*(chest|waist|hips|bust)/i);
+  if (match) {
+    const measureType = (/^\d/.test(match[1]) ? match[3] : match[1]).toLowerCase();
+    const val = (/^\d/.test(match[1]) ? match[1] : match[2]).replace(',', '.');
+    if (['chest', 'waist', 'hips', 'bust'].includes(measureType)) {
+      return { metric_type: `measurement_${measureType}`, value: val, unit: 'cm', isMetric: true, personType };
+    }
   }
 
   if (/vaccine/i.test(text)) return { metric_type: 'vaccine', value: '1', unit: 'count', isMetric: true, personType };
@@ -396,11 +421,9 @@ export async function POST(request: NextRequest) {
 
     // Handle appt command
     if (messageBody.toLowerCase().trim() === 'appt') {
-      console.log('[APPT-ROUTE] condition matched, calling handleCommand');
       const apptList = await handleCommand(messageBody, fromPhone, FAMILY_ID);
-      console.log('[APPT-ROUTE] apptList result:', apptList, 'truthy=', !!apptList);
       if (apptList) {
-        return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${escapeXml(apptList)}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
+        return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${apptList}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
       }
     }
 
@@ -408,7 +431,7 @@ export async function POST(request: NextRequest) {
     if (messageBody.toLowerCase().trim() === 'feed') {
       const feedList = await handleCommand(messageBody, fromPhone, FAMILY_ID);
       if (feedList) {
-        return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${escapeXml(feedList)}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
+        return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${feedList}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
       }
     }
 
@@ -416,7 +439,7 @@ export async function POST(request: NextRequest) {
     if (messageBody.toLowerCase().trim() === 'report') {
       const report = await handleCommand(messageBody, fromPhone, FAMILY_ID);
       if (report) {
-        return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${escapeXml(report)}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
+        return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${report}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
       }
     }
 
@@ -433,7 +456,7 @@ export async function POST(request: NextRequest) {
         }).select();
 
         if (error) throw error;
-        return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${escapeXml(`✓ Appt: ${appointmentData.title}`)}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
+        return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>✓ Appt: ${appointmentData.title}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
       } catch (e: any) {
         console.error('[APT-ERR]', e);
         return new NextResponse('<?xml version="1.0" encoding="UTF-8"?><Response><Message>Appt error</Message></Response>', { status: 200, headers: { 'Content-Type': 'application/xml' } });
@@ -447,13 +470,11 @@ Total: 300ml</Message></Response>`, { status: 200, headers: { 'Content-Type': 'a
     }
 
 
-    const leadingDate = extractLeadingDate(messageBody.trim())
-    const metricData = parseMetric(leadingDate ? leadingDate.remainder : messageBody);
-    console.log('[METRIC-PARSE]', { messageBody, leadingDate: leadingDate?.day, metricData: metricData ? { type: metricData.metric_type, value: metricData.value } : null });
+    const metricData = parseMetric(messageBody);
+    console.log('[PARSE-METRIC]', { messageBody, metricData });
     if (metricData && metricData.isMetric) {
       try {
         const extractedTime = extractTimeFromMessage(messageBody)
-        console.log('[TIME-EXTRACT]', { extractedTime: extractedTime?.toISOString() });
         const insertData: any = {
           family_id: FAMILY_ID,
           metric_type: metricData.metric_type,
@@ -476,15 +497,16 @@ Total: 300ml</Message></Response>`, { status: 200, headers: { 'Content-Type': 'a
           throw error;
         }
         
-        const roundTripped = data?.[0]?.created_at;
-        return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${escapeXml(`✓ ${metricData.value}${metricData.unit} ${metricData.metric_type} [DBG sent=${insertData.created_at} db=${roundTripped}]`)}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
+        const responseMsg = `✓ ${metricData.value}${metricData.unit} ${metricData.metric_type}`;
+        console.log('[METRIC-SUCCESS]', { responseMsg, metricData });
+        return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${escapeXml(responseMsg)}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
       } catch (e: any) {
         console.error('[METRIC-ERR]', { error: e.message, metricData });
-        return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${escapeXml(`Error: ${e.message?.substring(0, 30) || 'metric error'}`)}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
+        return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>Error: ${e.message?.substring(0, 30) || 'metric error'}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
       }
     }
 
-    return new NextResponse('<?xml version="1.0" encoding="UTF-8"?><Response><Message>Baby: 30ml formula|5.5kg weight|vaccine|diaper|bath|sleep 2h. Mom: shiva weight 65kg|shiva steps 5000|shiva mood happy|shiva energy 7|shiva pain 3|shiva medication 2|shiva sleep 8. Rishi/Dad & Ichi/Grandmom: same. Appt: Appointment- [desc] [day] [month] [HH:MM am/pm] [title]</Message></Response>', { status: 200, headers: { 'Content-Type': 'application/xml' } });
+    return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${escapeXml(COMMANDS_HELP)}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
 
   } catch (error) {
     console.error('[ERROR]', error);
