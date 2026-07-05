@@ -43,10 +43,14 @@ export default function MotherWellnessPage() {
     metric_type: 'wellness_mood',
     value: '',
   });
+  const [weight, setWeight] = useState<{ current: string; previous?: string; change?: string; daysSince?: number } | null>(null);
+  const [measurements, setMeasurements] = useState<Record<string, { current: string; change?: string }>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchWellnessData();
+    fetchMomWeight();
+    fetchMomMeasurements();
   }, []);
 
   const getUTCDate = (daysOffset = 0) => {
@@ -89,6 +93,86 @@ export default function MotherWellnessPage() {
     } catch (err) {
       console.error('Error:', err);
       setLoading(false);
+    }
+  };
+
+  const fetchMomWeight = async () => {
+    try {
+      const { data } = await supabase
+        .from('baby_metrics')
+        .select('*')
+        .eq('family_id', PILOT_FAMILY_ID)
+        .eq('metric_type', 'weight')
+        .eq('person_type', 'mom')
+        .order('created_at', { ascending: false })
+        .limit(2);
+
+      if (data && data.length > 0) {
+        const current = data[0];
+        const currentDate = new Date(current.created_at).toLocaleDateString('en-GB', {
+          timeZone: 'Europe/London',
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit'
+        });
+        const currentStr = `${current.value} ${current.unit}`;
+
+        const weightData: { current: string; previous?: string; change?: string; daysSince?: number } = {
+          current: `${currentStr} (${currentDate})`
+        };
+
+        if (data.length > 1) {
+          const previous = data[1];
+          const previousDate = new Date(previous.created_at);
+          const currentDateObj = new Date(current.created_at);
+          const daysSince = Math.floor((currentDateObj.getTime() - previousDate.getTime()) / (1000 * 60 * 60 * 24));
+          const changeGrams = parseFloat(current.value) * 1000 - parseFloat(previous.value) * 1000;
+          const weeklyAvgGain = daysSince > 0 ? (changeGrams / daysSince) * 7 : 0;
+
+          weightData.previous = `${previous.value} ${previous.unit}`;
+          weightData.change = `${weeklyAvgGain.toFixed(0)}g/week`;
+          weightData.daysSince = daysSince;
+        }
+
+        setWeight(weightData);
+      }
+    } catch (err) {
+      console.error('Error fetching weight:', err);
+    }
+  };
+
+  const fetchMomMeasurements = async () => {
+    try {
+      const measurementTypes = ['chest', 'waist', 'hips', 'bust'];
+      const allMeasurements: Record<string, { current: string; change?: string }> = {};
+
+      for (const type of measurementTypes) {
+        const { data } = await supabase
+          .from('baby_metrics')
+          .select('*')
+          .eq('family_id', PILOT_FAMILY_ID)
+          .eq('metric_type', `measurement_${type}`)
+          .eq('person_type', 'mom')
+          .order('created_at', { ascending: false })
+          .limit(2);
+
+        if (data && data.length > 0) {
+          const current = data[0];
+          const currentStr = `${current.value}${current.unit}`;
+          allMeasurements[type] = { current: currentStr };
+
+          if (data.length > 1) {
+            const previous = data[1];
+            const change = (parseFloat(current.value) - parseFloat(previous.value)).toFixed(1);
+            const changeStr = parseFloat(change) > 0 ? `+${change}` : change;
+            allMeasurements[type].change = changeStr;
+          }
+        }
+      }
+
+      setMeasurements(allMeasurements);
+    } catch (err) {
+      console.error('Error fetching measurements:', err);
     }
   };
 
@@ -189,8 +273,11 @@ export default function MotherWellnessPage() {
     });
 
     if (!error) {
-      setForm({ metric_type: 'wellness_mood', value: '' });
+      setForm({ metric_type: 'weight', value: '' });
       fetchWellnessData();
+      if (metricType === 'weight') {
+        fetchMomWeight();
+      }
     }
   };
 
@@ -315,6 +402,42 @@ export default function MotherWellnessPage() {
         </div>
       </div>
 
+      {weight && (
+        <div className="bg-white rounded-lg shadow p-6 mb-6">
+          <h2 className="text-xl font-bold mb-4">Body Metrics</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-4 border border-purple-200">
+              <p className="text-sm text-gray-600 mb-2">Weight</p>
+              <p className="text-2xl font-bold text-purple-600">{weight.current}</p>
+              {weight.change && (
+                <div className="mt-2 pt-2 border-t border-purple-200">
+                  <p className="text-xs text-gray-600">Previous: {weight.previous}</p>
+                  <p className="text-sm font-semibold text-green-600">
+                    {weight.change} ({weight.daysSince} days ago)
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {Object.entries(measurements).length > 0 && (
+              <>
+                {Object.entries(measurements).map(([type, data]) => (
+                  <div key={type} className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-lg p-4 border border-blue-200">
+                    <p className="text-sm text-gray-600 mb-2 capitalize">{type}</p>
+                    <p className="text-2xl font-bold text-blue-600">{data.current}</p>
+                    {data.change && (
+                      <p className={`text-sm font-semibold mt-2 ${parseFloat(data.change) > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                        {data.change}cm
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       {alerts.length > 0 && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
           <h3 className="font-bold text-yellow-900 mb-2">Health Alerts</h3>
@@ -394,6 +517,7 @@ export default function MotherWellnessPage() {
               }
               className="border border-gray-300 rounded px-3 py-2 bg-white font-medium"
             >
+              <option value="weight">Weight (kg)</option>
               <option value="wellness_mood">Mood</option>
               <option value="wellness_energy">Energy (1-10)</option>
               <option value="wellness_pain">Pain (1-10)</option>
@@ -482,7 +606,7 @@ export default function MotherWellnessPage() {
         <p className="text-sm text-blue-800">
           <strong>WhatsApp Quick Commands:</strong>
           <br />
-          "mom mood happy" • "mom energy 7" • "mom pain 3" • "mom recovery good"
+          "mom weight 65kg" • "shiva weight 65kg" • "mom mood happy" • "mom energy 7" • "mom pain 3" • "mom recovery good"
           • "mom medication" • "mom exercise 30 mins"
         </p>
       </div>

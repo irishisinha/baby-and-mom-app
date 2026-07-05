@@ -301,6 +301,16 @@ function parseMetric(text: string): any {
     return { metric_type: 'weight', value: val, unit: 'kg', isMetric: true, personType };
   }
 
+  // Measurements - "chest 90cm", "waist 70cm", "hips 95cm", "bust 95cm"
+  match = text.match(/(chest|waist|hips|bust)[\s.]*(\d+(?:[.,]\d+)?)[\s.]*(cm)?/i) || text.match(/(\d+(?:[.,]\d+)?)[\s.]*(cm)[\s.]*(chest|waist|hips|bust)/i);
+  if (match) {
+    const measureType = (/^\d/.test(match[1]) ? match[3] : match[1]).toLowerCase();
+    const val = (/^\d/.test(match[1]) ? match[1] : match[2]).replace(',', '.');
+    if (['chest', 'waist', 'hips', 'bust'].includes(measureType)) {
+      return { metric_type: `measurement_${measureType}`, value: val, unit: 'cm', isMetric: true, personType };
+    }
+  }
+
   if (/vaccine/i.test(text)) return { metric_type: 'vaccine', value: '1', unit: 'count', isMetric: true, personType };
   if (/diaper/i.test(text)) return { metric_type: 'diaper', value: '1', unit: 'count', isMetric: true, personType };
   if (/bath/i.test(text)) return { metric_type: 'bath', value: '1', unit: 'count', isMetric: true, personType };
@@ -418,7 +428,7 @@ Total: 300ml</Message></Response>`, { status: 200, headers: { 'Content-Type': 'a
       }
     }
 
-    return new NextResponse('<?xml version="1.0" encoding="UTF-8"?><Response><Message>Baby: 30ml formula|5.5kg weight|vaccine|diaper|bath|sleep 2h. Wellness: shiva/mom steps 5000|shiva mood happy|shiva energy 7|shiva pain 3|shiva medication 2|shiva sleep 8. Rishi/Dad & Ichi/Grandmom: same. Appt: Appointment- [desc] [day] [month] [HH:MM am/pm] [title]</Message></Response>', { status: 200, headers: { 'Content-Type': 'application/xml' } });
+    return new NextResponse('<?xml version="1.0" encoding="UTF-8"?><Response><Message>Baby: 30ml formula|5.5kg weight|vaccine|diaper|bath|sleep 2h. Mom: shiva weight 65kg|shiva chest 90cm|shiva waist 70cm|shiva hips 95cm|shiva steps 5000|shiva mood happy|shiva energy 7|shiva pain 3|shiva medication 2|shiva sleep 8. Rishi/Dad & Ichi/Grandmom: same. Appt: Appointment- [desc] [day] [month] [HH:MM am/pm] [title]</Message></Response>', { status: 200, headers: { 'Content-Type': 'application/xml' } });
 
   } catch (error) {
     console.error('[ERROR]', error);
