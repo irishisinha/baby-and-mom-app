@@ -330,6 +330,21 @@ function parseMetric(text: string): any {
       const match = cleanText.match(/(\d+)/);
       if (match) return { metric_type: 'wellness_medication', value: match[1], unit: 'count', isMetric: true, personType };
     }
+    // Weight and measurements for family members (mom, dad, grandmom)
+    let match = cleanText.match(/(\d+(?:[.,]\d+)?)[\s.]*(kg)[\s.]*(w(eight|right)?)?/i) || cleanText.match(/(w(eight|right)?)[\s.]*(\d+(?:[.,]\d+)?)[\s.]*(kg)?/i);
+    if (match) {
+      const val = (/^\d/.test(match[1]) ? match[1] : match[3]).replace(',', '.');
+      return { metric_type: 'weight', value: val, unit: 'kg', isMetric: true, personType };
+    }
+
+    match = cleanText.match(/(chest|waist|hips|bust)[\s.]*(\d+(?:[.,]\d+)?)[\s.]*(cm)?/i) || cleanText.match(/(\d+(?:[.,]\d+)?)[\s.]*(cm)[\s.]*(chest|waist|hips|bust)/i);
+    if (match) {
+      const measureType = (/^\d/.test(match[1]) ? match[3] : match[1]).toLowerCase();
+      const val = (/^\d/.test(match[1]) ? match[1] : match[2]).replace(',', '.');
+      if (['chest', 'waist', 'hips', 'bust'].includes(measureType)) {
+        return { metric_type: `measurement_${measureType}`, value: val, unit: 'cm', isMetric: true, personType };
+      }
+    }
     return null;
   }
 
