@@ -13,8 +13,8 @@ const TopNavigation = () => {
     { label: 'Home', href: '/dashboard', paths: ['/dashboard', '/dashboard/'] },
     { label: 'Appointments', href: '/dashboard/appointments', paths: ['/dashboard/appointments'] },
     { label: 'Metrics', href: '/dashboard/metrics', paths: ['/dashboard/metrics'] },
-    { label: 'Family', href: '/dashboard/family', paths: ['/dashboard/family'] },
     { label: 'Mother', href: '/dashboard/mother', paths: ['/dashboard/mother'] },
+    { label: 'Family', href: '/dashboard/family', paths: ['/dashboard/family'] },
   ]
 
   const isActive = (paths: string[]) => paths.some(p => pathname === p || pathname.startsWith(p + '/'))
@@ -53,8 +53,8 @@ const BottomNavigation = () => {
     { label: 'Home', href: '/dashboard', icon: '🏠', paths: ['/dashboard', '/dashboard/'] },
     { label: 'Appointments', href: '/dashboard/appointments', icon: '📅', paths: ['/dashboard/appointments'] },
     { label: 'Metrics', href: '/dashboard/metrics', icon: '📊', paths: ['/dashboard/metrics'] },
-    { label: 'Family', href: '/dashboard/family', icon: '👨‍👩‍👧', paths: ['/dashboard/family'] },
     { label: 'Mother', href: '/dashboard/mother', icon: '👩', paths: ['/dashboard/mother'] },
+    { label: 'Family', href: '/dashboard/family', icon: '👨‍👩‍👧', paths: ['/dashboard/family'] },
   ]
 
   const isActive = (paths: string[]) => paths.some(p => pathname === p || pathname.startsWith(p + '/'))

@@ -15,6 +15,7 @@ interface Metric {
   value: string;
   unit: string;
   created_at: string;
+  person_type?: string;
 }
 
 interface Appointment {
@@ -66,6 +67,7 @@ function getWeightChangeColor(weeklyAvgGainStr: string): string {
 
 export default function DashboardPage() {
   const [metrics, setMetrics] = useState<Metric[]>([]);
+  const [motherMetrics, setMotherMetrics] = useState<Metric[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [summaryStats, setSummaryStats] = useState<SummaryStats>({});
   const [dayComparison, setDayComparison] = useState<DayComparison>({});
@@ -86,7 +88,7 @@ export default function DashboardPage() {
 
   const fetchData = async () => {
     try {
-      await Promise.all([fetchMetrics(), fetchAppointments(), fetchLastWeight()]);
+      await Promise.all([fetchMetrics(), fetchMotherMetrics(), fetchAppointments(), fetchLastWeight()]);
       setLastUpdate(formatLondonTime(new Date()));
     } finally {
       setLoading(false);
@@ -98,6 +100,7 @@ export default function DashboardPage() {
       .from('baby_metrics')
       .select('*')
       .eq('baby_id', BABY_ID)
+      .eq('person_type', 'baby')
       .order('created_at', { ascending: false })
       .limit(100);
 
@@ -108,11 +111,26 @@ export default function DashboardPage() {
     }
   };
 
+  const fetchMotherMetrics = async () => {
+    const { data, error } = await supabase
+      .from('baby_metrics')
+      .select('*')
+      .eq('family_id', FAMILY_ID)
+      .eq('person_type', 'mom')
+      .order('created_at', { ascending: false })
+      .limit(10);
+
+    if (data && !error) {
+      setMotherMetrics(data as Metric[]);
+    }
+  };
+
   const fetchLastWeight = async () => {
     const { data, error } = await supabase
       .from('baby_metrics')
       .select('*')
       .eq('baby_id', BABY_ID)
+      .eq('person_type', 'baby')
       .eq('metric_type', 'weight')
       .order('created_at', { ascending: false })
       .limit(2);
@@ -272,12 +290,13 @@ export default function DashboardPage() {
       .channel('baby_metrics_channel')
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'baby_metrics', filter: `baby_id=eq.${BABY_ID}` },
+        { event: 'INSERT', schema: 'public', table: 'baby_metrics', filter: `family_id=eq.${FAMILY_ID}` },
         () => {
           // Debounce rapid successive inserts (e.g., multiple messages sent together)
           if (metricsTimeout) clearTimeout(metricsTimeout);
           metricsTimeout = setTimeout(() => {
             fetchMetrics();
+            fetchMotherMetrics();
             fetchLastWeight();
             setLastUpdate(formatLondonTime(new Date()));
           }, 500);
@@ -427,6 +446,36 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
+
+      {/* Mother / Shiva */}
+      <div className="bg-white rounded-lg p-6 mb-6 shadow">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-2xl font-bold">👩 Mother / Shiva</h2>
+          <Link href="/dashboard/mother">
+            <button className="text-blue-600 hover:text-blue-700 font-semibold">View All →</button>
+          </Link>
+        </div>
+        {motherMetrics.length === 0 ? (
+          <p className="text-gray-500">No wellness activity</p>
+        ) : (
+          <div className="space-y-2">
+            {motherMetrics.map((metric) => (
+              <div
+                key={metric.id}
+                className="flex justify-between items-center py-3 px-4 bg-pink-50 rounded border border-pink-200"
+              >
+                <div className="flex-1">
+                  <span className="capitalize font-medium">
+                    {metric.metric_type.replace('wellness_', '').replace(/_/g, ' ')}
+                  </span>
+                  <span className="text-gray-600 ml-2">{metric.value} {metric.unit}</span>
+                </div>
+                <span className="text-xs text-gray-400">{formatLondonTime(metric.created_at)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Appointments */}
       <div className="bg-white rounded-lg p-6 mb-6 shadow">

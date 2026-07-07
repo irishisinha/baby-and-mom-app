@@ -244,6 +244,9 @@ export default function MotherWellnessPage() {
           const duration = value.includes(':') ? parseInt(value.split(':')[1]) : parseInt(value);
           result.exercise += duration || 0;
           break;
+        case 'steps':
+          result.steps += parseInt(value) || 0;
+          break;
         case 'medication':
           result.medication++;
           break;
@@ -434,6 +437,30 @@ export default function MotherWellnessPage() {
               </p>
             </div>
             <span className="text-3xl">💊</span>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow p-4 border-l-4 border-green-500">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gray-600 text-sm font-medium">Steps (week)</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">
+                {summary.steps.toLocaleString()}
+              </p>
+            </div>
+            <span className="text-3xl">👟</span>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow p-4 border-l-4 border-orange-500">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gray-600 text-sm font-medium">Exercise (week)</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">
+                {summary.exercise} mins
+              </p>
+            </div>
+            <span className="text-3xl">🏃</span>
           </div>
         </div>
       </div>
