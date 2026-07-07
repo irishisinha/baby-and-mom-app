@@ -184,14 +184,7 @@ function londonWallTimeToUTC(hours: number, minutes: number, referenceNow: Date)
   const offsetMatch = tzPart.match(/GMT([+-]\d+)?/)
   const offsetMinutes = (offsetMatch && offsetMatch[1] ? parseInt(offsetMatch[1], 10) : 0) * 60
 
-  let result = new Date(Date.UTC(y, mo - 1, d, hours, minutes, 0) - offsetMinutes * 60000)
-
-  // If extracted time is in the future, it's probably yesterday's time
-  if (result > referenceNow) {
-    result = new Date(result.getTime() - 86400000)
-  }
-
-  return result
+  return new Date(Date.UTC(y, mo - 1, d, hours, minutes, 0) - offsetMinutes * 60000)
 }
 
 function extractTimeFromMessage(text: string): Date | null {
