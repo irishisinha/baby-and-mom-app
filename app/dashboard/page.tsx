@@ -290,9 +290,10 @@ export default function DashboardPage() {
       .channel('baby_metrics_channel')
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'baby_metrics', filter: `family_id=eq.${FAMILY_ID}` },
+<<<<<<< HEAD
+        { event: '*', schema: 'public', table: 'baby_metrics', filter: `baby_id=eq.${BABY_ID}` },
         () => {
-          // Debounce rapid successive inserts (e.g., multiple messages sent together)
+          // Debounce rapid successive changes (inserts, updates, deletes)
           if (metricsTimeout) clearTimeout(metricsTimeout);
           metricsTimeout = setTimeout(() => {
             fetchMetrics();

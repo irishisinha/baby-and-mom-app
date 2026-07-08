@@ -53,6 +53,7 @@ export default function MotherWellnessPage() {
     fetchMomWeight();
     fetchMomMeasurements();
     fetchMomExercises();
+    setupSubscriptions();
   }, []);
 
   const getUTCDate = (daysOffset = 0) => {
@@ -209,6 +210,33 @@ export default function MotherWellnessPage() {
     } catch (err) {
       console.error('Error fetching exercises:', err);
     }
+  };
+
+  const setupSubscriptions = () => {
+    let timeout: ReturnType<typeof setTimeout> | null = null;
+
+    const subscription = supabase
+      .channel('mom_metrics_channel')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'baby_metrics', filter: `family_id=eq.${PILOT_FAMILY_ID},person_type=eq.mom` },
+        () => {
+          // Debounce rapid changes (INSERT, UPDATE, DELETE)
+          if (timeout) clearTimeout(timeout);
+          timeout = setTimeout(() => {
+            fetchWellnessData();
+            fetchMomWeight();
+            fetchMomMeasurements();
+            fetchMomExercises();
+          }, 500);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      if (timeout) clearTimeout(timeout);
+      subscription.unsubscribe();
+    };
   };
 
   const calculateSummary = (entries: WellnessEntry[]) => {
