@@ -24,10 +24,15 @@ interface WellnessSummary {
   health_checks: number;
 }
 
+interface DayComparison {
+  [key: string]: { today: number; yesterday: number; unit: string };
+}
+
 export default function MotherWellnessPage() {
   const [wellnessEntries, setWellnessEntries] = useState<WellnessEntry[]>([]);
   const [todayEntries, setTodayEntries] = useState<WellnessEntry[]>([]);
   const [weekEntries, setWeekEntries] = useState<WellnessEntry[]>([]);
+  const [dayComparison, setDayComparison] = useState<DayComparison>({});
   const [summary, setSummary] = useState<WellnessSummary>({
     mood: {},
     energy: [],
@@ -62,6 +67,31 @@ export default function MotherWellnessPage() {
     return today.toISOString().split('T')[0];
   };
 
+  const calculateDayComparison = (entries: WellnessEntry[]) => {
+    const todayStr = getUTCDate(0);
+    const yesterdayStr = getUTCDate(1);
+    const comparison: DayComparison = {};
+    const additiveMetrics = ['wellness_steps', 'wellness_exercise', 'wellness_medication'];
+
+    entries.forEach((e) => {
+      if (!additiveMetrics.includes(e.metric_type)) return;
+
+      const entryDate = e.created_at.split('T')[0];
+      const value = parseFloat(e.value) || 0;
+      const metricName = e.metric_type.replace('wellness_', '');
+
+      if (entryDate === todayStr) {
+        comparison[metricName] = comparison[metricName] || { today: 0, yesterday: 0, unit: e.metric_type === 'wellness_exercise' ? 'mins' : 'count' };
+        comparison[metricName].today += value;
+      } else if (entryDate === yesterdayStr) {
+        comparison[metricName] = comparison[metricName] || { today: 0, yesterday: 0, unit: e.metric_type === 'wellness_exercise' ? 'mins' : 'count' };
+        comparison[metricName].yesterday += value;
+      }
+    });
+
+    setDayComparison(comparison);
+  };
+
   const fetchWellnessData = async () => {
     try {
       const { data: allData } = await supabase
@@ -90,6 +120,7 @@ export default function MotherWellnessPage() {
         setWeekEntries(week_entries);
 
         calculateSummary(week_entries);
+        calculateDayComparison(allData);
         generateAlerts(week_entries);
       }
       setLoading(false);
@@ -418,6 +449,22 @@ export default function MotherWellnessPage() {
         </h1>
         <p className="text-gray-600">Track and monitor wellness metrics</p>
       </div>
+
+      {/* Today vs Yesterday */}
+      {Object.keys(dayComparison).length > 0 && (
+        <div className="bg-white rounded-lg p-6 mb-6 shadow">
+          <h2 className="text-2xl font-bold mb-4">Today vs Yesterday (Total)</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {Object.entries(dayComparison).map(([type, data]) => (
+              <div key={type} className="bg-gradient-to-br from-red-50 to-pink-50 rounded-lg p-4 border border-red-200">
+                <p className="text-sm text-gray-600 capitalize">{type}</p>
+                <p className="text-2xl font-bold text-blue-600">{data.today.toFixed(0)}</p>
+                <p className="text-xs text-gray-500 mt-1">vs {data.yesterday.toFixed(0)} yesterday</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-white rounded-lg shadow p-4 border-l-4 border-blue-500">
