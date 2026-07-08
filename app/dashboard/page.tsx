@@ -30,7 +30,7 @@ interface Appointment {
 }
 
 interface SummaryStats {
-  [key: string]: { avg: number; count: number; prevWeekAvg?: number; change?: number };
+  [key: string]: { avg: number; count: number; total?: number; prevWeekAvg?: number; change?: number };
 }
 
 interface DayComparison {
@@ -224,8 +224,9 @@ export default function DashboardPage() {
             dailyTotals[day] = (dailyTotals[day] || 0) + parseFloat(m.value);
           });
           const totals = Object.values(dailyTotals);
-          const avg = totals.reduce((a, b) => a + b, 0) / totals.length;
-          result[type] = { avg: parseFloat(avg.toFixed(2)), count: totals.length };
+          const totalSum = totals.reduce((a, b) => a + b, 0);
+          const avgPerDay = totalSum / totals.length;
+          result[type] = { avg: parseFloat(avgPerDay.toFixed(2)), count: totals.length, total: parseFloat(totalSum.toFixed(2)) };
         } else {
           const values = typeEntries.map((m) => parseFloat(m.value));
           const avg = values.reduce((a, b) => a + b, 0) / values.length;
@@ -412,25 +413,30 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* 7-Day Average Summary */}
+      {/* 7-Day Summary */}
       {Object.keys(summaryStats).length > 0 && (
         <div className="bg-white rounded-lg p-6 mb-6 shadow">
-          <h2 className="text-2xl font-bold mb-4">Last 7 Days (Average)</h2>
+          <h2 className="text-2xl font-bold mb-4">Last 7 Days</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {Object.entries(summaryStats).map(([type, data]) => (
-              <div key={type} className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-4 border border-green-200">
-                <p className="text-sm text-gray-600 capitalize">{type}</p>
-                <p className="text-2xl font-bold text-green-600">{data.avg}</p>
-                <p className="text-xs text-gray-500 mt-1">
-                  avg ({data.count} {['formula', 'breastmilk'].includes(type) ? 'days' : 'entries'})
-                </p>
-                {data.change !== undefined && (
-                  <p className={`text-xs font-semibold mt-2 ${data.change > 0 ? 'text-green-600' : data.change < 0 ? 'text-red-600' : 'text-gray-500'}`}>
-                    {data.change > 0 ? '+' : ''}{data.change} vs last week
+            {Object.entries(summaryStats).map(([type, data]) => {
+              const isFeedType = ['formula', 'breastmilk'].includes(type);
+              const displayValue = isFeedType ? data.total : data.avg;
+              const label = isFeedType ? 'total' : 'avg';
+              return (
+                <div key={type} className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-4 border border-green-200">
+                  <p className="text-sm text-gray-600 capitalize">{type}</p>
+                  <p className="text-2xl font-bold text-green-600">{displayValue}</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {label} ({data.count} {isFeedType ? 'days' : 'entries'})
                   </p>
-                )}
-              </div>
-            ))}
+                  {data.change !== undefined && (
+                    <p className={`text-xs font-semibold mt-2 ${data.change > 0 ? 'text-green-600' : data.change < 0 ? 'text-red-600' : 'text-gray-500'}`}>
+                      {data.change > 0 ? '+' : ''}{data.change} vs last week
+                    </p>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
