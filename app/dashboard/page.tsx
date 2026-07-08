@@ -290,7 +290,6 @@ export default function DashboardPage() {
       .channel('baby_metrics_channel')
       .on(
         'postgres_changes',
-<<<<<<< HEAD
         { event: '*', schema: 'public', table: 'baby_metrics', filter: `baby_id=eq.${BABY_ID}` },
         () => {
           // Debounce rapid successive changes (inserts, updates, deletes)
