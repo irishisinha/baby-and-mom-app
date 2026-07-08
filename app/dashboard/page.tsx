@@ -105,9 +105,12 @@ export default function DashboardPage() {
       .limit(100);
 
     if (data && !error) {
+      console.log('[FETCH-METRICS]', { count: data.length, sample: data.slice(0, 3) });
       setMetrics(data as Metric[]);
       calculateSummaryStats(data as Metric[]);
       calculateDayComparison(data as Metric[]);
+    } else {
+      console.error('[FETCH-ERROR]', error);
     }
   };
 
@@ -244,6 +247,7 @@ export default function DashboardPage() {
       }
     });
 
+    console.log('[SUMMARY-STATS]', { last7Days: last7Days.length, stats });
     setSummaryStats(stats);
   };
 
@@ -291,10 +295,12 @@ export default function DashboardPage() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'baby_metrics', filter: `baby_id=eq.${BABY_ID}` },
-        () => {
+        (payload) => {
+          console.log('[METRIC-CHANGE]', 'Metric updated/deleted, refetching...');
           // Debounce rapid successive changes (inserts, updates, deletes)
           if (metricsTimeout) clearTimeout(metricsTimeout);
           metricsTimeout = setTimeout(() => {
+            console.log('[REFETCH] Fetching updated metrics...');
             fetchMetrics();
             fetchMotherMetrics();
             fetchLastWeight();
