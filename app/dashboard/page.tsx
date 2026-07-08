@@ -68,6 +68,8 @@ function getWeightChangeColor(weeklyAvgGainStr: string): string {
 export default function DashboardPage() {
   const [metrics, setMetrics] = useState<Metric[]>([]);
   const [motherMetrics, setMotherMetrics] = useState<Metric[]>([]);
+  const [motherDayComparison, setMotherDayComparison] = useState<DayComparison>({});
+  const [motherSummaryStats, setMotherSummaryStats] = useState<SummaryStats>({});
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [summaryStats, setSummaryStats] = useState<SummaryStats>({});
   const [dayComparison, setDayComparison] = useState<DayComparison>({});
@@ -121,10 +123,12 @@ export default function DashboardPage() {
       .eq('family_id', FAMILY_ID)
       .eq('person_type', 'mom')
       .order('created_at', { ascending: false })
-      .limit(10);
+      .limit(100);
 
     if (data && !error) {
       setMotherMetrics(data as Metric[]);
+      calculateMotherDayComparison(data as Metric[]);
+      calculateMotherSummaryStats(data as Metric[]);
     }
   };
 
@@ -288,6 +292,81 @@ export default function DashboardPage() {
     setDayComparison(comparison);
   };
 
+  const calculateMotherDayComparison = (metricsData: Metric[]) => {
+    const now = new Date();
+    const todayStr = now.toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
+    const yesterdayDate = new Date(now);
+    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+    const yesterdayStr = yesterdayDate.toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
+
+    const comparison: DayComparison = {};
+    const additiveMetrics = ['wellness_steps', 'wellness_exercise', 'wellness_medication'];
+
+    metricsData.forEach((m) => {
+      if (!additiveMetrics.includes(m.metric_type)) return;
+
+      const metricDate = new Date(m.created_at).toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
+      const value = parseFloat(m.value) || 0;
+      const metricName = m.metric_type.replace('wellness_', '');
+
+      if (metricDate === todayStr) {
+        comparison[metricName] = comparison[metricName] || { today: 0, yesterday: 0, unit: m.unit };
+        comparison[metricName].today += value;
+      } else if (metricDate === yesterdayStr) {
+        comparison[metricName] = comparison[metricName] || { today: 0, yesterday: 0, unit: m.unit };
+        comparison[metricName].yesterday += value;
+      }
+    });
+
+    setMotherDayComparison(comparison);
+  };
+
+  const calculateMotherSummaryStats = (metricsData: Metric[]) => {
+    const isoLondonDate = (d: Date | string) => new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Europe/London', year: 'numeric', month: '2-digit', day: '2-digit'
+    }).format(typeof d === 'string' ? new Date(d) : d);
+
+    const sevenDaysAgoStr = isoLondonDate(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000));
+    const fourteenDaysAgoStr = isoLondonDate(new Date(Date.now() - 14 * 24 * 60 * 60 * 1000));
+
+    const last7Days = metricsData.filter((m) => isoLondonDate(m.created_at) >= sevenDaysAgoStr);
+    const prev7Days = metricsData.filter((m) => {
+      const dateStr = isoLondonDate(m.created_at);
+      return dateStr >= fourteenDaysAgoStr && dateStr < sevenDaysAgoStr;
+    });
+
+    const stats: SummaryStats = {};
+
+    const calculateMetricStats = (entries: Metric[]) => {
+      const grouped = entries.reduce((acc, m) => {
+        acc[m.metric_type] = acc[m.metric_type] || [];
+        acc[m.metric_type].push(m);
+        return acc;
+      }, {} as Record<string, Metric[]>);
+
+      const result: SummaryStats = {};
+      Object.entries(grouped).forEach(([type, typeEntries]) => {
+        const values = typeEntries.map((m) => parseFloat(m.value));
+        const avg = values.reduce((a, b) => a + b, 0) / values.length;
+        result[type] = { avg: parseFloat(avg.toFixed(2)), count: values.length };
+      });
+      return result;
+    };
+
+    const currentWeekStats = calculateMetricStats(last7Days);
+    const prevWeekStats = calculateMetricStats(prev7Days);
+
+    Object.entries(currentWeekStats).forEach(([type, data]) => {
+      stats[type] = { ...data };
+      if (prevWeekStats[type]) {
+        stats[type].prevWeekAvg = prevWeekStats[type].avg;
+        stats[type].change = parseFloat((data.avg - prevWeekStats[type].avg).toFixed(2));
+      }
+    });
+
+    setMotherSummaryStats(stats);
+  };
+
   const setupSubscriptions = () => {
     let metricsTimeout: ReturnType<typeof setTimeout> | null = null;
 
@@ -421,33 +500,28 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* 7-Day Summary */}
+      {/* 7-Day Summary - Average Only */}
       {Object.keys(summaryStats).length > 0 && (
         <div className="bg-white rounded-lg p-6 mb-6 shadow">
           <h2 className="text-2xl font-bold mb-4">Last 7 Days (Average)</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {Object.entries(summaryStats).map(([type, data]) => {
-              const isFeedType = ['formula', 'breastmilk'].includes(type);
-              const displayValue = isFeedType ? data.total : data.avg;
-              const label = isFeedType ? 'total' : 'avg';
-              return (
-                <div key={type} className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-4 border border-green-200 hover:shadow-md transition-shadow">
-                  <div className="flex justify-between items-start mb-2">
-                    <p className="text-sm text-gray-600 capitalize font-medium">{type}</p>
-                    <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">{label}</span>
-                  </div>
-                  <p className="text-2xl font-bold text-green-600 mb-2">{displayValue}</p>
-                  <p className="text-xs text-gray-500">
-                    {data.count} {isFeedType ? 'days' : 'entries'}
-                  </p>
-                  {data.change !== undefined && (
-                    <p className={`text-xs font-semibold mt-2 pt-2 border-t border-green-200 ${data.change > 0 ? 'text-green-600' : data.change < 0 ? 'text-red-600' : 'text-gray-500'}`}>
-                      {data.change > 0 ? '↑' : data.change < 0 ? '↓' : '→'} {Math.abs(data.change)} vs last week
-                    </p>
-                  )}
+            {Object.entries(summaryStats).map(([type, data]) => (
+              <div key={type} className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-4 border border-green-200 hover:shadow-md transition-shadow">
+                <div className="flex justify-between items-start mb-2">
+                  <p className="text-sm text-gray-600 capitalize font-medium">{type}</p>
+                  <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">avg</span>
                 </div>
-              );
-            })}
+                <p className="text-2xl font-bold text-green-600 mb-2">{data.avg}</p>
+                <p className="text-xs text-gray-500">
+                  {data.count} {['formula', 'breastmilk'].includes(type) ? 'days' : 'entries'}
+                </p>
+                {data.change !== undefined && (
+                  <p className={`text-xs font-semibold mt-2 pt-2 border-t border-green-200 ${data.change > 0 ? 'text-green-600' : data.change < 0 ? 'text-red-600' : 'text-gray-500'}`}>
+                    {data.change > 0 ? '↑' : data.change < 0 ? '↓' : '→'} {Math.abs(data.change)} vs last week
+                  </p>
+                )}
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -470,35 +544,60 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Mother / Shiva */}
-      <div className="bg-white rounded-lg p-6 mb-6 shadow">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-2xl font-bold">👩 Mother / Shiva</h2>
-          <Link href="/dashboard/mother">
-            <button className="text-blue-600 hover:text-blue-700 font-semibold">View All →</button>
-          </Link>
-        </div>
-        {motherMetrics.length === 0 ? (
-          <p className="text-gray-500">No wellness activity</p>
-        ) : (
-          <div className="space-y-2">
-            {motherMetrics.map((metric) => (
-              <div
-                key={metric.id}
-                className="flex justify-between items-center py-3 px-4 bg-pink-50 rounded border border-pink-200"
-              >
-                <div className="flex-1">
-                  <span className="capitalize font-medium">
-                    {metric.metric_type.replace('wellness_', '').replace(/_/g, ' ')}
-                  </span>
-                  <span className="text-gray-600 ml-2">{metric.value} {metric.unit}</span>
+      {/* Mother / Shiva - Today vs Yesterday */}
+      {Object.keys(motherDayComparison).length > 0 && (
+        <div className="bg-white rounded-lg p-6 mb-6 shadow">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-bold">👩 Mother - Today vs Yesterday</h2>
+            <Link href="/dashboard/mother">
+              <button className="text-blue-600 hover:text-blue-700 font-semibold">View All →</button>
+            </Link>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {Object.entries(motherDayComparison).map(([type, data]) => {
+              const increase = data.today >= data.yesterday;
+              return (
+                <div key={type} className="bg-gradient-to-br from-red-50 to-pink-50 rounded-lg p-4 border border-red-200 hover:shadow-md transition-shadow">
+                  <div className="flex justify-between items-start mb-2">
+                    <p className="text-sm text-gray-600 capitalize font-medium">{type}</p>
+                    <span className={`text-xs font-semibold px-2 py-1 rounded ${increase ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                      {increase ? '↑' : '↓'} {Math.abs(data.today - data.yesterday).toFixed(0)}
+                    </span>
+                  </div>
+                  <p className="text-2xl font-bold text-blue-600 mb-2">{data.today.toFixed(0)}</p>
+                  <p className="text-xs text-gray-500">vs {data.yesterday.toFixed(0)} yesterday</p>
                 </div>
-                <span className="text-xs text-gray-400">{formatLondonTime(metric.created_at)}</span>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Mother / Shiva - Last 7 Days Average */}
+      {Object.keys(motherSummaryStats).length > 0 && (
+        <div className="bg-white rounded-lg p-6 mb-6 shadow">
+          <h2 className="text-2xl font-bold mb-4">👩 Mother - Last 7 Days (Average)</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {Object.entries(motherSummaryStats).map(([type, data]) => (
+              <div key={type} className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-4 border border-green-200 hover:shadow-md transition-shadow">
+                <div className="flex justify-between items-start mb-2">
+                  <p className="text-sm text-gray-600 capitalize font-medium">{type.replace('wellness_', '')}</p>
+                  <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">avg</span>
+                </div>
+                <p className="text-2xl font-bold text-green-600 mb-2">{data.avg}</p>
+                <p className="text-xs text-gray-500">
+                  {data.count} entries
+                </p>
+                {data.change !== undefined && (
+                  <p className={`text-xs font-semibold mt-2 pt-2 border-t border-green-200 ${data.change > 0 ? 'text-green-600' : data.change < 0 ? 'text-red-600' : 'text-gray-500'}`}>
+                    {data.change > 0 ? '↑' : data.change < 0 ? '↓' : '→'} {Math.abs(data.change)} vs last week
+                  </p>
+                )}
               </div>
             ))}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Appointments */}
       <div className="bg-white rounded-lg p-6 mb-6 shadow">
