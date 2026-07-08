@@ -402,13 +402,21 @@ export default function DashboardPage() {
         <div className="bg-white rounded-lg p-6 mb-6 shadow">
           <h2 className="text-2xl font-bold mb-4">Today vs Yesterday (Total)</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {Object.entries(dayComparison).map(([type, data]) => (
-              <div key={type} className="bg-gradient-to-br from-red-50 to-pink-50 rounded-lg p-4 border border-red-200">
-                <p className="text-sm text-gray-600 capitalize">{type}</p>
-                <p className="text-2xl font-bold text-blue-600">{data.today.toFixed(1)}</p>
-                <p className="text-xs text-gray-500 mt-1">vs {data.yesterday.toFixed(1)} yesterday</p>
-              </div>
-            ))}
+            {Object.entries(dayComparison).map(([type, data]) => {
+              const increase = data.today >= data.yesterday;
+              return (
+                <div key={type} className="bg-gradient-to-br from-red-50 to-pink-50 rounded-lg p-4 border border-red-200 hover:shadow-md transition-shadow">
+                  <div className="flex justify-between items-start mb-2">
+                    <p className="text-sm text-gray-600 capitalize font-medium">{type}</p>
+                    <span className={`text-xs font-semibold px-2 py-1 rounded ${increase ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                      {increase ? '↑' : '↓'} {Math.abs(data.today - data.yesterday).toFixed(0)}
+                    </span>
+                  </div>
+                  <p className="text-2xl font-bold text-blue-600 mb-2">{data.today.toFixed(0)}</p>
+                  <p className="text-xs text-gray-500">vs {data.yesterday.toFixed(0)} yesterday</p>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -416,22 +424,25 @@ export default function DashboardPage() {
       {/* 7-Day Summary */}
       {Object.keys(summaryStats).length > 0 && (
         <div className="bg-white rounded-lg p-6 mb-6 shadow">
-          <h2 className="text-2xl font-bold mb-4">Last 7 Days</h2>
+          <h2 className="text-2xl font-bold mb-4">Last 7 Days (Average)</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {Object.entries(summaryStats).map(([type, data]) => {
               const isFeedType = ['formula', 'breastmilk'].includes(type);
               const displayValue = isFeedType ? data.total : data.avg;
               const label = isFeedType ? 'total' : 'avg';
               return (
-                <div key={type} className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-4 border border-green-200">
-                  <p className="text-sm text-gray-600 capitalize">{type}</p>
-                  <p className="text-2xl font-bold text-green-600">{displayValue}</p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {label} ({data.count} {isFeedType ? 'days' : 'entries'})
+                <div key={type} className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-4 border border-green-200 hover:shadow-md transition-shadow">
+                  <div className="flex justify-between items-start mb-2">
+                    <p className="text-sm text-gray-600 capitalize font-medium">{type}</p>
+                    <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">{label}</span>
+                  </div>
+                  <p className="text-2xl font-bold text-green-600 mb-2">{displayValue}</p>
+                  <p className="text-xs text-gray-500">
+                    {data.count} {isFeedType ? 'days' : 'entries'}
                   </p>
                   {data.change !== undefined && (
-                    <p className={`text-xs font-semibold mt-2 ${data.change > 0 ? 'text-green-600' : data.change < 0 ? 'text-red-600' : 'text-gray-500'}`}>
-                      {data.change > 0 ? '+' : ''}{data.change} vs last week
+                    <p className={`text-xs font-semibold mt-2 pt-2 border-t border-green-200 ${data.change > 0 ? 'text-green-600' : data.change < 0 ? 'text-red-600' : 'text-gray-500'}`}>
+                      {data.change > 0 ? '↑' : data.change < 0 ? '↓' : '→'} {Math.abs(data.change)} vs last week
                     </p>
                   )}
                 </div>
