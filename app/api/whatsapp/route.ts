@@ -190,9 +190,10 @@ function londonWallTimeToUTC(hours: number, minutes: number, referenceNow: Date)
 function extractTimeFromMessage(text: string): Date | null {
   const trimmed = text.trim()
 
-  // Family convention: "HHMM[ am/pm] - description" or "HHMM- description"
-  // e.g. "0640 pm - 90 ml formula", "0810- paracetamol", "640pm-90ml formula"
-  const prefixMatch = trimmed.match(/^(\d{3,4})\s*(am|pm|a\.m\.|p\.m\.)?\s*[-:]\s*/i)
+  // Family convention: "HHMM[ am/pm][ -] description"
+  // e.g. "0640 pm - 90 ml formula", "0845 pm 90 ml formula", "0810- paracetamol", "640pm-90ml formula"
+  // Dash/colon is optional, can be space instead
+  const prefixMatch = trimmed.match(/^(\d{3,4})\s*(am|pm|a\.m\.|p\.m\.)?\s*[-:\s]\s*/i)
 
   let hours: number | null = null
   let minutes: number | null = null
