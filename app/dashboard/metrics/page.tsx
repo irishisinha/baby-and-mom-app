@@ -3,16 +3,17 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 
 const METRIC_TYPES = [
-  { type: 'breastmilk', label: 'Breastmilk', icon: '🍼' },
-  { type: 'formula', label: 'Formula', icon: '🍼' },
-  { type: 'potty', label: 'Potty', icon: '💧' },
-  { type: 'diaper', label: 'Diaper', icon: '🧻' },
-  { type: 'bath', label: 'Bath', icon: '🛁' },
-  { type: 'oil', label: 'Oil', icon: '🛢️' },
-  { type: 'sleep', label: 'Sleep', icon: '😴' },
-  { type: 'weight', label: 'Weight', icon: '⚖️' },
-  { type: 'fever', label: 'Fever', icon: '🌡️' },
-  { type: 'vaccine', label: 'Vaccine', icon: '💉' },
+  { type: 'breastmilk', label: 'Breastmilk', icon: '🍼', displayType: 'amount' },
+  { type: 'formula', label: 'Formula', icon: '🍼', displayType: 'amount' },
+  { type: 'potty', label: 'Potty', icon: '💧', displayType: 'count' },
+  { type: 'diaper', label: 'Diaper', icon: '🧻', displayType: 'count' },
+  { type: 'bath', label: 'Bath', icon: '🛁', displayType: 'yesno' },
+  { type: 'oil', label: 'Oil', icon: '🛢️', displayType: 'yesno' },
+  { type: 'sleep', label: 'Sleep', icon: '😴', displayType: 'duration' },
+  { type: 'weight', label: 'Weight', icon: '⚖️', displayType: 'amount' },
+  { type: 'fever', label: 'Fever', icon: '🌡️', displayType: 'amount' },
+  { type: 'vaccine', label: 'Vaccine', icon: '💉', displayType: 'count' },
+  { type: 'medicine', label: 'Medicine', icon: '💊', displayType: 'name' },
 ];
 
 const FAMILY_ID = 'df3d99a8-f7a2-44cf-bcb4-9c5f3300caa6';
@@ -61,11 +62,60 @@ export default function MetricsPage() {
 
   const handleQuickAdd = async (type: string) => {
     const metricDef = METRIC_TYPES.find(m => m.type === type);
-    const value = prompt(`Enter amount for ${metricDef?.label}:`);
+
+    // Yes/No metrics (bath, oil)
+    const yesNoTypes = ['bath', 'oil'];
+    if (yesNoTypes.includes(type)) {
+      // For yes/no types, just log as yes
+      const { data, error } = await supabase
+        .from('baby_metrics')
+        .insert([{ metric_type: type, value: 'yes', unit: 'confirmation', notes: '' }])
+        .select();
+
+      if (!error && data) {
+        setMetrics([data[0], ...metrics]);
+      }
+      return;
+    }
+
+    // Count-based metrics (potty, diaper, vaccine)
+    const countTypes = ['potty', 'diaper', 'vaccine'];
+    if (countTypes.includes(type)) {
+      // For count types, just increment (value = 1)
+      const { data, error } = await supabase
+        .from('baby_metrics')
+        .insert([{ metric_type: type, value: '1', unit: 'count', notes: '' }])
+        .select();
+
+      if (!error && data) {
+        setMetrics([data[0], ...metrics]);
+      }
+      return;
+    }
+
+    // For medicine, ask for medicine name
+    if (type === 'medicine') {
+      const medicineName = prompt(`Enter medicine name (e.g., paracetamol, ibuprofen):`);
+      if (!medicineName) return;
+
+      const { data, error } = await supabase
+        .from('baby_metrics')
+        .insert([{ metric_type: type, value: medicineName, unit: 'given', notes: '' }])
+        .select();
+
+      if (!error && data) {
+        setMetrics([data[0], ...metrics]);
+      }
+      return;
+    }
+
+    // For amount-based metrics
+    const promptText = type === 'sleep' ? 'Enter hours:' : `Enter amount for ${metricDef?.label}:`;
+    const value = prompt(promptText);
     if (!value) return;
 
     const unit = type === 'weight' ? 'kg' : type === 'sleep' ? 'hours' : type === 'fever' ? '°C' : 'ml';
-    
+
     const { data, error } = await supabase
       .from('baby_metrics')
       .insert([{ family_id: FAMILY_ID, baby_id: BABY_ID, person_type: 'baby', metric_type: type, value: parseFloat(value), unit, notes: '' }])
@@ -105,6 +155,7 @@ export default function MetricsPage() {
           <button onClick={() => handleQuickAdd('diaper')} className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 font-semibold text-sm">🧷 Diaper Change</button>
           <button onClick={() => handleQuickAdd('potty')} className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 font-semibold text-sm">💧 Potty</button>
           <button onClick={() => handleQuickAdd('sleep')} className="px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 font-semibold text-sm">😴 Sleep</button>
+          <button onClick={() => handleQuickAdd('medicine')} className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 font-semibold text-sm">💊 Medicine</button>
         </div>
       </div>
 
@@ -124,7 +175,24 @@ export default function MetricsPage() {
             ) : (
               <>
                 <div>
-                  <p className="font-bold">{m.metric_type}: {m.value} {m.unit}</p>
+                  {(() => {
+                    const metricDef = METRIC_TYPES.find(mt => mt.type === m.metric_type);
+                    const label = metricDef?.label || m.metric_type;
+                    const countTypes = ['potty', 'diaper', 'vaccine'];
+                    const yesNoTypes = ['bath', 'oil'];
+
+                    let displayValue = '';
+                    if (countTypes.includes(m.metric_type)) {
+                      displayValue = `${m.value}x`;
+                    } else if (yesNoTypes.includes(m.metric_type)) {
+                      displayValue = `${m.value}`;
+                    } else if (m.metric_type === 'medicine') {
+                      displayValue = m.value;
+                    } else {
+                      displayValue = `${m.value}${m.unit ? ' ' + m.unit : ''}`;
+                    }
+                    return <p className="font-bold">{label}: {displayValue}</p>;
+                  })()}
                   <p className="text-xs text-gray-500">{new Date(m.created_at).toLocaleString('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })}</p>
                   {m.notes && <p className="text-sm text-gray-600">Notes: {m.notes}</p>}
                 </div>

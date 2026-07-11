@@ -378,10 +378,10 @@ function parseMetric(text: string): any {
   }
 
   if (/vaccine/i.test(text)) return { metric_type: 'vaccine', value: '1', unit: 'count', isMetric: true, personType };
-  if (/diaper/i.test(text)) return { metric_type: 'diaper', value: '1', unit: 'count', isMetric: true, personType };
-  if (/bath/i.test(text)) return { metric_type: 'bath', value: '1', unit: 'count', isMetric: true, personType };
+  if (/diaper|nappy/i.test(text)) return { metric_type: 'diaper', value: '1', unit: 'count', isMetric: true, personType };
+  if (/bath/i.test(text)) return { metric_type: 'bath', value: 'yes', unit: 'confirmation', isMetric: true, personType };
   if (/potty/i.test(text)) return { metric_type: 'potty', value: '1', unit: 'count', isMetric: true, personType };
-  if (/oil/i.test(text)) return { metric_type: 'oil', value: '1', unit: 'count', isMetric: true, personType };
+  if (/oil/i.test(text)) return { metric_type: 'oil', value: 'yes', unit: 'confirmation', isMetric: true, personType };
 
   match = text.match(/sleep[\s.]*(\d+)[\s.]*(hour|hr)?/i) || text.match(/(\d+)[\s.]*(hour|hr)[\s.]*sleep/i) || text.match(/(\d+)[\s.]*(hour|hr)/i);
   if (match) return { metric_type: 'sleep', value: match[1], unit: 'hours', isMetric: true, personType };
