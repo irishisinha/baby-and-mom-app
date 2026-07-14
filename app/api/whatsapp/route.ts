@@ -192,8 +192,9 @@ function extractTimeFromMessage(text: string): Date | null {
 
   // Family convention: "HHMM[ am/pm][ -] description"
   // e.g. "0640 pm - 90 ml formula", "0845 pm 90 ml formula", "0810- paracetamol", "640pm-90ml formula"
-  // Dash/colon is optional, can be space instead
-  const prefixMatch = trimmed.match(/^(\d{3,4})\s*(am|pm|a\.m\.|p\.m\.)?\s*[-:\s]\s*/i)
+  // For 4-digit numbers, REQUIRE am/pm or must be in HHMM format (not a year like 2015)
+  // For 3-digit numbers, optional am/pm but require separator
+  const prefixMatch = trimmed.match(/^(\d{3,4})\s*(am|pm|a\.m\.|p\.m\.)?\s*[-:]\s*/i)
 
   let hours: number | null = null
   let minutes: number | null = null
@@ -201,15 +202,35 @@ function extractTimeFromMessage(text: string): Date | null {
 
   if (prefixMatch) {
     const digits = prefixMatch[1]
-    const h = digits.length === 4 ? parseInt(digits.slice(0, 2), 10) : parseInt(digits.slice(0, 1), 10)
-    const m = digits.length === 4 ? parseInt(digits.slice(2), 10) : parseInt(digits.slice(1), 10)
+    const ampm = (prefixMatch[2] || '').toLowerCase().replace(/\./g, '')
 
-    if (h <= 23 && m <= 59) {
-      hours = h
-      minutes = m
-      const ampm = (prefixMatch[2] || '').toLowerCase().replace(/\./g, '')
-      if (ampm === 'pm') meridiem = 'PM'
-      else if (ampm === 'am') meridiem = 'AM'
+    // For 4-digit numbers, require am/pm or it must be valid 24h time (00-23:00-59)
+    if (digits.length === 4) {
+      // 4-digit format: HHMM (e.g., 0640, 2015)
+      const h = parseInt(digits.slice(0, 2), 10)
+      const m = parseInt(digits.slice(2), 10)
+
+      // Only accept if: has am/pm, or is valid 24h time (h <= 23 and m <= 59)
+      // This prevents treating years like "2015" as times
+      if ((ampm === 'pm' || ampm === 'am') || (h <= 23 && m <= 59)) {
+        if (h <= 23 && m <= 59) {
+          hours = h
+          minutes = m
+          if (ampm === 'pm') meridiem = 'PM'
+          else if (ampm === 'am') meridiem = 'AM'
+        }
+      }
+    } else {
+      // 3-digit format: HMM (e.g., 640 for 6:40)
+      const h = parseInt(digits.slice(0, 1), 10)
+      const m = parseInt(digits.slice(1), 10)
+
+      if (h <= 23 && m <= 59) {
+        hours = h
+        minutes = m
+        if (ampm === 'pm') meridiem = 'PM'
+        else if (ampm === 'am') meridiem = 'AM'
+      }
     }
   }
 
