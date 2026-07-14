@@ -402,10 +402,7 @@ export async function POST(request: NextRequest) {
     console.log('[WA-MSG]', { messageBody, fromPhone });
 
     const normalizedPhone = fromPhone.replace(/\s+/g, '');
-    const isAuthorized = AUTHORIZED_NUMBERS.some(num => {
-      const normalizedNum = num.replace(/\s+/g, '');
-      return normalizedPhone === normalizedNum || normalizedPhone.includes(normalizedNum) || normalizedNum.includes(normalizedPhone);
-    });
+    const isAuthorized = AUTHORIZED_NUMBERS.includes(normalizedPhone);
 
     if (!isAuthorized) {
       console.log('[WA-UNAUTH]', { fromPhone });
