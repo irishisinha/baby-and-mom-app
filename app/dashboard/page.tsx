@@ -39,7 +39,7 @@ interface DayComparison {
 function formatLondonDate(date: Date | string): string {
   const d = typeof date === 'string' ? new Date(date) : date;
   return new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Europe/London',
+    timeZone: 'Asia/Kolkata',
     year: 'numeric',
     month: '2-digit',
     day: '2-digit'
@@ -49,7 +49,7 @@ function formatLondonDate(date: Date | string): string {
 function formatLondonTime(date: Date | string): string {
   const d = typeof date === 'string' ? new Date(date) : date;
   return new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Europe/London',
+    timeZone: 'Asia/Kolkata',
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
@@ -59,7 +59,7 @@ function formatLondonTime(date: Date | string): string {
 
 function getLondonDate(): Date {
   const londonDateStr = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Europe/London',
+    timeZone: 'Asia/Kolkata',
     year: 'numeric',
     month: '2-digit',
     day: '2-digit'
@@ -135,7 +135,7 @@ export default function DashboardPage() {
       if (result.data && Array.isArray(result.data)) {
         const londonNow = new Date();
         const londonTodayStr = new Intl.DateTimeFormat('en-CA', {
-          timeZone: 'Europe/London',
+          timeZone: 'Asia/Kolkata',
           year: 'numeric',
           month: '2-digit',
           day: '2-digit'
@@ -199,10 +199,10 @@ export default function DashboardPage() {
 
   const calculateDayComparison = (metricsData: Metric[]) => {
     const now = new Date();
-    const todayStr = now.toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
+    const todayStr = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
     const yesterdayDate = new Date(now);
     yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-    const yesterdayStr = yesterdayDate.toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
+    const yesterdayStr = yesterdayDate.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
 
     const comparison: DayComparison = {};
     const nonAdditiveMetrics = ["weight"];
@@ -210,7 +210,7 @@ export default function DashboardPage() {
     metricsData.forEach((m) => {
       if (nonAdditiveMetrics.includes(m.metric_type)) return;
 
-      const metricDate = new Date(m.created_at).toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
+      const metricDate = new Date(m.created_at).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
       const value = parseFloat(m.value);
 
       if (metricDate === todayStr) {

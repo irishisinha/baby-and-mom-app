@@ -146,7 +146,7 @@ export default function ReportsPage() {
             filtered.map(m => (
               <div key={m.id} className="border-l-4 border-blue-400 pl-4 py-2 bg-gray-50">
                 <p className="font-semibold">{getMetricIcon(m.metric_type)} {getMetricLabel(m.metric_type)}: {m.value} {m.unit}</p>
-                <p className="text-xs text-gray-500">{new Date(m.created_at).toLocaleString('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}</p>
+                <p className="text-xs text-gray-500">{new Date(m.created_at).toLocaleString('en-GB', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}</p>
                 {m.notes && <p className="text-sm text-gray-600 mt-1">📝 {m.notes}</p>}
               </div>
             ))

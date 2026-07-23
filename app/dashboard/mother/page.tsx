@@ -112,7 +112,7 @@ export default function MotherWellnessPage() {
       if (data && data.length > 0) {
         const current = data[0];
         const currentDate = new Date(current.created_at).toLocaleDateString('en-GB', {
-          timeZone: 'Europe/London',
+          timeZone: 'Asia/Kolkata',
           year: 'numeric',
           month: '2-digit',
           day: '2-digit'
@@ -193,7 +193,7 @@ export default function MotherWellnessPage() {
       if (data) {
         const exerciseList = data.map((entry: any) => {
           const dateStr = new Date(entry.created_at).toLocaleDateString('en-GB', {
-            timeZone: 'Europe/London',
+            timeZone: 'Asia/Kolkata',
             month: 'short',
             day: 'numeric'
           });
@@ -640,7 +640,7 @@ export default function MotherWellnessPage() {
                       </div>
                       <p className="text-xs text-gray-400 ml-11 mt-1">
                         {new Date(entry.created_at).toLocaleString('en-GB', {
-                          timeZone: 'Europe/London',
+                          timeZone: 'Asia/Kolkata',
                           hour: '2-digit',
                           minute: '2-digit',
                           day: '2-digit',

@@ -125,7 +125,7 @@ export default function AppointmentsPage() {
   const getLondonToday = () => {
     const now = new Date();
     return new Intl.DateTimeFormat('en-CA', {
-      timeZone: 'Europe/London',
+      timeZone: 'Asia/Kolkata',
       year: 'numeric',
       month: '2-digit',
       day: '2-digit'
