@@ -39,28 +39,28 @@ const WORD_BOUNDARY = /\b/.source;
 const COMMANDS_HELP = `ðŸ“‹ AVAILABLE COMMANDS:
 
 ðŸ‘¶ BABY METRICS (default person if not specified):
-â€¢ Formula: "30ml formula" or "formula 30"
-â€¢ Breastmilk: "20ml breast milk" or "pumped 20"
-â€¢ Weight: "5.5kg" or "weight 5.5"
-â€¢ Medicine: "paracetamol" or "ibuprofen"
-â€¢ Vaccine: "vaccine"
-â€¢ Diaper: "diaper" or "nappy"
-â€¢ Bath: "bath"
-â€¢ Potty: "potty"
-â€¢ Oil: "oil"
-â€¢ Sleep: "sleep 2 hours" or "2hr sleep"
-â€¢ Time format: "0640 pm - 90ml formula" or "0810- paracetamol"
+• Formula: "30ml formula" or "formula 30"
+• Breastmilk: "20ml breast milk" or "pumped 20"
+• Weight: "5.5kg" or "weight 5.5"
+• Medicine: "paracetamol" or "ibuprofen"
+• Vaccine: "vaccine"
+• Diaper: "diaper" or "nappy"
+• Bath: "bath"
+• Potty: "potty"
+• Oil: "oil"
+• Sleep: "sleep 2 hours" or "2hr sleep"
+• Time format: "0640 pm - 90ml formula" or "0810- paracetamol"
 
 ðŸ‘© MOM/SHIVA METRICS (start with "shiva", "mom", or "mother"):
-â€¢ Weight: "shiva weight 65kg"
-â€¢ Measurements: "shiva chest 90cm|waist 70cm|hips 95cm|bust 95cm"
-â€¢ Steps: "shiva steps 5000"
-â€¢ Energy: "shiva energy 7" (1-10 scale)
-â€¢ Pain: "shiva pain 3" (1-10 scale)
-â€¢ Sleep: "shiva sleep 8" (hours)
-â€¢ Mood: "shiva mood happy" or "tired" etc.
-â€¢ Medication: "shiva medication 2" (count)
-â€¢ Exercise: "shiva exercise 30" OR "shiva yoga 45" OR "shiva running 30"
+• Weight: "shiva weight 65kg"
+• Measurements: "shiva chest 90cm|waist 70cm|hips 95cm|bust 95cm"
+• Steps: "shiva steps 5000"
+• Energy: "shiva energy 7" (1-10 scale)
+• Pain: "shiva pain 3" (1-10 scale)
+• Sleep: "shiva sleep 8" (hours)
+• Mood: "shiva mood happy" or "tired" etc.
+• Medication: "shiva medication 2" (count)
+• Exercise: "shiva exercise 30" OR "shiva yoga 45" OR "shiva running 30"
   Types: yoga|running|walking|cycling|gym|swimming|pilates|dance|cardio|strength|stretching|hiking
 
 ðŸ‘¨ DAD/RISHI & ðŸ‘µ GRANDMOM/ICHI:
@@ -71,9 +71,9 @@ Same format as MOM: "rishi steps 5000" or "ichi mood happy"
 Example: "Appointment- checkup 15 July 2:30pm Pediatrician"
 
 ðŸ” COMMANDS:
-â€¢ "appt" - Show upcoming appointments
-â€¢ "feed" - Show today's feed logs
-â€¢ "report" - Show today vs yesterday summary`;
+• "appt" - Show upcoming appointments
+• "feed" - Show today's feed logs
+• "report" - Show today vs yesterday summary`;
 
 
 function buildAppointment(title: string, description: string, day: string, monthNum: number, hours: number, minutes: number): any {
@@ -269,7 +269,7 @@ function extractTimeFromMessage(text: string): Date | null {
 
   if (hours === null || minutes === null) return null
 
-  // Handle 12-hour format â€” only convert if hours is in 12h range (< 13)
+  // Handle 12-hour format ” only convert if hours is in 12h range (< 13)
   // "1630 pm" should stay as 16:30 (already 24h), not become 28:30
   if (meridiem === 'PM' && hours < 12) hours += 12
   if (meridiem === 'AM' && hours === 12) hours = 0
