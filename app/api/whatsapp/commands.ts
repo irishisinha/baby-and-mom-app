@@ -22,7 +22,7 @@ async function cmdReport(familyId: string): Promise<string> {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
-    timeZone: 'Europe/London'
+    timeZone: 'Asia/Kolkata'
   })
   
   const [year, month, day] = formatter.format(now).split('-')
@@ -79,9 +79,7 @@ async function cmdReport(familyId: string): Promise<string> {
 
 async function cmdAppt(familyId: string): Promise<string> {
   const today = new Date()
-  const todayStr = today.toLocaleDateString('en-CA', { timeZone: 'Europe/London' })
-
-  console.log('[APPT-CMD] familyId=', familyId, 'todayStr=', todayStr)
+  const todayStr = today.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
 
   try {
     const { data: appointments, error } = await supabaseAdmin
@@ -90,8 +88,6 @@ async function cmdAppt(familyId: string): Promise<string> {
       .gte('appointment_date', todayStr)
       .order('appointment_date', { ascending: true })
       .limit(10)
-
-    console.log('[APPT-QUERY] error=', error, 'count=', appointments?.length)
 
     if (!appointments?.length) {
       return 'No upcoming appointments scheduled'
@@ -121,7 +117,7 @@ async function cmdFeed(familyId: string): Promise<string> {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
-    timeZone: 'Europe/London'
+    timeZone: 'Asia/Kolkata'
   })
   const [year, month, day] = formatter.format(now).split('-')
   const todayStart = new Date(`${year}-${month}-${day}T00:00:00Z`)
@@ -160,7 +156,7 @@ async function cmdFeed(familyId: string): Promise<string> {
       const time = m.metric_time || new Date(m.created_at).toLocaleTimeString('en-GB', {
         hour: '2-digit',
         minute: '2-digit',
-        timeZone: 'Europe/London'
+        timeZone: 'Asia/Kolkata'
       })
       const value = parseFloat(m.value) || 0
       
