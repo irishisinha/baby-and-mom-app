@@ -421,8 +421,10 @@ export async function POST(request: NextRequest) {
     const normalizedPhone = fromPhone.replace(/\s+/g, '');
     const isAuthorized = AUTHORIZED_NUMBERS.includes(normalizedPhone);
 
+    console.log('[AUTH-CHECK]', { normalizedPhone, isAuthorized, authorizedNumbers: AUTHORIZED_NUMBERS });
+
     if (!isAuthorized) {
-      console.log('[WA-UNAUTH]', { fromPhone });
+      console.log('[WA-UNAUTH]', { fromPhone, normalizedPhone, authorizedNumbers: AUTHORIZED_NUMBERS });
       return new NextResponse('<?xml version="1.0" encoding="UTF-8"?><Response><Message>Not authorized</Message></Response>', { status: 200, headers: { 'Content-Type': 'application/xml' } });
     }
 
