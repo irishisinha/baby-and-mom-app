@@ -481,7 +481,7 @@ export default function DashboardPage() {
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-3xl font-bold">Dashboard</h1>
-          <p className="text-xs text-gray-500 mt-1">Last updated: {lastUpdate} (London Time)</p>
+          <p className="text-xs text-gray-500 mt-1">Last updated: {lastUpdate} (India Time)</p>
         </div>
         <button onClick={handleRefresh} className="bg-blue-600 text-white px-4 py-2 rounded font-semibold hover:bg-blue-700">
           🔄 Refresh
