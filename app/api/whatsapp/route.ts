@@ -9,7 +9,7 @@ const supabase = createClient(
   { auth: { persistSession: false } }
 );
 
-const AUTHORIZED_NUMBERS = ['+919604898762', '+919871319008', '+919914789171'];
+const AUTHORIZED_NUMBERS = ['+919604898762', '9604898762', '+919871319008', '9871319008', '+919914789171', '9914789171'];
 const FAMILY_ID = 'df3d99a8-f7a2-44cf-bcb4-9c5f3300caa6';
 const BABY_ID = 'e8a7c56c-62c6-442c-94ac-518928c8c07b';
 const SYSTEM_USER_ID = '00000000-0000-0000-0000-000000000000';
