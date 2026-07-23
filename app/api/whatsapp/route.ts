@@ -165,19 +165,17 @@ function extractMetricTime(text: string): string | null {
 }
 
 
-// Convert an Europe/London wall-clock time (hours/minutes) into the correct
-// UTC Date instant, using `referenceNow` to determine the current London
-// calendar date and DST offset (matches the Europe/London convention used
-// throughout this app, e.g. commands.ts / dashboard).
-function londonWallTimeToUTC(hours: number, minutes: number, referenceNow: Date): Date {
+// Convert a wall-clock time (hours/minutes) in a specified timezone into the correct
+// UTC Date instant, using `referenceNow` to determine the current calendar date and DST offset.
+function wallTimeToUTC(hours: number, minutes: number, timeZone: string, referenceNow: Date): Date {
   const ymdFormatter = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Europe/London',
+    timeZone,
     year: 'numeric', month: '2-digit', day: '2-digit'
   })
   const [y, mo, d] = ymdFormatter.format(referenceNow).split('-').map(Number)
 
   const offsetFormatter = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'Europe/London',
+    timeZone,
     timeZoneName: 'shortOffset'
   })
   const tzPart = offsetFormatter.formatToParts(referenceNow).find(p => p.type === 'timeZoneName')?.value || 'GMT+0'
@@ -254,7 +252,7 @@ function extractTimeFromMessage(text: string): Date | null {
   if (meridiem === 'PM' && hours < 12) hours += 12
   if (meridiem === 'AM' && hours === 12) hours = 0
 
-  return londonWallTimeToUTC(hours, minutes, new Date())
+  return wallTimeToUTC(hours, minutes, 'Asia/Kolkata', new Date())
 }
 
 function escapeXml(text: string): string {
