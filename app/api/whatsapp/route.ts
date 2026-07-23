@@ -418,8 +418,20 @@ export async function POST(request: NextRequest) {
 
     console.log('[WA-MSG]', { messageBody, fromPhone });
 
-    const normalizedPhone = fromPhone.replace(/\s+/g, '');
-    const isAuthorized = AUTHORIZED_NUMBERS.includes(normalizedPhone);
+    // Normalize phone: remove spaces and +, handle missing country code
+    let normalizedPhone = fromPhone.replace(/[\s+]/g, '');
+    // If it's 10 digits (just the local number), prepend 91 for India
+    if (normalizedPhone.length === 10 && !normalizedPhone.startsWith('91')) {
+      normalizedPhone = '91' + normalizedPhone;
+    }
+    // Compare against authorized numbers (also normalized same way)
+    const isAuthorized = AUTHORIZED_NUMBERS.some(num => {
+      let normalizedAuth = num.replace(/[\s+]/g, '');
+      if (normalizedAuth.length === 10 && !normalizedAuth.startsWith('91')) {
+        normalizedAuth = '91' + normalizedAuth;
+      }
+      return normalizedPhone === normalizedAuth;
+    });
 
     if (!isAuthorized) {
       console.log('[WA-UNAUTH]', { fromPhone });
