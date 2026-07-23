@@ -1,4 +1,4 @@
-// Cache purged rebuild
+﻿// Cache purged rebuild
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { handleCommand } from './commands';
@@ -36,44 +36,44 @@ const MONTH_PATTERN = '(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|j
 // turning it into a literal backspace character and silently breaking word-boundary matches.
 const WORD_BOUNDARY = /\b/.source;
 
-const COMMANDS_HELP = `📋 AVAILABLE COMMANDS:
+const COMMANDS_HELP = `ðŸ“‹ AVAILABLE COMMANDS:
 
-👶 BABY METRICS (default person if not specified):
-• Formula: "30ml formula" or "formula 30"
-• Breastmilk: "20ml breast milk" or "pumped 20"
-• Weight: "5.5kg" or "weight 5.5"
-• Medicine: "paracetamol" or "ibuprofen"
-• Vaccine: "vaccine"
-• Diaper: "diaper" or "nappy"
-• Bath: "bath"
-• Potty: "potty"
-• Oil: "oil"
-• Sleep: "sleep 2 hours" or "2hr sleep"
-• Time format: "0640 pm - 90ml formula" or "0810- paracetamol"
+ðŸ‘¶ BABY METRICS (default person if not specified):
+â€¢ Formula: "30ml formula" or "formula 30"
+â€¢ Breastmilk: "20ml breast milk" or "pumped 20"
+â€¢ Weight: "5.5kg" or "weight 5.5"
+â€¢ Medicine: "paracetamol" or "ibuprofen"
+â€¢ Vaccine: "vaccine"
+â€¢ Diaper: "diaper" or "nappy"
+â€¢ Bath: "bath"
+â€¢ Potty: "potty"
+â€¢ Oil: "oil"
+â€¢ Sleep: "sleep 2 hours" or "2hr sleep"
+â€¢ Time format: "0640 pm - 90ml formula" or "0810- paracetamol"
 
-👩 MOM/SHIVA METRICS (start with "shiva", "mom", or "mother"):
-• Weight: "shiva weight 65kg"
-• Measurements: "shiva chest 90cm|waist 70cm|hips 95cm|bust 95cm"
-• Steps: "shiva steps 5000"
-• Energy: "shiva energy 7" (1-10 scale)
-• Pain: "shiva pain 3" (1-10 scale)
-• Sleep: "shiva sleep 8" (hours)
-• Mood: "shiva mood happy" or "tired" etc.
-• Medication: "shiva medication 2" (count)
-• Exercise: "shiva exercise 30" OR "shiva yoga 45" OR "shiva running 30"
+ðŸ‘© MOM/SHIVA METRICS (start with "shiva", "mom", or "mother"):
+â€¢ Weight: "shiva weight 65kg"
+â€¢ Measurements: "shiva chest 90cm|waist 70cm|hips 95cm|bust 95cm"
+â€¢ Steps: "shiva steps 5000"
+â€¢ Energy: "shiva energy 7" (1-10 scale)
+â€¢ Pain: "shiva pain 3" (1-10 scale)
+â€¢ Sleep: "shiva sleep 8" (hours)
+â€¢ Mood: "shiva mood happy" or "tired" etc.
+â€¢ Medication: "shiva medication 2" (count)
+â€¢ Exercise: "shiva exercise 30" OR "shiva yoga 45" OR "shiva running 30"
   Types: yoga|running|walking|cycling|gym|swimming|pilates|dance|cardio|strength|stretching|hiking
 
-👨 DAD/RISHI & 👵 GRANDMOM/ICHI:
+ðŸ‘¨ DAD/RISHI & ðŸ‘µ GRANDMOM/ICHI:
 Same format as MOM: "rishi steps 5000" or "ichi mood happy"
 
-📅 APPOINTMENTS:
+ðŸ“… APPOINTMENTS:
 "Appointment- [description] [DD] [month] [HH:MM am/pm] [title]"
 Example: "Appointment- checkup 15 July 2:30pm Pediatrician"
 
-🔍 COMMANDS:
-• "appt" - Show upcoming appointments
-• "feed" - Show today's feed logs
-• "report" - Show today vs yesterday summary`;
+ðŸ” COMMANDS:
+â€¢ "appt" - Show upcoming appointments
+â€¢ "feed" - Show today's feed logs
+â€¢ "report" - Show today vs yesterday summary`;
 
 
 function buildAppointment(title: string, description: string, day: string, monthNum: number, hours: number, minutes: number): any {
@@ -269,7 +269,7 @@ function extractTimeFromMessage(text: string): Date | null {
 
   if (hours === null || minutes === null) return null
 
-  // Handle 12-hour format — only convert if hours is in 12h range (< 13)
+  // Handle 12-hour format â€” only convert if hours is in 12h range (< 13)
   // "1630 pm" should stay as 16:30 (already 24h), not become 28:30
   if (meridiem === 'PM' && hours < 12) hours += 12
   if (meridiem === 'AM' && hours === 12) hours = 0
@@ -418,7 +418,7 @@ export async function POST(request: NextRequest) {
 
     console.log('[WA-MSG]', { messageBody, fromPhone });
 
-    const normalizedPhone = fromPhone.replace(/\s+/g, '');
+    const normalizedPhone = fromPhone.replace(/^whatsapp:/, '').replace(/\s+/g, '');
     const isAuthorized = AUTHORIZED_NUMBERS.includes(normalizedPhone);
 
     console.log('[AUTH-CHECK]', { normalizedPhone, isAuthorized, authorizedNumbers: AUTHORIZED_NUMBERS });
@@ -465,7 +465,7 @@ export async function POST(request: NextRequest) {
         }).select();
 
         if (error) throw error;
-        return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>✓ Appt: ${escapeXml(appointmentData.title)}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
+        return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>âœ“ Appt: ${escapeXml(appointmentData.title)}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
       } catch (e: any) {
         console.error('[APT-ERR]', e);
         return new NextResponse('<?xml version="1.0" encoding="UTF-8"?><Response><Message>Appt error</Message></Response>', { status: 200, headers: { 'Content-Type': 'application/xml' } });
@@ -506,7 +506,7 @@ Total: 300ml</Message></Response>`, { status: 200, headers: { 'Content-Type': 'a
           throw error;
         }
         
-        const responseMsg = `✓ ${metricData.value}${metricData.unit} ${metricData.metric_type}`;
+        const responseMsg = `âœ“ ${metricData.value}${metricData.unit} ${metricData.metric_type}`;
         console.log('[METRIC-SUCCESS]', { responseMsg, metricData });
         return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${escapeXml(responseMsg)}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
       } catch (e: any) {
@@ -522,5 +522,7 @@ Total: 300ml</Message></Response>`, { status: 200, headers: { 'Content-Type': 'a
     return new NextResponse('<?xml version="1.0" encoding="UTF-8"?><Response><Message>Error</Message></Response>', { status: 200, headers: { 'Content-Type': 'application/xml' } });
   }
 }
+
+
 
 
