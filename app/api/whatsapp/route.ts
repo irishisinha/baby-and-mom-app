@@ -506,7 +506,7 @@ Total: 300ml</Message></Response>`, { status: 200, headers: { 'Content-Type': 'a
           throw error;
         }
         
-        const responseMsg = `✅ ${metricData.value}${metricData.unit} ${metricData.metric_type}`;
+        const responseMsg = `[OK] ${metricData.value}${metricData.unit} ${metricData.metric_type}`;
         console.log('[METRIC-SUCCESS]', { responseMsg, metricData });
         return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${escapeXml(responseMsg)}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
       } catch (e: any) {
