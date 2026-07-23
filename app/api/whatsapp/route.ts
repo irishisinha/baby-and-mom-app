@@ -179,8 +179,8 @@ function wallTimeToUTC(hours: number, minutes: number, timeZone: string, referen
     timeZoneName: 'shortOffset'
   })
   const tzPart = offsetFormatter.formatToParts(referenceNow).find(p => p.type === 'timeZoneName')?.value || 'GMT+0'
-  const offsetMatch = tzPart.match(/GMT([+-]\d+)?/)
-  const offsetMinutes = (offsetMatch && offsetMatch[1] ? parseInt(offsetMatch[1], 10) : 0) * 60
+  const offsetMatch = tzPart.match(/GMT([+-]\d+)(?::(\d+))?/)
+  const offsetMinutes = (offsetMatch && offsetMatch[1] ? parseInt(offsetMatch[1], 10) : 0) * 60 + (offsetMatch && offsetMatch[2] ? parseInt(offsetMatch[2], 10) : 0)
 
   return new Date(Date.UTC(y, mo - 1, d, hours, minutes, 0) - offsetMinutes * 60000)
 }
@@ -522,6 +522,7 @@ Total: 300ml</Message></Response>`, { status: 200, headers: { 'Content-Type': 'a
     return new NextResponse('<?xml version="1.0" encoding="UTF-8"?><Response><Message>Error</Message></Response>', { status: 200, headers: { 'Content-Type': 'application/xml' } });
   }
 }
+
 
 
 
