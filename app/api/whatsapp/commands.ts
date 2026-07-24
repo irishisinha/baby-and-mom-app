@@ -119,10 +119,22 @@ async function cmdFeed(familyId: string): Promise<string> {
     day: '2-digit',
     timeZone: 'Asia/Kolkata'
   })
-  const [year, month, day] = formatter.format(now).split('-')
-  const todayStart = new Date(`${year}-${month}-${day}T00:00:00Z`)
+  const todayStr = formatter.format(now)
+  const [year, month, day] = todayStr.split('-')
+
+  // Calculate today's range in Asia/Kolkata timezone
+  const offsetFormatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Kolkata',
+    timeZoneName: 'shortOffset'
+  })
+  const tzPart = offsetFormatter.formatToParts(now).find(p => p.type === 'timeZoneName')?.value || 'GMT+5:30'
+  const offsetMatch = tzPart.match(/GMT([+-]\d+):?(\d{2})?/)
+  const offsetHours = offsetMatch ? parseInt(offsetMatch[1], 10) : 5
+  const offsetMinutes = offsetMatch && offsetMatch[2] ? parseInt(offsetMatch[2], 10) : 30
+  const offsetMs = (offsetHours * 60 + (offsetHours < 0 ? -offsetMinutes : offsetMinutes)) * 60000
+
+  const todayStart = new Date(Date.UTC(parseInt(year), parseInt(month) - 1, parseInt(day), 0, 0, 0) - offsetMs)
   const todayEnd = new Date(todayStart.getTime() + 86400000)
-  const todayStr = `${year}-${month}-${day}`
   
   let response = `Today's Feeds - ${todayStr}
 
