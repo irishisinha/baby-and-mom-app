@@ -189,10 +189,10 @@ function extractTimeFromMessage(text: string): Date | null {
   const trimmed = text.trim()
 
   // Family convention: "HHMM[ am/pm][ -] description"
-  // e.g. "0640 pm - 90 ml formula", "0845 pm 90 ml formula", "0810- paracetamol", "640pm-90ml formula"
+  // e.g. "0640 pm - 90 ml formula", "0845 pm 90 ml formula", "0810- paracetamol", "640pm-90ml formula", "530 am 90 ml formula"
   // For 4-digit numbers, REQUIRE am/pm or must be in HHMM format (not a year like 2015)
-  // For 3-digit numbers, optional am/pm but require separator
-  const prefixMatch = trimmed.match(/^(\d{3,4})\s*(am|pm|a\.m\.|p\.m\.)?\s*[-:]\s*/i)
+  // For 3-digit numbers, optional am/pm, separator is optional (dash/colon/space)
+  const prefixMatch = trimmed.match(/^(\d{3,4})\s*(am|pm|a\.m\.|p\.m\.)?\s*[-:\s]\s*/i)
 
   let hours: number | null = null
   let minutes: number | null = null
