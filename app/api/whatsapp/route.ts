@@ -484,6 +484,7 @@ Total: 300ml</Message></Response>`, { status: 200, headers: { 'Content-Type': 'a
     if (metricData && metricData.isMetric) {
       try {
         const extractedTime = extractTimeFromMessage(messageBody)
+        console.log('[TIME-EXTRACT]', { messageBody, extractedTime: extractedTime?.toISOString(), extractedTimeLocal: extractedTime?.toLocaleString('en-GB', { timeZone: 'Asia/Kolkata' }) });
         const insertData: any = {
           family_id: FAMILY_ID,
           metric_type: metricData.metric_type,
