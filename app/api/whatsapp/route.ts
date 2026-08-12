@@ -365,9 +365,15 @@ function parseMetric(text: string): any {
   let match = text.match(/formula[\s.]*(\d+)[\s.]*(ml)?/i) || text.match(/(\d+)[\s.]*(ml)[\s.]*formula/i);
   if (match) return { metric_type: 'formula', value: match[1], unit: 'ml', isMetric: true, personType };
 
-  // Baby Medicine - "paracetamol", "medicine paracetamol", "0810- paracetamol"
-  if (cleanText.match(/medicine|paracetamol|ibuprofen|calpol|aspirin|antibiotic/i)) {
-    return { metric_type: 'medicine', value: '1', unit: 'dose', isMetric: true, personType };
+  // Baby Medicine - "paracetamol", "baby paracetamol 2", "mom ibuprofen", "0810- paracetamol"
+  const medicineKeywords = ['medicine', 'paracetamol', 'ibuprofen', 'calpol', 'aspirin', 'antibiotic', 'aspirin'];
+  const medicineMatch = text.match(new RegExp(`(${medicineKeywords.join('|')})`, 'i'));
+  if (medicineMatch) {
+    const medicineName = medicineMatch[1];
+    // Extract optional dosage number (e.g., "paracetamol 2" → dosage=2)
+    const dosageMatch = text.match(/(?:paracetamol|ibuprofen|calpol|aspirin|antibiotic|medicine)\s+(\d+)/i);
+    const dosage = dosageMatch ? dosageMatch[1] : '1';
+    return { metric_type: 'medicine', value: medicineName.toLowerCase(), unit: 'dose', isMetric: true, personType };
   }
 
   // Breastmilk - "pumped 20ml", "20ml pumped", "breast milk 20"  
@@ -449,6 +455,14 @@ export async function POST(request: NextRequest) {
       const report = await handleCommand(messageBody, fromPhone, FAMILY_ID);
       if (report) {
         return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${escapeXml(report)}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
+      }
+    }
+
+    // Handle medsreport command
+    if (messageBody.toLowerCase().trim() === 'medsreport') {
+      const medsReport = await handleCommand(messageBody, fromPhone, FAMILY_ID);
+      if (medsReport) {
+        return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${escapeXml(medsReport)}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
       }
     }
 

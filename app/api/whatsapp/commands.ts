@@ -2,13 +2,14 @@ import { supabaseAdmin } from '@/lib/supabase'
 
 export async function handleCommand(text: string, phone: string, familyId: string): Promise<string | null> {
   const cmd = text.toLowerCase().trim()
-  if (!cmd.match(/^(today|report|appt|feed)$/)) return null
+  if (!cmd.match(/^(today|report|appt|feed|medsreport)$/)) return null
 
   try {
     if (cmd === 'today') return 'Send metrics to log today activities'
     if (cmd === 'report') return await cmdReport(familyId)
     if (cmd === 'appt') return await cmdAppt(familyId)
     if (cmd === 'feed') return await cmdFeed(familyId)
+    if (cmd === 'medsreport') return await cmdMedsReport(familyId)
     return null
   } catch (err) {
     console.error('Command error:', err)
@@ -197,5 +198,98 @@ Summary:
   } catch (e: any) {
     console.error('[FEED-CMD-ERR]', e)
     return 'Error fetching feeds'
+  }
+}
+
+async function cmdMedsReport(familyId: string): Promise<string> {
+  const now = new Date()
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    timeZone: 'Asia/Kolkata'
+  })
+
+  const todayStr = formatter.format(now)
+  const [year, month, day] = todayStr.split('-')
+
+  const offsetFormatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Kolkata',
+    timeZoneName: 'shortOffset'
+  })
+  const tzPart = offsetFormatter.formatToParts(now).find(p => p.type === 'timeZoneName')?.value || 'GMT+5:30'
+  const offsetMatch = tzPart.match(/GMT([+-]\d+):?(\d{2})?/)
+  const offsetHours = offsetMatch ? parseInt(offsetMatch[1], 10) : 5
+  const offsetMinutes = offsetMatch && offsetMatch[2] ? parseInt(offsetMatch[2], 10) : 30
+  const offsetMs = (offsetHours * 60 + (offsetHours < 0 ? -offsetMinutes : offsetMinutes)) * 60000
+
+  const todayStart = new Date(Date.UTC(parseInt(year), parseInt(month) - 1, parseInt(day), 0, 0, 0) - offsetMs)
+  const todayEnd = new Date(todayStart.getTime() + 86400000)
+
+  const yesterday = new Date(todayStart)
+  yesterday.setDate(yesterday.getDate() - 1)
+  const yesterdayStart = yesterday
+  const yesterdayEnd = new Date(yesterdayStart.getTime() + 86400000)
+
+  try {
+    const { data: todayMeds } = await supabaseAdmin
+      .from('baby_metrics')
+      .select('metric_type, value, person_type')
+      .eq('family_id', familyId)
+      .eq('metric_type', 'medicine')
+      .gte('created_at', todayStart.toISOString())
+      .lt('created_at', todayEnd.toISOString())
+
+    const { data: yesterdayMeds } = await supabaseAdmin
+      .from('baby_metrics')
+      .select('metric_type, value, person_type')
+      .eq('family_id', familyId)
+      .eq('metric_type', 'medicine')
+      .gte('created_at', yesterdayStart.toISOString())
+      .lt('created_at', yesterdayEnd.toISOString())
+
+    // Group by person_type and medicine name
+    const groupByPerson = (meds: any[]) => {
+      const result: Record<string, Record<string, number>> = {}
+      meds?.forEach(m => {
+        const person = m.person_type || 'baby'
+        const medicine = m.value.toLowerCase()
+        if (!result[person]) result[person] = {}
+        result[person][medicine] = (result[person][medicine] || 0) + 1
+      })
+      return result
+    }
+
+    const todayGrouped = groupByPerson(todayMeds)
+    const yesterdayGrouped = groupByPerson(yesterdayMeds)
+
+    let response = `💊 Medicines Report - Today vs Yesterday\n\n`
+
+    const allPersons = new Set([...Object.keys(todayGrouped), ...Object.keys(yesterdayGrouped)])
+
+    allPersons.forEach(person => {
+      const label = person === 'baby' ? '👶 BABY' : '👩 MOM (SHIVA)'
+      response += `${label}:\n`
+
+      const todayMeds = todayGrouped[person] || {}
+      const yesterdayMeds = yesterdayGrouped[person] || {}
+      const allMeds = new Set([...Object.keys(todayMeds), ...Object.keys(yesterdayMeds)])
+
+      if (allMeds.size === 0) {
+        response += `  None\n`
+      } else {
+        allMeds.forEach(med => {
+          const today = todayMeds[med] || 0
+          const yesterday = yesterdayMeds[med] || 0
+          response += `  ${med}: ${today} dose${today !== 1 ? 's' : ''} (yesterday: ${yesterday})\n`
+        })
+      }
+      response += `\n`
+    })
+
+    return response
+  } catch (e: any) {
+    console.error('[MEDSREPORT-ERR]', e)
+    return 'Error fetching medicines report'
   }
 }
