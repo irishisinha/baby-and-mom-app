@@ -42,14 +42,14 @@ const COMMANDS_HELP = `ðŸ“‹ AVAILABLE COMMANDS:
 • Formula: "30ml formula" or "formula 30"
 • Breastmilk: "20ml breast milk" or "pumped 20"
 • Weight: "5.5kg" or "weight 5.5"
-• Medicine: "paracetamol" or "ibuprofen"
+• Medicine: "baby paracetamol", "baby nebulization 2", "paracetamol" (baby is default)
 • Vaccine: "vaccine"
 • Diaper: "diaper" or "nappy"
 • Bath: "bath"
 • Potty: "potty"
 • Oil: "oil"
 • Sleep: "sleep 2 hours" or "2hr sleep"
-• Time format: "0640 pm - 90ml formula" or "0810- paracetamol"
+• Time format: "0640 pm - 90ml formula" or "0500 baby nebulization"
 
 ðŸ‘© MOM/SHIVA METRICS (start with "shiva", "mom", or "mother"):
 • Weight: "shiva weight 65kg"
@@ -59,6 +59,7 @@ const COMMANDS_HELP = `ðŸ“‹ AVAILABLE COMMANDS:
 • Pain: "shiva pain 3" (1-10 scale)
 • Sleep: "shiva sleep 8" (hours)
 • Mood: "shiva mood happy" or "tired" etc.
+• Medicine: "mom paracetamol", "mom cough 2" (person-specific medicine)
 • Medication: "shiva medication 2" (count)
 • Exercise: "shiva exercise 30" OR "shiva yoga 45" OR "shiva running 30"
   Types: yoga|running|walking|cycling|gym|swimming|pilates|dance|cardio|strength|stretching|hiking
@@ -73,7 +74,8 @@ Example: "Appointment- checkup 15 July 2:30pm Pediatrician"
 ðŸ” COMMANDS:
 • "appt" - Show upcoming appointments
 • "feed" - Show today's feed logs
-• "report" - Show today vs yesterday summary`;
+• "report" - Show today vs yesterday summary
+• "medsreport" - Show medicines today vs yesterday (baby & mom)`;
 
 
 function buildAppointment(title: string, description: string, day: string, monthNum: number, hours: number, minutes: number): any {
@@ -366,14 +368,22 @@ function parseMetric(text: string): any {
   if (match) return { metric_type: 'formula', value: match[1], unit: 'ml', isMetric: true, personType };
 
   // Baby Medicine - "paracetamol", "baby paracetamol 2", "mom ibuprofen", "0810- paracetamol"
-  const medicineKeywords = ['medicine', 'paracetamol', 'ibuprofen', 'calpol', 'aspirin', 'antibiotic', 'aspirin'];
-  const medicineMatch = text.match(new RegExp(`(${medicineKeywords.join('|')})`, 'i'));
+  let medicinePerson = 'baby';
+  let medicineText = cleanText;
+  if (cleanText.match(/^(baby|mom|mother)\s+/)) {
+    const personMatch = cleanText.match(/^(baby|mom|mother)\s+/);
+    medicinePerson = personMatch![1].toLowerCase() === 'baby' ? 'baby' : 'mom';
+    medicineText = cleanText.replace(/^(baby|mom|mother)\s+/i, '').trim();
+  }
+
+  const medicineKeywords = ['medicine', 'paracetamol', 'ibuprofen', 'calpol', 'aspirin', 'antibiotic', 'nebulization', 'cough', 'fever'];
+  const medicineMatch = medicineText.match(new RegExp(`(${medicineKeywords.join('|')})`, 'i'));
   if (medicineMatch) {
     const medicineName = medicineMatch[1];
     // Extract optional dosage number (e.g., "paracetamol 2" → dosage=2)
-    const dosageMatch = text.match(/(?:paracetamol|ibuprofen|calpol|aspirin|antibiotic|medicine)\s+(\d+)/i);
+    const dosageMatch = medicineText.match(/(?:paracetamol|ibuprofen|calpol|aspirin|antibiotic|medicine|nebulization|cough|fever)\s+(\d+)/i);
     const dosage = dosageMatch ? dosageMatch[1] : '1';
-    return { metric_type: 'medicine', value: medicineName.toLowerCase(), unit: 'dose', isMetric: true, personType };
+    return { metric_type: 'medicine', value: medicineName.toLowerCase(), unit: 'dose', isMetric: true, personType: medicinePerson };
   }
 
   // Breastmilk - "pumped 20ml", "20ml pumped", "breast milk 20"  
