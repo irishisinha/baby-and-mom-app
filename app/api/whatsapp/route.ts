@@ -46,9 +46,9 @@ const COMMANDS_HELP = `ðŸ“‹ AVAILABLE COMMANDS:
 • Vaccine: "vaccine"
 • Diaper: "diaper" or "nappy"
 • Bath: "bath"
-• Potty: "potty"
+• Potty: "0530 potty" (with time) or "potty"
 • Oil: "oil"
-• Sleep: "sleep 2 hours" or "2hr sleep"
+• Sleep: "0530 sleep" (start) or "0630 sleep end" (end), or legacy "sleep 2 hours"
 • Time format: "0640 pm - 90ml formula" or "0500 baby nebulization"
 
 ðŸ‘© MOM/SHIVA METRICS (start with "shiva", "mom", or "mother"):
@@ -415,11 +415,19 @@ function parseMetric(text: string): any {
   if (/vaccine/i.test(text)) return { metric_type: 'vaccine', value: '1', unit: 'count', isMetric: true, personType };
   if (/diaper|nappy/i.test(text)) return { metric_type: 'diaper', value: '1', unit: 'count', isMetric: true, personType };
   if (/bath/i.test(text)) return { metric_type: 'bath', value: 'yes', unit: 'confirmation', isMetric: true, personType };
-  if (/potty/i.test(text)) return { metric_type: 'potty', value: '1', unit: 'count', isMetric: true, personType };
+  if (/potty/i.test(text)) return { metric_type: 'potty', value: 'logged', unit: 'time', isMetric: true, personType };
   if (/oil/i.test(text)) return { metric_type: 'oil', value: 'yes', unit: 'confirmation', isMetric: true, personType };
 
-  match = text.match(/sleep[\s.]*(\d+)[\s.]*(hour|hr)?/i) || text.match(/(\d+)[\s.]*(hour|hr)[\s.]*sleep/i) || text.match(/(\d+)[\s.]*(hour|hr)/i);
-  if (match) return { metric_type: 'sleep', value: match[1], unit: 'hours', isMetric: true, personType };
+  // Sleep: "0530 sleep" or "0530 sleep start" (start) vs "0630 sleep end" (end)
+  if (/sleep/i.test(text)) {
+    const isSleepEnd = /sleep[\s.]*end/i.test(text);
+    const sleepValue = isSleepEnd ? 'end' : 'start';
+    return { metric_type: 'sleep', value: sleepValue, unit: 'time', isMetric: true, personType };
+  }
+
+  // Legacy: duration format "sleep 2 hours" still supported
+  match = text.match(/(\d+)[\s.]*(hour|hr)/i);
+  if (match && /sleep/i.test(text)) return { metric_type: 'sleep', value: match[1], unit: 'hours', isMetric: true, personType };
 
   return null;
 }
