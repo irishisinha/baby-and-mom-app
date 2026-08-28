@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { PILOT_USER_ID, PILOT_FAMILY_ID } from '@/lib/pilot-user';
 
-const TIMEZONES = ['Europe/London', 'Europe/Paris', 'Asia/Kolkata', 'America/New_York'];
+const TIMEZONES = ['Europe/London', 'Europe/Paris', 'Europe/London', 'America/New_York'];
 
 export default function FamilyManagement() {
   const [userId, setUserId] = useState<string | null>(null);
@@ -13,10 +13,10 @@ export default function FamilyManagement() {
   const [editingBabyId, setEditingBabyId] = useState<string | null>(null);
   const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
   const [editBabyData, setEditBabyData] = useState({ name: '', dob: '' });
-  const [editMemberData, setEditMemberData] = useState({ relation: '', whatsapp_number: '', email: '', timezone: 'Asia/Kolkata' });
+  const [editMemberData, setEditMemberData] = useState({ relation: '', whatsapp_number: '', email: '', timezone: 'Europe/London' });
 
   const [babyForm, setBabyForm] = useState({ name: '', dob: '' });
-  const [memberForm, setMemberForm] = useState({ relation: '', whatsapp_number: '', email: '', timezone: 'Asia/Kolkata' });
+  const [memberForm, setMemberForm] = useState({ relation: '', whatsapp_number: '', email: '', timezone: 'Europe/London' });
 
   useEffect(() => {
     const fetch = async () => {
@@ -56,7 +56,7 @@ export default function FamilyManagement() {
     e.preventDefault();
     if (!userId) return;
     const { data } = await supabase.from('family_members').insert([{ user_id: userId, family_id: PILOT_FAMILY_ID, role: 'family', ...memberForm }]).select();
-    if (data) { setMembers([...members, data[0]]); setMemberForm({ relation: '', whatsapp_number: '', email: '', timezone: 'Asia/Kolkata' }); }
+    if (data) { setMembers([...members, data[0]]); setMemberForm({ relation: '', whatsapp_number: '', email: '', timezone: 'Europe/London' }); }
   };
 
   const saveMemberEdit = async (id: string) => {

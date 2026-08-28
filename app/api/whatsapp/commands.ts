@@ -23,7 +23,7 @@ async function cmdReport(familyId: string): Promise<string> {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
-    timeZone: 'Asia/Kolkata'
+    timeZone: 'Europe/London'
   })
   
   const [year, month, day] = formatter.format(now).split('-')
@@ -80,7 +80,7 @@ async function cmdReport(familyId: string): Promise<string> {
 
 async function cmdAppt(familyId: string): Promise<string> {
   const today = new Date()
-  const todayStr = today.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
+  const todayStr = today.toLocaleDateString('en-CA', { timeZone: 'Europe/London' })
 
   try {
     const { data: appointments, error } = await supabaseAdmin
@@ -118,20 +118,20 @@ async function cmdFeed(familyId: string): Promise<string> {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
-    timeZone: 'Asia/Kolkata'
+    timeZone: 'Europe/London'
   })
   const todayStr = formatter.format(now)
   const [year, month, day] = todayStr.split('-')
 
-  // Calculate today's range in Asia/Kolkata timezone
+  // Calculate today's range in Europe/London timezone
   const offsetFormatter = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'Asia/Kolkata',
+    timeZone: 'Europe/London',
     timeZoneName: 'shortOffset'
   })
-  const tzPart = offsetFormatter.formatToParts(now).find(p => p.type === 'timeZoneName')?.value || 'GMT+5:30'
+  const tzPart = offsetFormatter.formatToParts(now).find(p => p.type === 'timeZoneName')?.value || 'GMT+0'
   const offsetMatch = tzPart.match(/GMT([+-]\d+):?(\d{2})?/)
-  const offsetHours = offsetMatch ? parseInt(offsetMatch[1], 10) : 5
-  const offsetMinutes = offsetMatch && offsetMatch[2] ? parseInt(offsetMatch[2], 10) : 30
+  const offsetHours = offsetMatch ? parseInt(offsetMatch[1], 10) : 0
+  const offsetMinutes = offsetMatch && offsetMatch[2] ? parseInt(offsetMatch[2], 10) : 0
   const offsetMs = (offsetHours * 60 + (offsetHours < 0 ? -offsetMinutes : offsetMinutes)) * 60000
 
   const todayStart = new Date(Date.UTC(parseInt(year), parseInt(month) - 1, parseInt(day), 0, 0, 0) - offsetMs)
@@ -169,7 +169,7 @@ async function cmdFeed(familyId: string): Promise<string> {
       const time = m.metric_time || new Date(m.created_at).toLocaleTimeString('en-GB', {
         hour: '2-digit',
         minute: '2-digit',
-        timeZone: 'Asia/Kolkata'
+        timeZone: 'Europe/London'
       })
       const value = parseFloat(m.value) || 0
       
@@ -207,20 +207,20 @@ async function cmdMedsReport(familyId: string): Promise<string> {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
-    timeZone: 'Asia/Kolkata'
+    timeZone: 'Europe/London'
   })
 
   const todayStr = formatter.format(now)
   const [year, month, day] = todayStr.split('-')
 
   const offsetFormatter = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'Asia/Kolkata',
+    timeZone: 'Europe/London',
     timeZoneName: 'shortOffset'
   })
-  const tzPart = offsetFormatter.formatToParts(now).find(p => p.type === 'timeZoneName')?.value || 'GMT+5:30'
+  const tzPart = offsetFormatter.formatToParts(now).find(p => p.type === 'timeZoneName')?.value || 'GMT+0'
   const offsetMatch = tzPart.match(/GMT([+-]\d+):?(\d{2})?/)
-  const offsetHours = offsetMatch ? parseInt(offsetMatch[1], 10) : 5
-  const offsetMinutes = offsetMatch && offsetMatch[2] ? parseInt(offsetMatch[2], 10) : 30
+  const offsetHours = offsetMatch ? parseInt(offsetMatch[1], 10) : 0
+  const offsetMinutes = offsetMatch && offsetMatch[2] ? parseInt(offsetMatch[2], 10) : 0
   const offsetMs = (offsetHours * 60 + (offsetHours < 0 ? -offsetMinutes : offsetMinutes)) * 60000
 
   const todayStart = new Date(Date.UTC(parseInt(year), parseInt(month) - 1, parseInt(day), 0, 0, 0) - offsetMs)

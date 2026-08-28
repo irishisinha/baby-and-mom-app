@@ -276,7 +276,7 @@ function extractTimeFromMessage(text: string): Date | null {
   if (meridiem === 'PM' && hours < 12) hours += 12
   if (meridiem === 'AM' && hours === 12) hours = 0
 
-  return wallTimeToUTC(hours, minutes, 'Asia/Kolkata', new Date())
+  return wallTimeToUTC(hours, minutes, 'Europe/London', new Date())
 }
 
 function escapeXml(text: string): string {
@@ -516,7 +516,7 @@ Total: 300ml</Message></Response>`, { status: 200, headers: { 'Content-Type': 'a
     if (metricData && metricData.isMetric) {
       try {
         const extractedTime = extractTimeFromMessage(messageBody)
-        console.log('[TIME-EXTRACT]', { messageBody, extractedTime: extractedTime?.toISOString(), extractedTimeLocal: extractedTime?.toLocaleString('en-GB', { timeZone: 'Asia/Kolkata' }) });
+        console.log('[TIME-EXTRACT]', { messageBody, extractedTime: extractedTime?.toISOString(), extractedTimeLocal: extractedTime?.toLocaleString('en-GB', { timeZone: 'Europe/London' }) });
         const insertData: any = {
           family_id: FAMILY_ID,
           metric_type: metricData.metric_type,
