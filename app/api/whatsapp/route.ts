@@ -176,13 +176,29 @@ function wallTimeToUTC(hours: number, minutes: number, timeZone: string, referen
   })
   const [y, mo, d] = ymdFormatter.format(referenceNow).split('-').map(Number)
 
-  const offsetFormatter = new Intl.DateTimeFormat('en-US', {
-    timeZone,
-    timeZoneName: 'shortOffset'
-  })
-  const tzPart = offsetFormatter.formatToParts(referenceNow).find(p => p.type === 'timeZoneName')?.value || 'GMT+0'
-  const offsetMatch = tzPart.match(/GMT([+-]\d+)(?::(\d+))?/)
-  const offsetMinutes = (offsetMatch && offsetMatch[1] ? parseInt(offsetMatch[1], 10) : 0) * 60 + (offsetMatch && offsetMatch[2] ? parseInt(offsetMatch[2], 10) : 0)
+  // For Europe/London, use hardcoded offset (0 in winter, 1 in summer)
+  let offsetMinutes = 0
+  if (timeZone === 'Europe/London') {
+    // UK summer time: last Sunday of March to last Sunday of October
+    const month = mo - 1 // 0-11
+    const dayOfMonth = d
+    const dayOfWeek = new Date(Date.UTC(y, month, dayOfMonth)).getUTCDay()
+
+    // Simplified: UK is in BST (GMT+1) from late March to late October
+    const isInBST = (month > 2 && month < 9) ||
+                    (month === 2 && dayOfMonth > 24) ||
+                    (month === 9 && dayOfMonth < 24)
+    offsetMinutes = isInBST ? 60 : 0
+  } else {
+    // Fallback: try to extract from Intl
+    const offsetFormatter = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      timeZoneName: 'shortOffset'
+    })
+    const tzPart = offsetFormatter.formatToParts(referenceNow).find(p => p.type === 'timeZoneName')?.value || 'GMT+0'
+    const offsetMatch = tzPart.match(/GMT([+-]\d+)(?::(\d+))?/)
+    offsetMinutes = (offsetMatch && offsetMatch[1] ? parseInt(offsetMatch[1], 10) : 0) * 60 + (offsetMatch && offsetMatch[2] ? parseInt(offsetMatch[2], 10) : 0)
+  }
 
   return new Date(Date.UTC(y, mo - 1, d, hours, minutes, 0) - offsetMinutes * 60000)
 }
