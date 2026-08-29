@@ -124,15 +124,14 @@ async function cmdFeed(familyId: string): Promise<string> {
   const [year, month, day] = todayStr.split('-')
 
   // Calculate today's range in Europe/London timezone
-  const offsetFormatter = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'Europe/London',
-    timeZoneName: 'shortOffset'
-  })
-  const tzPart = offsetFormatter.formatToParts(now).find(p => p.type === 'timeZoneName')?.value || 'GMT+0'
-  const offsetMatch = tzPart.match(/GMT([+-]\d+):?(\d{2})?/)
-  const offsetHours = offsetMatch ? parseInt(offsetMatch[1], 10) : 0
-  const offsetMinutes = offsetMatch && offsetMatch[2] ? parseInt(offsetMatch[2], 10) : 0
-  const offsetMs = (offsetHours * 60 + (offsetHours < 0 ? -offsetMinutes : offsetMinutes)) * 60000
+  // UK is GMT+0 in winter, GMT+1 in summer (late March to late October)
+  const month = parseInt(month) - 1 // 0-11
+  const isInBST = (month > 2 && month < 9) ||
+                  (month === 2 && parseInt(day) > 24) ||
+                  (month === 9 && parseInt(day) < 24)
+  const offsetHours = isInBST ? 1 : 0
+  const offsetMinutes = 0
+  const offsetMs = offsetHours * 60 * 60000
 
   const todayStart = new Date(Date.UTC(parseInt(year), parseInt(month) - 1, parseInt(day), 0, 0, 0) - offsetMs)
   const todayEnd = new Date(todayStart.getTime() + 86400000)
@@ -213,15 +212,14 @@ async function cmdMedsReport(familyId: string): Promise<string> {
   const todayStr = formatter.format(now)
   const [year, month, day] = todayStr.split('-')
 
-  const offsetFormatter = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'Europe/London',
-    timeZoneName: 'shortOffset'
-  })
-  const tzPart = offsetFormatter.formatToParts(now).find(p => p.type === 'timeZoneName')?.value || 'GMT+0'
-  const offsetMatch = tzPart.match(/GMT([+-]\d+):?(\d{2})?/)
-  const offsetHours = offsetMatch ? parseInt(offsetMatch[1], 10) : 0
-  const offsetMinutes = offsetMatch && offsetMatch[2] ? parseInt(offsetMatch[2], 10) : 0
-  const offsetMs = (offsetHours * 60 + (offsetHours < 0 ? -offsetMinutes : offsetMinutes)) * 60000
+  // UK is GMT+0 in winter, GMT+1 in summer (late March to late October)
+  const monthIndex = parseInt(month) - 1 // 0-11
+  const dayNum = parseInt(day)
+  const isInBST = (monthIndex > 2 && monthIndex < 9) ||
+                  (monthIndex === 2 && dayNum > 24) ||
+                  (monthIndex === 9 && dayNum < 24)
+  const offsetHours = isInBST ? 1 : 0
+  const offsetMs = offsetHours * 60 * 60000
 
   const todayStart = new Date(Date.UTC(parseInt(year), parseInt(month) - 1, parseInt(day), 0, 0, 0) - offsetMs)
   const todayEnd = new Date(todayStart.getTime() + 86400000)
