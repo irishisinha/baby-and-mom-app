@@ -260,8 +260,8 @@ async function cmdMedsReport(familyId: string): Promise<string> {
       return result
     }
 
-    const todayGrouped = groupByPerson(todayMeds)
-    const yesterdayGrouped = groupByPerson(yesterdayMeds)
+    const todayGrouped = groupByPerson(todayMeds || [])
+    const yesterdayGrouped = groupByPerson(yesterdayMeds || [])
 
     let response = `💊 Medicines Report - Today vs Yesterday\n\n`
 
