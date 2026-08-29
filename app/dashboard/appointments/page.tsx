@@ -121,7 +121,7 @@ export default function AppointmentsPage() {
     }
   };
 
-  // Get today's date in India timezone
+  // Get today's date in UK timezone
   const getLondonToday = () => {
     const now = new Date();
     return new Intl.DateTimeFormat('en-CA', {
