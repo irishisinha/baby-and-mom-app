@@ -436,11 +436,21 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.text();
     const params = new URLSearchParams(body);
-    
+
     const messageBody = params.get('Body') || '';
     const fromPhone = params.get('From') || '';
+    const messageSid = params.get('MessageSid') || '';
 
-    console.log('[WA-MSG]', { messageBody, fromPhone });
+    console.log('[WA-MSG]', { messageBody, fromPhone, messageSid });
+
+    // Deduplication: check if we've already processed this message
+    if (messageSid) {
+      const { data: existingMsg } = await supabase.from('baby_metrics').select('id').eq('message_sid', messageSid).single();
+      if (existingMsg) {
+        console.log('[DUPLICATE-MSG]', { messageSid });
+        return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>[OK]</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
+      }
+    }
 
     const normalizedPhone = fromPhone.replace(/^whatsapp:/, '').replace(/\s+/g, '');
     const isAuthorized = AUTHORIZED_NUMBERS.includes(normalizedPhone);
@@ -487,12 +497,22 @@ export async function POST(request: NextRequest) {
     const appointmentData = parseAppointmentMessage(messageBody);
     if (appointmentData && appointmentData.isAppointment) {
       try {
+        // Check for duplicate appointment
+        if (messageSid) {
+          const { data: existingAppt } = await supabase.from('appointments').select('id').eq('message_sid', messageSid).single();
+          if (existingAppt) {
+            console.log('[DUPLICATE-APPT]', { messageSid });
+            return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>[OK]</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
+          }
+        }
+
         const { data, error } = await supabase.from('appointments').insert({
           user_id: SYSTEM_USER_ID,
           doctor: appointmentData.title,
           reason: appointmentData.description,
           appointment_date: appointmentData.appointment_date.split('T')[0],
           appointment_time: appointmentData.appointment_time,
+          message_sid: messageSid,
           notes: `WhatsApp`
         }).select();
 
@@ -524,6 +544,7 @@ Total: 300ml</Message></Response>`, { status: 200, headers: { 'Content-Type': 'a
           unit: metricData.unit,
           person_type: metricData.personType,
           sent_from_phone: fromPhone,
+          message_sid: messageSid,
           created_at: extractedTime ? extractedTime.toISOString() : new Date().toISOString()
         };
         
