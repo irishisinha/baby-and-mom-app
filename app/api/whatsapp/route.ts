@@ -549,9 +549,9 @@ Total: 300ml</Message></Response>`, { status: 200, headers: { 'Content-Type': 'a
           insertData.baby_id = BABY_ID;
         }
 
-        // Deduplication: check for identical metric logged in the last 60 seconds
-        const now = new Date();
-        const oneMinuteAgo = new Date(now.getTime() - 60000);
+        // Deduplication: check for identical metric with same timestamp logged recently
+        // Use the insertData.created_at (extracted time) to find duplicates
+        const metricTimestamp = insertData.created_at;
         const { data: recentDuplicates } = await supabase
           .from('baby_metrics')
           .select('id')
@@ -559,11 +559,11 @@ Total: 300ml</Message></Response>`, { status: 200, headers: { 'Content-Type': 'a
           .eq('metric_type', metricData.metric_type)
           .eq('value', metricData.value)
           .eq('person_type', metricData.personType)
-          .gte('created_at', oneMinuteAgo.toISOString())
+          .eq('created_at', metricTimestamp)
           .limit(1);
 
         if (recentDuplicates && recentDuplicates.length > 0) {
-          console.log('[DUPLICATE-METRIC]', { metricData, insertData });
+          console.log('[DUPLICATE-METRIC]', { metricData, insertData, duplicateFound: true });
           return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>[OK] ${metricData.value}${metricData.unit} ${metricData.metric_type}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
         }
 
