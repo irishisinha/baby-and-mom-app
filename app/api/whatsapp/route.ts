@@ -48,7 +48,7 @@ const COMMANDS_HELP = `ðŸ“‹ AVAILABLE COMMANDS:
 • Bath: "bath"
 • Potty: "0530 potty" (with time) or "potty"
 • Oil: "oil"
-• Sleep: "0530 sleep" (start) or "0630 sleep end" (end), or legacy "sleep 2 hours"
+• Sleep: "1 pm sleep starts" or "1pm sleep" (start), "2:30 pm sleep ends" or "230 pm sleep end" (end), or legacy "sleep 2 hours"
 • Time format: "0640 pm - 90ml formula" or "0500 baby nebulization"
 
 ðŸ‘© MOM/SHIVA METRICS (start with "shiva", "mom", or "mother"):
