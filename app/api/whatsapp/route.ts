@@ -437,8 +437,10 @@ function parseMetric(text: string): any {
   // Sleep: "1 pm sleep" or "sleeping" (start) vs "sleep end" or "sleeping end" (end)
   if (/(sleep|sleeping)/i.test(text)) {
     const isSleepEnd = /\bend\b/i.test(text);
-    const sleepValue = isSleepEnd ? 'end' : 'start';
-    return { metric_type: 'sleep', value: sleepValue, unit: 'time', isMetric: true, personType };
+    const sleepPhase = isSleepEnd ? 'end' : 'start';
+    // Store as numeric (value col is numeric type): 1=start, 0=end; actual time in created_at
+    const sleepValue = isSleepEnd ? '0' : '1';
+    return { metric_type: 'sleep', value: sleepValue, unit: sleepPhase, isMetric: true, personType };
   }
 
   // Legacy: duration format "sleep 2 hours" still supported
