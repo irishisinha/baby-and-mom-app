@@ -68,7 +68,8 @@ const COMMANDS_HELP = `ðŸ“‹ AVAILABLE COMMANDS:
 Same format as MOM: "rishi steps 5000" or "ichi mood happy"
 
 ðŸ”… APPOINTMENTS:
-• Quick: “appt 18 sept 1330 rishi” or “appt 15 july 3pm doctor”
+• Quick: “appt [day] [month] [time] [person] [title]”
+  Examples: “appt 18 sept 1330 rishi checkup” or “appt 15 july 3pm mom vaccine”
 • Full: “Appointment- checkup 15 July 2:30pm Pediatrician”
 
 ðŸ” COMMANDS:
@@ -95,13 +96,15 @@ function buildAppointment(title: string, description: string, day: string, month
 function parseAppointmentMessage(text: string): any {
   const trimmed = text.trim();
 
-  // Simple format: "appt [day] [month] [HHMM or H:MM] [title]"
-  // e.g. "appt 18 sept 1330 rishi" or "appt 18 sept 130 pm pediatrician"
-  const simpleMatch = trimmed.match(/^appt\s+(\d{1,2})\s+(\w+)\s+([\d:]+)\s+(?:(am|pm)\s+)?(.+)$/i);
+  // Simple format: "appt [day] [month] [HHMM or H:MM] [person] [title...]"
+  // e.g. "appt 18 sept 1330 rishi checkup" or "appt 18 sept 2pm mom vaccine"
+  const simpleMatch = trimmed.match(/^appt\s+(\d{1,2})\s+(\w+)\s+([\d:]+)\s+(?:(am|pm)\s+)?(\w+)\s+(.+)$/i);
   if (simpleMatch) {
-    const [, day, month, timeStr, ampm, title] = simpleMatch;
+    const [, day, month, timeStr, ampm, person, title] = simpleMatch;
     const monthNum = MONTH_MAP[month.toLowerCase()];
-    if (!monthNum) return null;
+    if (!monthNum) {
+      return { error: true, message: `Invalid month: ${month}` };
+    }
 
     let hours = 0, minutes = 0;
     if (timeStr.includes(':')) {
@@ -115,14 +118,22 @@ function parseAppointmentMessage(text: string): any {
       minutes = num % 100;
     }
 
-    if (hours > 23 || minutes > 59) return null;
+    if (hours > 23 || minutes > 59) {
+      return { error: true, message: `Invalid time: ${timeStr}` };
+    }
     if (ampm) {
       const am = ampm.toLowerCase() === 'am';
       if (!am && hours !== 12) hours += 12;
       if (am && hours === 12) hours = 0;
     }
 
-    return buildAppointment(title.trim(), 'Appointment', day, monthNum, hours, minutes);
+    const description = `${person} - ${title}`;
+    return buildAppointment(title.trim(), description, day, monthNum, hours, minutes);
+  }
+
+  // Detect if user tried appt format but got it wrong
+  if (trimmed.match(/^appt\s+/i)) {
+    return { error: true, message: 'Format: appt [day] [month] [time] [person] [title]\nExample: appt 18 sept 1330 rishi checkup' };
   }
 
   // Legacy format: "Appointment- [desc] [day] [month] [HH:MM am/pm] [title]"
@@ -534,6 +545,12 @@ export async function POST(request: NextRequest) {
     }
 
     const appointmentData = parseAppointmentMessage(messageBody);
+
+    // Handle appt format errors
+    if (appointmentData && appointmentData.error) {
+      return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${escapeXml(appointmentData.message)}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
+    }
+
     if (appointmentData && appointmentData.isAppointment) {
       try {
         const { data, error } = await supabase.from('appointments').insert({
