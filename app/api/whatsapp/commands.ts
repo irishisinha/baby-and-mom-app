@@ -125,12 +125,12 @@ async function cmdFeed(familyId: string): Promise<string> {
 
   // Calculate today's range in Europe/London timezone
   // UK is GMT+0 in winter, GMT+1 in summer (late March to late October)
-  const month = parseInt(month) - 1 // 0-11
-  const isInBST = (month > 2 && month < 9) ||
-                  (month === 2 && parseInt(day) > 24) ||
-                  (month === 9 && parseInt(day) < 24)
+  const monthIndex = parseInt(month) - 1 // 0-11
+  const dayNum = parseInt(day)
+  const isInBST = (monthIndex > 2 && monthIndex < 9) ||
+                  (monthIndex === 2 && dayNum > 24) ||
+                  (monthIndex === 9 && dayNum < 24)
   const offsetHours = isInBST ? 1 : 0
-  const offsetMinutes = 0
   const offsetMs = offsetHours * 60 * 60000
 
   const todayStart = new Date(Date.UTC(parseInt(year), parseInt(month) - 1, parseInt(day), 0, 0, 0) - offsetMs)
