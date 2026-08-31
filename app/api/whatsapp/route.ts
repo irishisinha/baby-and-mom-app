@@ -48,7 +48,7 @@ const COMMANDS_HELP = `ðŸ“‹ AVAILABLE COMMANDS:
 • Bath: "bath"
 • Potty: "0530 potty" (with time) or "potty"
 • Oil: "oil"
-• Sleep: "1 pm sleep starts" or "1pm sleep" (start), "2:30 pm sleep ends" or "230 pm sleep end" (end), or legacy "sleep 2 hours"
+• Sleep: "1 pm sleep" or "1 pm sleeping" (start), "2:30 pm sleep end" or "2:30 pm sleeping end" (end), or legacy "sleep 2 hours"
 • Time format: "0640 pm - 90ml formula" or "0500 baby nebulization"
 
 ðŸ‘© MOM/SHIVA METRICS (start with "shiva", "mom", or "mother"):
@@ -434,9 +434,9 @@ function parseMetric(text: string): any {
   if (/potty/i.test(text)) return { metric_type: 'potty', value: 'logged', unit: 'time', isMetric: true, personType };
   if (/oil/i.test(text)) return { metric_type: 'oil', value: 'yes', unit: 'confirmation', isMetric: true, personType };
 
-  // Sleep: "0530 sleep" or "0530 sleep start" (start) vs "0630 sleep end" (end)
-  if (/sleep/i.test(text)) {
-    const isSleepEnd = /sleep[\s.]*end/i.test(text);
+  // Sleep: "1 pm sleep" or "sleeping" (start) vs "sleep end" or "sleeping end" (end)
+  if (/(sleep|sleeping)/i.test(text)) {
+    const isSleepEnd = /\bend\b/i.test(text);
     const sleepValue = isSleepEnd ? 'end' : 'start';
     return { metric_type: 'sleep', value: sleepValue, unit: 'time', isMetric: true, personType };
   }
