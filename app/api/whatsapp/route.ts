@@ -548,7 +548,25 @@ Total: 300ml</Message></Response>`, { status: 200, headers: { 'Content-Type': 'a
         if (metricData.personType === 'baby') {
           insertData.baby_id = BABY_ID;
         }
-        
+
+        // Deduplication: check for identical metric logged in the last 60 seconds
+        const now = new Date();
+        const oneMinuteAgo = new Date(now.getTime() - 60000);
+        const { data: recentDuplicates } = await supabase
+          .from('baby_metrics')
+          .select('id')
+          .eq('family_id', FAMILY_ID)
+          .eq('metric_type', metricData.metric_type)
+          .eq('value', metricData.value)
+          .eq('person_type', metricData.personType)
+          .gte('created_at', oneMinuteAgo.toISOString())
+          .limit(1);
+
+        if (recentDuplicates && recentDuplicates.length > 0) {
+          console.log('[DUPLICATE-METRIC]', { metricData, insertData });
+          return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>[OK] ${metricData.value}${metricData.unit} ${metricData.metric_type}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
+        }
+
         const { data, error } = await supabase.from('baby_metrics').insert([insertData]).select();
 
         if (error) {
