@@ -553,20 +553,37 @@ export async function POST(request: NextRequest) {
 
     if (appointmentData && appointmentData.isAppointment) {
       try {
+        const apptDate = appointmentData.appointment_date.split('T')[0];
+
+        // Deduplication: check for same appt with same person/title on same date/time
+        const { data: existingAppts } = await supabase
+          .from('appointments')
+          .select('id')
+          .eq('doctor', appointmentData.title)
+          .eq('reason', appointmentData.description)
+          .eq('appointment_date', apptDate)
+          .eq('appointment_time', appointmentData.appointment_time)
+          .limit(1);
+
+        if (existingAppts && existingAppts.length > 0) {
+          console.log('[DUPLICATE-APPT]', { appointmentData });
+          return new NextResponse(`<?xml version=”1.0” encoding=”UTF-8”?><Response><Message>âœ” Appt: ${escapeXml(appointmentData.title)}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
+        }
+
         const { data, error } = await supabase.from('appointments').insert({
           user_id: SYSTEM_USER_ID,
           doctor: appointmentData.title,
           reason: appointmentData.description,
-          appointment_date: appointmentData.appointment_date.split('T')[0],
+          appointment_date: apptDate,
           appointment_time: appointmentData.appointment_time,
           notes: `WhatsApp`
         }).select();
 
         if (error) throw error;
-        return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>âœ“ Appt: ${escapeXml(appointmentData.title)}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
+        return new NextResponse(`<?xml version=”1.0” encoding=”UTF-8”?><Response><Message>âœ” Appt: ${escapeXml(appointmentData.title)}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
       } catch (e: any) {
         console.error('[APT-ERR]', e);
-        return new NextResponse('<?xml version="1.0" encoding="UTF-8"?><Response><Message>Appt error</Message></Response>', { status: 200, headers: { 'Content-Type': 'application/xml' } });
+        return new NextResponse('<?xml version=”1.0” encoding=”UTF-8”?><Response><Message>Appt error</Message></Response>', { status: 200, headers: { 'Content-Type': 'application/xml' } });
       }
     }
         // Handle report command
