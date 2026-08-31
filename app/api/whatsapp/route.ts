@@ -67,9 +67,9 @@ const COMMANDS_HELP = `ðŸ“‹ AVAILABLE COMMANDS:
 ðŸ‘¨ DAD/RISHI & ðŸ‘µ GRANDMOM/ICHI:
 Same format as MOM: "rishi steps 5000" or "ichi mood happy"
 
-ðŸ“… APPOINTMENTS:
-"Appointment- [description] [DD] [month] [HH:MM am/pm] [title]"
-Example: "Appointment- checkup 15 July 2:30pm Pediatrician"
+ðŸ”… APPOINTMENTS:
+• Quick: “appt 18 sept 1330 rishi” or “appt 15 july 3pm doctor”
+• Full: “Appointment- checkup 15 July 2:30pm Pediatrician”
 
 ðŸ” COMMANDS:
 • "appt" - Show upcoming appointments
@@ -94,6 +94,36 @@ function buildAppointment(title: string, description: string, day: string, month
 
 function parseAppointmentMessage(text: string): any {
   const trimmed = text.trim();
+
+  // Simple format: "appt [day] [month] [HHMM or H:MM] [title]"
+  // e.g. "appt 18 sept 1330 rishi" or "appt 18 sept 130 pm pediatrician"
+  const simpleMatch = trimmed.match(/^appt\s+(\d{1,2})\s+(\w+)\s+([\d:]+)\s+(?:(am|pm)\s+)?(.+)$/i);
+  if (simpleMatch) {
+    const [, day, month, timeStr, ampm, title] = simpleMatch;
+    const monthNum = MONTH_MAP[month.toLowerCase()];
+    if (!monthNum) return null;
+
+    let hours = 0, minutes = 0;
+    if (timeStr.includes(':')) {
+      const [h, m] = timeStr.split(':').map(x => parseInt(x, 10));
+      hours = h;
+      minutes = m;
+    } else {
+      // HHMM format like 1330
+      const num = parseInt(timeStr, 10);
+      hours = Math.floor(num / 100);
+      minutes = num % 100;
+    }
+
+    if (hours > 23 || minutes > 59) return null;
+    if (ampm) {
+      const am = ampm.toLowerCase() === 'am';
+      if (!am && hours !== 12) hours += 12;
+      if (am && hours === 12) hours = 0;
+    }
+
+    return buildAppointment(title.trim(), 'Appointment', day, monthNum, hours, minutes);
+  }
 
   // Legacy format: "Appointment- [desc] [day] [month] [HH:MM am/pm] [title]"
   const strictMatch = trimmed.match(/^Appointment-\s*(.+)$/i);
