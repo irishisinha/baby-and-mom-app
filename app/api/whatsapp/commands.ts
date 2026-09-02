@@ -38,35 +38,71 @@ async function cmdReport(familyId: string): Promise<string> {
   
   const { data: todayData } = await supabaseAdmin
     .from('baby_metrics')
-    .select('metric_type, value')
+    .select('metric_type, value, created_at')
     .eq('family_id', familyId)
     .gte('created_at', todayStart.toISOString())
     .lt('created_at', todayEnd.toISOString())
-  
+
   const { data: yesterdayData } = await supabaseAdmin
     .from('baby_metrics')
-    .select('metric_type, value')
+    .select('metric_type, value, created_at')
     .eq('family_id', familyId)
     .gte('created_at', yesterdayStart.toISOString())
     .lt('created_at', yesterdayEnd.toISOString())
-  
+
   const todayTotals: Record<string, number> = {}
   const yesterdayTotals: Record<string, number> = {}
-  
+
+  // Calculate sleep duration from start/end pairs
+  const calculateSleepDuration = (data: any[]) => {
+    if (!data || data.length === 0) return { duration: 0, count: 0 }
+
+    const sleepEvents = data.filter((m: any) => m.metric_type === 'sleep').sort((a: any, b: any) =>
+      new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    )
+
+    let totalMinutes = 0
+    let sleepCount = 0
+    let startTime: Date | null = null
+
+    sleepEvents.forEach((event: any) => {
+      if (event.value === '1' || event.value === 1) {
+        // Sleep start
+        startTime = new Date(event.created_at)
+      } else if ((event.value === '0' || event.value === 0) && startTime) {
+        // Sleep end - calculate duration
+        const endTime = new Date(event.created_at)
+        const durationMinutes = (endTime.getTime() - startTime.getTime()) / 60000
+        totalMinutes += durationMinutes
+        sleepCount++
+        startTime = null
+      }
+    })
+
+    return { duration: Math.round(totalMinutes / 60 * 10) / 10, count: sleepCount }
+  }
+
+  const todaySleep = calculateSleepDuration(todayData || [])
+  const yesterdaySleep = calculateSleepDuration(yesterdayData || [])
+
   if (todayData) {
     todayData.forEach((m: any) => {
-      const val = parseFloat(m.value) || 0
-      todayTotals[m.metric_type] = (todayTotals[m.metric_type] || 0) + val
+      if (m.metric_type !== 'sleep') {
+        const val = parseFloat(m.value) || 0
+        todayTotals[m.metric_type] = (todayTotals[m.metric_type] || 0) + val
+      }
     })
   }
-  
+
   if (yesterdayData) {
     yesterdayData.forEach((m: any) => {
-      const val = parseFloat(m.value) || 0
-      yesterdayTotals[m.metric_type] = (yesterdayTotals[m.metric_type] || 0) + val
+      if (m.metric_type !== 'sleep') {
+        const val = parseFloat(m.value) || 0
+        yesterdayTotals[m.metric_type] = (yesterdayTotals[m.metric_type] || 0) + val
+      }
     })
   }
-  
+
   let msg = `📊 Jaian (Baby) - Today vs Yesterday\n\nToday (${year}-${month}-${day}):\n`
   const types = ['formula', 'breastmilk', 'vaccine', 'potty', 'bath']
   types.forEach((t) => {
@@ -74,7 +110,9 @@ async function cmdReport(familyId: string): Promise<string> {
     const yv = yesterdayTotals[t] || 0
     msg += `  ${t}: ${tv} (yesterday: ${yv})\n`
   })
-  
+
+  msg += `  sleep: ${todaySleep.duration}h (${todaySleep.count} sessions) (yesterday: ${yesterdaySleep.duration}h, ${yesterdaySleep.count} sessions)\n`
+
   return msg
 }
 
