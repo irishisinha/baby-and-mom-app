@@ -475,9 +475,9 @@ function parseMetric(text: string): any {
   if (/potty/i.test(text)) return { metric_type: 'potty', value: 'logged', unit: 'time', isMetric: true, personType };
   if (/oil/i.test(text)) return { metric_type: 'oil', value: 'yes', unit: 'confirmation', isMetric: true, personType };
 
-  // Sleep: "1 pm sleep" or "sleeping" (start) vs "sleep end" or "sleeping end" (end)
+  // Sleep: "1 pm sleep" or "sleeping" (start) vs "sleep end/ends/ending" etc (end)
   if (/(sleep|sleeping)/i.test(text)) {
-    const isSleepEnd = /\bend\b/i.test(text);
+    const isSleepEnd = /end/i.test(text);
     const sleepPhase = isSleepEnd ? 'end' : 'start';
     // Store as numeric (value col is numeric type): 1=start, 0=end; actual time in created_at
     const sleepValue = isSleepEnd ? '0' : '1';
