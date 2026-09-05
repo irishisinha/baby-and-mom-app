@@ -210,12 +210,14 @@ function extractMetricTime(text: string): string | null {
 
 // Convert a wall-clock time (hours/minutes) in a specified timezone into the correct
 // UTC Date instant, using `referenceNow` to determine the current calendar date and DST offset.
-function wallTimeToUTC(hours: number, minutes: number, timeZone: string, referenceNow: Date): Date {
+// daysOffset: number of days in the past (1 = yesterday, 2 = 2 days ago, etc.)
+function wallTimeToUTC(hours: number, minutes: number, timeZone: string, referenceNow: Date, daysOffset: number = 0): Date {
+  const adjustedNow = new Date(referenceNow.getTime() - daysOffset * 86400000);
   const ymdFormatter = new Intl.DateTimeFormat('en-CA', {
     timeZone,
     year: 'numeric', month: '2-digit', day: '2-digit'
   })
-  const [y, mo, d] = ymdFormatter.format(referenceNow).split('-').map(Number)
+  const [y, mo, d] = ymdFormatter.format(adjustedNow).split('-').map(Number)
 
   // For Europe/London, use hardcoded offset (0 in winter, 1 in summer)
   let offsetMinutes = 0
@@ -244,7 +246,32 @@ function wallTimeToUTC(hours: number, minutes: number, timeZone: string, referen
   return new Date(Date.UTC(y, mo - 1, d, hours, minutes, 0) - offsetMinutes * 60000)
 }
 
-function extractTimeFromMessage(text: string): Date | null {
+// Extract date offset from message prefix (e.g., "yesterday", "2 days ago", "sept 1")
+// Returns: { text: cleaned text without date prefix, daysOffset: number (0 = today, 1 = yesterday, -1 = tomorrow) }
+function extractDateOffset(text: string): { text: string, daysOffset: number } {
+  const trimmed = text.trim();
+
+  // "yesterday"
+  if (/^yesterday\s+/i.test(trimmed)) {
+    return { text: trimmed.replace(/^yesterday\s+/i, '').trim(), daysOffset: 1 };
+  }
+
+  // "today"
+  if (/^today\s+/i.test(trimmed)) {
+    return { text: trimmed.replace(/^today\s+/i, '').trim(), daysOffset: 0 };
+  }
+
+  // "N days ago"
+  const daysAgoMatch = trimmed.match(/^(\d+)\s+days?\s+ago\s+/i);
+  if (daysAgoMatch) {
+    const days = parseInt(daysAgoMatch[1], 10);
+    return { text: trimmed.replace(daysAgoMatch[0], '').trim(), daysOffset: days };
+  }
+
+  return { text: trimmed, daysOffset: 0 };
+}
+
+function extractTimeFromMessage(text: string, daysOffset: number = 0): Date | null {
   const trimmed = text.trim()
 
   // Family convention: "HHMM[ am/pm][ -] description"
@@ -333,7 +360,7 @@ function extractTimeFromMessage(text: string): Date | null {
   if (meridiem === 'PM' && hours < 12) hours += 12
   if (meridiem === 'AM' && hours === 12) hours = 0
 
-  return wallTimeToUTC(hours, minutes, 'Europe/London', new Date())
+  return wallTimeToUTC(hours, minutes, 'Europe/London', new Date(), daysOffset)
 }
 
 function escapeXml(text: string): string {
@@ -598,8 +625,9 @@ Total: 300ml</Message></Response>`, { status: 200, headers: { 'Content-Type': 'a
     console.log('[PARSE-METRIC]', { messageBody, metricData });
     if (metricData && metricData.isMetric) {
       try {
-        const extractedTime = extractTimeFromMessage(messageBody)
-        console.log('[TIME-EXTRACT]', { messageBody, extractedTime: extractedTime?.toISOString(), extractedTimeLocal: extractedTime?.toLocaleString('en-GB', { timeZone: 'Europe/London' }) });
+        const { text: cleanedText, daysOffset } = extractDateOffset(messageBody);
+        const extractedTime = extractTimeFromMessage(cleanedText, daysOffset)
+        console.log('[TIME-EXTRACT]', { messageBody, cleanedText, daysOffset, extractedTime: extractedTime?.toISOString(), extractedTimeLocal: extractedTime?.toLocaleString('en-GB', { timeZone: 'Europe/London' }) });
         const insertData: any = {
           family_id: FAMILY_ID,
           metric_type: metricData.metric_type,

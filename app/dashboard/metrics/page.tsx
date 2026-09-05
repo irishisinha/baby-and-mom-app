@@ -27,7 +27,8 @@ export default function MetricsPage() {
   const [editData, setEditData] = useState({
     value: '',
     unit: '',
-    notes: ''
+    notes: '',
+    created_at: ''
   });
 
   useEffect(() => {
@@ -45,12 +46,28 @@ export default function MetricsPage() {
 
   const handleEdit = (metric: any) => {
     setEditingId(metric.id);
-    setEditData({ value: metric.value, unit: metric.unit, notes: metric.notes || '' });
+    // Format created_at for datetime-local input (YYYY-MM-DDTHH:mm)
+    const date = new Date(metric.created_at);
+    const formattedDate = date.toISOString().slice(0, 16);
+    setEditData({
+      value: metric.value,
+      unit: metric.unit,
+      notes: metric.notes || '',
+      created_at: formattedDate
+    });
   };
 
   const handleSave = async (id: string) => {
-    await supabase.from('baby_metrics').update(editData).eq('id', id);
-    setMetrics(metrics.map(m => m.id === id ? {...m, ...editData} : m));
+    const updateData: any = {
+      value: editData.value,
+      unit: editData.unit,
+      notes: editData.notes
+    };
+    if (editData.created_at) {
+      updateData.created_at = new Date(editData.created_at).toISOString();
+    }
+    await supabase.from('baby_metrics').update(updateData).eq('id', id);
+    setMetrics(metrics.map(m => m.id === id ? {...m, ...updateData} : m));
     setEditingId(null);
   };
 
@@ -164,9 +181,10 @@ export default function MetricsPage() {
           <div key={m.id} className="border rounded p-4 bg-gray-50 flex justify-between">
             {editingId === m.id ? (
               <div className="flex-1 space-y-2">
-                <input type="number" value={editData.value} onChange={e => setEditData({...editData, value: e.target.value})} className="w-full px-2 py-1 border rounded" />
-                <input type="text" value={editData.unit} onChange={e => setEditData({...editData, unit: e.target.value})} className="w-full px-2 py-1 border rounded" />
-                <textarea value={editData.notes} onChange={e => setEditData({...editData, notes: e.target.value})} className="w-full px-2 py-1 border rounded"></textarea>
+                <input type="datetime-local" value={editData.created_at} onChange={e => setEditData({...editData, created_at: e.target.value})} className="w-full px-2 py-1 border rounded" />
+                <input type="number" value={editData.value} onChange={e => setEditData({...editData, value: e.target.value})} className="w-full px-2 py-1 border rounded" placeholder="Value" />
+                <input type="text" value={editData.unit} onChange={e => setEditData({...editData, unit: e.target.value})} className="w-full px-2 py-1 border rounded" placeholder="Unit" />
+                <textarea value={editData.notes} onChange={e => setEditData({...editData, notes: e.target.value})} className="w-full px-2 py-1 border rounded" placeholder="Notes"></textarea>
                 <div className="flex gap-2">
                   <button onClick={() => handleSave(m.id)} className="px-3 py-1 bg-green-600 text-white rounded text-sm">Save</button>
                   <button onClick={() => setEditingId(null)} className="px-3 py-1 bg-gray-400 text-white rounded text-sm">Cancel</button>
