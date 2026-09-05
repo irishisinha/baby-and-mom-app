@@ -34,7 +34,7 @@ interface SummaryStats {
 }
 
 interface DayComparison {
-  [key: string]: { today: number; yesterday: number; unit: string };
+  [key: string]: { today: number; yesterday: number; unit: string; todayCount?: number; yesterdayCount?: number };
 }
 
 function formatLondonDate(date: Date | string): string {
@@ -268,6 +268,33 @@ export default function DashboardPage() {
     setSummaryStats(stats);
   };
 
+  const calculateSleepDuration = (sleepEvents: Metric[]) => {
+    if (!sleepEvents || sleepEvents.length === 0) return { duration: 0, count: 0 };
+
+    const sorted = sleepEvents.sort((a, b) =>
+      new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+
+    let totalMinutes = 0;
+    let sleepCount = 0;
+    let startTime: Date | null = null;
+
+    sorted.forEach((event) => {
+      const val = parseFloat(event.value);
+      if (val === 1) {
+        startTime = new Date(event.created_at);
+      } else if (val === 0 && startTime) {
+        const endTime = new Date(event.created_at);
+        const durationMinutes = (endTime.getTime() - startTime.getTime()) / 60000;
+        totalMinutes += durationMinutes;
+        sleepCount++;
+        startTime = null;
+      }
+    });
+
+    return { duration: Math.round(totalMinutes / 60 * 10) / 10, count: sleepCount };
+  };
+
   const calculateDayComparison = (metricsData: Metric[]) => {
     const now = new Date();
     const todayStr = now.toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
@@ -279,8 +306,30 @@ export default function DashboardPage() {
     const nonAdditiveMetrics = ["weight"];
     const alwaysShowMetrics = ['formula', 'breastmilk'];
 
+    // Separate sleep metrics for special handling
+    const todaySleepEvents = metricsData.filter((m) =>
+      m.metric_type === 'sleep' &&
+      new Date(m.created_at).toLocaleDateString('en-CA', { timeZone: 'Europe/London' }) === todayStr
+    );
+    const yesterdaySleepEvents = metricsData.filter((m) =>
+      m.metric_type === 'sleep' &&
+      new Date(m.created_at).toLocaleDateString('en-CA', { timeZone: 'Europe/London' }) === yesterdayStr
+    );
+
+    if (todaySleepEvents.length > 0 || yesterdaySleepEvents.length > 0) {
+      const todaySleep = calculateSleepDuration(todaySleepEvents);
+      const yesterdaySleep = calculateSleepDuration(yesterdaySleepEvents);
+      comparison['sleep'] = {
+        today: todaySleep.duration,
+        yesterday: yesterdaySleep.duration,
+        unit: 'h',
+        todayCount: todaySleep.count,
+        yesterdayCount: yesterdaySleep.count
+      };
+    }
+
     metricsData.forEach((m) => {
-      if (nonAdditiveMetrics.includes(m.metric_type)) return;
+      if (nonAdditiveMetrics.includes(m.metric_type) || m.metric_type === 'sleep') return;
 
       const metricDate = new Date(m.created_at).toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
       const value = parseFloat(m.value);
@@ -495,16 +544,24 @@ export default function DashboardPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {Object.entries(dayComparison).map(([type, data]) => {
               const increase = data.today >= data.yesterday;
+              const isSleep = type === 'sleep';
               return (
                 <div key={type} className="bg-gradient-to-br from-red-50 to-pink-50 rounded-lg p-4 border border-red-200 hover:shadow-md transition-shadow">
                   <div className="flex justify-between items-start mb-2">
                     <p className="text-sm text-gray-600 capitalize font-medium">{type}</p>
                     <span className={`text-xs font-semibold px-2 py-1 rounded ${increase ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                      {increase ? '↑' : '↓'} {Math.abs(data.today - data.yesterday).toFixed(0)}
+                      {increase ? '↑' : '↓'} {Math.abs(data.today - data.yesterday).toFixed(isSleep ? 1 : 0)}
                     </span>
                   </div>
-                  <p className="text-2xl font-bold text-blue-600 mb-2">{data.today.toFixed(0)}</p>
-                  <p className="text-xs text-gray-500">vs {data.yesterday.toFixed(0)} yesterday</p>
+                  <p className="text-2xl font-bold text-blue-600 mb-2">{data.today.toFixed(isSleep ? 1 : 0)}</p>
+                  {isSleep ? (
+                    <>
+                      <p className="text-xs text-gray-500">{data.todayCount} sessions</p>
+                      <p className="text-xs text-gray-500">vs {data.yesterday.toFixed(1)} ({data.yesterdayCount} sessions) yesterday</p>
+                    </>
+                  ) : (
+                    <p className="text-xs text-gray-500">vs {data.yesterday.toFixed(0)} yesterday</p>
+                  )}
                 </div>
               );
             })}
