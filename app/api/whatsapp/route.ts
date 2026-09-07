@@ -594,7 +594,7 @@ export async function POST(request: NextRequest) {
 
         if (existingAppts && existingAppts.length > 0) {
           console.log('[DUPLICATE-APPT]', { appointmentData });
-          return new NextResponse(`<?xml version=”1.0” encoding=”UTF-8”?><Response><Message>âœ” Appt: ${escapeXml(appointmentData.title)}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
+          return new NextResponse(`<?xml version=”1.0” encoding=”UTF-8”?><Response><Message>✓ Appt: ${escapeXml(appointmentData.title)}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
         }
 
         const { data, error } = await supabase.from('appointments').insert({
@@ -607,7 +607,7 @@ export async function POST(request: NextRequest) {
         }).select();
 
         if (error) throw error;
-        return new NextResponse(`<?xml version=”1.0” encoding=”UTF-8”?><Response><Message>âœ” Appt: ${escapeXml(appointmentData.title)}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
+        return new NextResponse(`<?xml version=”1.0” encoding=”UTF-8”?><Response><Message>✓ Appt: ${escapeXml(appointmentData.title)}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
       } catch (e: any) {
         console.error('[APT-ERR]', e);
         return new NextResponse('<?xml version=”1.0” encoding=”UTF-8”?><Response><Message>Appt error</Message></Response>', { status: 200, headers: { 'Content-Type': 'application/xml' } });

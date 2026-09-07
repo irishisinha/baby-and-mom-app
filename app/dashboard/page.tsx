@@ -34,7 +34,7 @@ interface SummaryStats {
 }
 
 interface DayComparison {
-  [key: string]: { today: number; yesterday: number; unit: string; todayCount?: number; yesterdayCount?: number };
+  [key: string]: { today: number; yesterday: number; unit: string; todayCount?: number; yesterdayCount?: number; todayOvernightCount?: number; yesterdayOvernightCount?: number };
 }
 
 function formatLondonDate(date: Date | string): string {
@@ -269,7 +269,7 @@ export default function DashboardPage() {
   };
 
   const calculateSleepDuration = (sleepEvents: Metric[]) => {
-    if (!sleepEvents || sleepEvents.length === 0) return { duration: 0, count: 0 };
+    if (!sleepEvents || sleepEvents.length === 0) return { duration: 0, count: 0, overnightCount: 0 };
 
     const sorted = sleepEvents.sort((a, b) =>
       new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
@@ -277,6 +277,7 @@ export default function DashboardPage() {
 
     let totalMinutes = 0;
     let sleepCount = 0;
+    let overnightCount = 0;
     let startTime: Date | null = null;
 
     sorted.forEach((event) => {
@@ -286,13 +287,18 @@ export default function DashboardPage() {
       } else if (val === 0 && startTime) {
         const endTime = new Date(event.created_at);
         const durationMinutes = (endTime.getTime() - startTime.getTime()) / 60000;
+        const durationHours = durationMinutes / 60;
+
+        // Overnight sleep: spans > 8 hours (e.g., 11pm to 8am)
+        if (durationHours > 8) overnightCount++;
+
         totalMinutes += durationMinutes;
         sleepCount++;
         startTime = null;
       }
     });
 
-    return { duration: Math.round(totalMinutes / 60 * 10) / 10, count: sleepCount };
+    return { duration: Math.round(totalMinutes / 60 * 10) / 10, count: sleepCount, overnightCount };
   };
 
   const calculateDayComparison = (metricsData: Metric[]) => {
@@ -324,7 +330,9 @@ export default function DashboardPage() {
         yesterday: yesterdaySleep.duration,
         unit: 'h',
         todayCount: todaySleep.count,
-        yesterdayCount: yesterdaySleep.count
+        yesterdayCount: yesterdaySleep.count,
+        todayOvernightCount: todaySleep.overnightCount,
+        yesterdayOvernightCount: yesterdaySleep.overnightCount
       };
     }
 
@@ -556,8 +564,12 @@ export default function DashboardPage() {
                   <p className="text-2xl font-bold text-blue-600 mb-2">{data.today.toFixed(isSleep ? 1 : 0)}</p>
                   {isSleep ? (
                     <>
-                      <p className="text-xs text-gray-500">{data.todayCount} sessions</p>
-                      <p className="text-xs text-gray-500">vs {data.yesterday.toFixed(1)} ({data.yesterdayCount} sessions) yesterday</p>
+                      <p className="text-xs text-gray-500">
+                        {data.todayCount} sessions{data.todayOvernightCount ? ` (${data.todayOvernightCount} overnight)` : ''}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        vs {data.yesterday.toFixed(1)} ({data.yesterdayCount} sessions{data.yesterdayOvernightCount ? ` ${data.yesterdayOvernightCount} overnight` : ''}) yesterday
+                      </p>
                     </>
                   ) : (
                     <p className="text-xs text-gray-500">vs {data.yesterday.toFixed(0)} yesterday</p>

@@ -53,9 +53,9 @@ async function cmdReport(familyId: string): Promise<string> {
   const todayTotals: Record<string, number> = {}
   const yesterdayTotals: Record<string, number> = {}
 
-  // Calculate sleep duration from start/end pairs
+  // Calculate sleep duration from start/end pairs (handles overnight sleep)
   const calculateSleepDuration = (data: any[]) => {
-    if (!data || data.length === 0) return { duration: 0, count: 0 }
+    if (!data || data.length === 0) return { duration: 0, count: 0, overnightCount: 0 }
 
     const sleepEvents = data.filter((m: any) => m.metric_type === 'sleep').sort((a: any, b: any) =>
       new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
@@ -63,6 +63,7 @@ async function cmdReport(familyId: string): Promise<string> {
 
     let totalMinutes = 0
     let sleepCount = 0
+    let overnightCount = 0
     let startTime: Date | null = null
 
     sleepEvents.forEach((event: any) => {
@@ -73,13 +74,19 @@ async function cmdReport(familyId: string): Promise<string> {
         // Sleep end - calculate duration
         const endTime = new Date(event.created_at)
         const durationMinutes = (endTime.getTime() - startTime.getTime()) / 60000
+        const durationHours = durationMinutes / 60
+
+        // Overnight sleep: spans > 8 hours (e.g., 11pm to 8am)
+        const isOvernight = durationHours > 8
+        if (isOvernight) overnightCount++
+
         totalMinutes += durationMinutes
         sleepCount++
         startTime = null
       }
     })
 
-    return { duration: Math.round(totalMinutes / 60 * 10) / 10, count: sleepCount }
+    return { duration: Math.round(totalMinutes / 60 * 10) / 10, count: sleepCount, overnightCount }
   }
 
   const todaySleep = calculateSleepDuration(todayData || [])
@@ -111,7 +118,9 @@ async function cmdReport(familyId: string): Promise<string> {
     msg += `  ${t}: ${tv} (yesterday: ${yv})\n`
   })
 
-  msg += `  sleep: ${todaySleep.duration}h (${todaySleep.count} sessions) (yesterday: ${yesterdaySleep.duration}h, ${yesterdaySleep.count} sessions)\n`
+  const todaySleepLabel = todaySleep.overnightCount > 0 ? `${todaySleep.duration}h (${todaySleep.overnightCount} overnight)` : `${todaySleep.duration}h (${todaySleep.count} sessions)`
+  const yesterdaySleepLabel = yesterdaySleep.overnightCount > 0 ? `${yesterdaySleep.duration}h (${yesterdaySleep.overnightCount} overnight)` : `${yesterdaySleep.duration}h (${yesterdaySleep.count} sessions)`
+  msg += `  sleep: ${todaySleepLabel} (yesterday: ${yesterdaySleepLabel})\n`
 
   return msg
 }
