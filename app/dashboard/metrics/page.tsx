@@ -178,21 +178,35 @@ export default function MetricsPage() {
 
       <div className="space-y-3">
         {metrics.map(m => (
-          <div key={m.id} className="border rounded p-4 bg-gray-50 flex justify-between">
+          <div key={m.id} className="border rounded p-4 bg-gray-50 w-full">
             {editingId === m.id ? (
-              <div className="flex-1 space-y-2">
-                <input type="datetime-local" value={editData.created_at} onChange={e => setEditData({...editData, created_at: e.target.value})} className="w-full px-2 py-1 border rounded" />
-                <input type="number" value={editData.value} onChange={e => setEditData({...editData, value: e.target.value})} className="w-full px-2 py-1 border rounded" placeholder="Value" />
-                <input type="text" value={editData.unit} onChange={e => setEditData({...editData, unit: e.target.value})} className="w-full px-2 py-1 border rounded" placeholder="Unit" />
-                <textarea value={editData.notes} onChange={e => setEditData({...editData, notes: e.target.value})} className="w-full px-2 py-1 border rounded" placeholder="Notes"></textarea>
+              <div className="space-y-2">
+                <div>
+                  <label className="text-xs text-gray-600">Date & Time</label>
+                  <input type="datetime-local" value={editData.created_at} onChange={e => setEditData({...editData, created_at: e.target.value})} className="w-full px-2 py-1 border rounded text-sm" />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs text-gray-600">Value</label>
+                    <input type="text" value={editData.value} onChange={e => setEditData({...editData, value: e.target.value})} className="w-full px-2 py-1 border rounded text-sm" placeholder="Value" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-600">Unit</label>
+                    <input type="text" value={editData.unit} onChange={e => setEditData({...editData, unit: e.target.value})} className="w-full px-2 py-1 border rounded text-sm" placeholder="Unit" />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs text-gray-600">Notes</label>
+                  <textarea value={editData.notes} onChange={e => setEditData({...editData, notes: e.target.value})} className="w-full px-2 py-1 border rounded text-sm" placeholder="Notes" rows={2}></textarea>
+                </div>
                 <div className="flex gap-2">
-                  <button onClick={() => handleSave(m.id)} className="px-3 py-1 bg-green-600 text-white rounded text-sm">Save</button>
+                  <button onClick={() => handleSave(m.id)} className="px-3 py-1 bg-green-600 text-white rounded text-sm font-semibold">Save</button>
                   <button onClick={() => setEditingId(null)} className="px-3 py-1 bg-gray-400 text-white rounded text-sm">Cancel</button>
                 </div>
               </div>
             ) : (
-              <>
-                <div>
+              <div className="flex justify-between items-start">
+                <div className="flex-1">
                   {(() => {
                     const metricDef = METRIC_TYPES.find(mt => mt.type === m.metric_type);
                     const label = metricDef?.label || m.metric_type;
@@ -214,11 +228,11 @@ export default function MetricsPage() {
                   <p className="text-xs text-gray-500">{new Date(m.created_at).toLocaleString('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })}</p>
                   {m.notes && <p className="text-sm text-gray-600">Notes: {m.notes}</p>}
                 </div>
-                <div className="flex gap-2">
-                  <button onClick={() => handleEdit(m)} className="px-2 py-1 bg-blue-600 text-white rounded text-sm">Edit</button>
-                  <button onClick={() => handleDelete(m.id)} className="px-2 py-1 bg-red-600 text-white rounded text-sm">Delete</button>
+                <div className="flex gap-2 ml-2">
+                  <button onClick={() => handleEdit(m)} className="px-2 py-1 bg-blue-600 text-white rounded text-sm whitespace-nowrap">Edit</button>
+                  <button onClick={() => handleDelete(m.id)} className="px-2 py-1 bg-red-600 text-white rounded text-sm whitespace-nowrap">Delete</button>
                 </div>
-              </>
+              </div>
             )}
           </div>
         ))}
