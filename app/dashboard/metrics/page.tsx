@@ -48,14 +48,25 @@ export default function MetricsPage() {
     setEditingId(metric.id);
     // Format created_at for datetime-local input in Europe/London timezone
     const date = new Date(metric.created_at);
-    const londonDateStr = new Intl.DateTimeFormat('en-CA', {
+
+    // Get date parts in London timezone
+    const dateFormatter = new Intl.DateTimeFormat('en-CA', {
       timeZone: 'Europe/London',
       year: 'numeric',
       month: '2-digit',
-      day: '2-digit',
+      day: '2-digit'
+    });
+    const timeFormatter = new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Europe/London',
       hour: '2-digit',
-      minute: '2-digit'
-    }).format(date).replace(' ', 'T');
+      minute: '2-digit',
+      hour12: false
+    });
+
+    const datePart = dateFormatter.format(date); // YYYY-MM-DD
+    const timePart = timeFormatter.format(date); // HH:mm
+    const londonDateStr = `${datePart}T${timePart}`;
+
     setEditData({
       value: metric.value,
       unit: metric.unit,
