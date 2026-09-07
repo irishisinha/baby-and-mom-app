@@ -46,14 +46,21 @@ export default function MetricsPage() {
 
   const handleEdit = (metric: any) => {
     setEditingId(metric.id);
-    // Format created_at for datetime-local input (YYYY-MM-DDTHH:mm)
+    // Format created_at for datetime-local input in Europe/London timezone
     const date = new Date(metric.created_at);
-    const formattedDate = date.toISOString().slice(0, 16);
+    const londonDateStr = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Europe/London',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    }).format(date).replace(' ', 'T');
     setEditData({
       value: metric.value,
       unit: metric.unit,
       notes: metric.notes || '',
-      created_at: formattedDate
+      created_at: londonDateStr
     });
   };
 
@@ -64,7 +71,34 @@ export default function MetricsPage() {
       notes: editData.notes
     };
     if (editData.created_at) {
-      updateData.created_at = new Date(editData.created_at).toISOString();
+      // Convert from Europe/London local time to UTC
+      // Parse the datetime-local value as London time and convert to UTC
+      const [datePart, timePart] = editData.created_at.split('T');
+      const [year, month, day] = datePart.split('-').map(Number);
+      const [hours, minutes] = timePart.split(':').map(Number);
+
+      // Create a UTC date and adjust for London timezone offset
+      const londonDate = new Date(Date.UTC(year, month - 1, day, hours, minutes, 0));
+
+      // Get London timezone offset at this date
+      const londonDateStr = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Europe/London',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      }).format(londonDate);
+
+      const monthIndex = month - 1;
+      const dayOfMonth = day;
+      const isInBST = (monthIndex > 2 && monthIndex < 9) ||
+                      (monthIndex === 2 && dayOfMonth > 24) ||
+                      (monthIndex === 9 && dayOfMonth < 24);
+      const offsetHours = isInBST ? 1 : 0;
+      const offsetMs = offsetHours * 60 * 60 * 1000;
+
+      // Create the UTC date adjusted for London timezone
+      const utcDate = new Date(londonDate.getTime() - offsetMs);
+      updateData.created_at = utcDate.toISOString();
     }
     await supabase.from('baby_metrics').update(updateData).eq('id', id);
     setMetrics(metrics.map(m => m.id === id ? {...m, ...updateData} : m));
