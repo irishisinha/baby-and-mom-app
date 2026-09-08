@@ -38,9 +38,10 @@ const WORD_BOUNDARY = /\b/.source;
 
 const COMMANDS_HELP = `ðŸ“‹ AVAILABLE COMMANDS:
 
-ðŸ‘¶ BABY METRICS (default person if not specified):
+ðŸ’¶ BABY METRICS (default person if not specified):
 • Formula: "30ml formula" or "formula 30"
 • Breastmilk: "20ml breast milk" or "pumped 20"
+• Food: "food banana", "0900 food rice", "food roti and dal"
 • Weight: "5.5kg" or "weight 5.5"
 • Medicine: "baby paracetamol", "baby nebulization 2", "paracetamol" (baby is default)
 • Vaccine: "vaccine"
@@ -514,6 +515,16 @@ function parseMetric(text: string): any {
   // Legacy: duration format "sleep 2 hours" still supported
   match = text.match(/(\d+)[\s.]*(hour|hr)/i);
   if (match && /sleep/i.test(text)) return { metric_type: 'sleep', value: match[1], unit: 'hours', isMetric: true, personType };
+
+  // Food: "food banana", "12:30 food rice", "food roti and dal"
+  if (/\bfood\b/i.test(text)) {
+    // Extract food name after "food" keyword
+    const foodMatch = text.match(/\bfood\b[\s.]*(.+?)$/i);
+    if (foodMatch) {
+      const foodName = foodMatch[1].trim();
+      return { metric_type: 'food', value: foodName, unit: 'item', isMetric: true, personType };
+    }
+  }
 
   return null;
 }

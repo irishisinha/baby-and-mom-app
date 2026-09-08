@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 const METRIC_TYPES = [
   { type: 'breastmilk', label: 'Breastmilk', icon: '🍼', displayType: 'amount' },
   { type: 'formula', label: 'Formula', icon: '🍼', displayType: 'amount' },
+  { type: 'food', label: 'Food', icon: '🍽️', displayType: 'name' },
   { type: 'potty', label: 'Potty', icon: '💧', displayType: 'count' },
   { type: 'diaper', label: 'Diaper', icon: '🧻', displayType: 'count' },
   { type: 'bath', label: 'Bath', icon: '🛁', displayType: 'yesno' },
