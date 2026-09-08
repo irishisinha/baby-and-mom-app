@@ -518,8 +518,8 @@ function parseMetric(text: string): any {
 
   // Food: "food banana", "12:30 food rice", "food roti and dal"
   if (/\bfood\b/i.test(text)) {
-    // Extract food name after "food" keyword
-    const foodMatch = text.match(/\bfood\b[\s.]*(.+?)$/i);
+    // Extract food name after "food" keyword (allow zero chars to validate empty)
+    const foodMatch = text.match(/\bfood\b[\s.]*(.*)$/i);
     if (foodMatch) {
       let foodName = foodMatch[1].trim();
       // Limit food name to reasonable length and sanitize
