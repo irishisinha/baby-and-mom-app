@@ -534,7 +534,7 @@ function parseMetric(text: string): any {
       if (foodName.trim().length === 0) {
         return { error: true, message: 'Food name contains invalid characters.\nExample: "food banana"' };
       }
-      return { metric_type: 'food', value: foodName.trim(), unit: 'item', isMetric: true, personType };
+      return { metric_type: 'food', value: foodName.trim(), unit: 'name', isMetric: true, personType };
     }
   }
 
