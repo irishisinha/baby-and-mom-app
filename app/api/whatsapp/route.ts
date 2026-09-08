@@ -521,7 +521,7 @@ function parseMetric(text: string): any {
     // Extract food name after "food" keyword (allow zero chars to validate empty)
     const foodMatch = text.match(/\bfood\b[\s.]*(.*)$/i);
     if (foodMatch) {
-      let foodName = foodMatch[1].trim();
+      let foodName = foodMatch[1].trim().toLowerCase();
       // Limit food name to reasonable length and sanitize
       if (foodName.length > 100) {
         return { error: true, message: 'Food name too long. Max 100 characters.\nExample: "food banana"' };
@@ -529,7 +529,12 @@ function parseMetric(text: string): any {
       if (foodName.length === 0) {
         return { error: true, message: 'Food name required.\nExample: "food banana" or "12:30 food rice and dal"' };
       }
-      return { metric_type: 'food', value: foodName, unit: 'item', isMetric: true, personType };
+      // Remove any special characters that might cause database issues
+      foodName = foodName.replace(/[^\w\s\-()]/g, '');
+      if (foodName.trim().length === 0) {
+        return { error: true, message: 'Food name contains invalid characters.\nExample: "food banana"' };
+      }
+      return { metric_type: 'food', value: foodName.trim(), unit: 'item', isMetric: true, personType };
     }
   }
 
