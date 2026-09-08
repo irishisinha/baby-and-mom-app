@@ -36,19 +36,34 @@ async function cmdReport(familyId: string): Promise<string> {
   const yesterdayStart = new Date(`${yYear}-${yMonth}-${yDay}T00:00:00Z`)
   const yesterdayEnd = new Date(yesterdayStart.getTime() + 86400000)
   
+  // For sleep calculations, extend range to include overnight sleep end events (next morning)
+  const tomorrowEnd = new Date(todayEnd.getTime() + 12 * 60 * 60 * 1000) // Extend 12 hours into tomorrow
+  const tomorrowAfterNoonEnd = new Date(yesterdayEnd.getTime() + 12 * 60 * 60 * 1000) // Extend 12 hours into today
+
   const { data: todayData } = await supabaseAdmin
     .from('baby_metrics')
     .select('metric_type, value, created_at')
     .eq('family_id', familyId)
     .gte('created_at', todayStart.toISOString())
-    .lt('created_at', todayEnd.toISOString())
+    .lt('created_at', tomorrowEnd.toISOString())
 
-  const { data: yesterdayData } = await supabaseAdmin
+  const { data: yesterdayDataExtended } = await supabaseAdmin
+    .from('baby_metrics')
+    .select('metric_type, value, created_at')
+    .eq('family_id', familyId)
+    .gte('created_at', yesterdayStart.toISOString())
+    .lt('created_at', tomorrowAfterNoonEnd.toISOString())
+
+  // For regular metrics query without extension
+  const { data: yesterdayDataRegular } = await supabaseAdmin
     .from('baby_metrics')
     .select('metric_type, value, created_at')
     .eq('family_id', familyId)
     .gte('created_at', yesterdayStart.toISOString())
     .lt('created_at', yesterdayEnd.toISOString())
+
+  // Use extended range for sleep, regular range for other metrics
+  const yesterdayData = yesterdayDataExtended
 
   const todayTotals: Record<string, number> = {}
   const yesterdayTotals: Record<string, number> = {}
@@ -101,8 +116,9 @@ async function cmdReport(familyId: string): Promise<string> {
     })
   }
 
-  if (yesterdayData) {
-    yesterdayData.forEach((m: any) => {
+  // Use the regular range (not extended) for non-sleep totals to avoid double-counting
+  if (yesterdayDataRegular) {
+    yesterdayDataRegular.forEach((m: any) => {
       if (m.metric_type !== 'sleep') {
         const val = parseFloat(m.value) || 0
         yesterdayTotals[m.metric_type] = (yesterdayTotals[m.metric_type] || 0) + val
