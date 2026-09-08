@@ -521,7 +521,14 @@ function parseMetric(text: string): any {
     // Extract food name after "food" keyword
     const foodMatch = text.match(/\bfood\b[\s.]*(.+?)$/i);
     if (foodMatch) {
-      const foodName = foodMatch[1].trim();
+      let foodName = foodMatch[1].trim();
+      // Limit food name to reasonable length and sanitize
+      if (foodName.length > 100) {
+        return { error: true, message: 'Food name too long. Max 100 characters.\nExample: "food banana"' };
+      }
+      if (foodName.length === 0) {
+        return { error: true, message: 'Food name required.\nExample: "food banana" or "12:30 food rice and dal"' };
+      }
       return { metric_type: 'food', value: foodName, unit: 'item', isMetric: true, personType };
     }
   }
