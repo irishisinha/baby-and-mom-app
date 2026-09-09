@@ -134,7 +134,11 @@ function parseAppointmentMessage(text: string): any {
 
   // Detect if user tried appt format but got it wrong
   if (trimmed.match(/^appt\s+/i)) {
-    return { error: true, message: 'Format: appt [day] [month] [time] [person] [title]\nExample: appt 18 sept 1330 rishi checkup' };
+    const parts = trimmed.split(/\s+/);
+    if (parts.length < 6) {
+      return { error: true, message: 'Missing title.\nFormat: appt [day] [month] [time] [person] [title]\nExample: appt 12 sept 4:10 pm shiva checkup' };
+    }
+    return { error: true, message: 'Format: appt [day] [month] [time] [person] [title]\nExample: appt 12 sept 4:10 pm shiva checkup' };
   }
 
   // Legacy format: "Appointment- [desc] [day] [month] [HH:MM am/pm] [title]"
