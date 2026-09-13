@@ -91,6 +91,7 @@ export default function DashboardPage() {
   const [editingMetric, setEditingMetric] = useState<string | null>(null);
   const [editValue, setEditValue] = useState<string>('');
   const [editUnit, setEditUnit] = useState<string>('');
+  const [editDate, setEditDate] = useState<string>('');
 
   const FAMILY_ID = 'df3d99a8-f7a2-44cf-bcb4-9c5f3300caa6';
   const BABY_ID = 'e8a7c56c-62c6-442c-94ac-518928c8c07b';
@@ -477,6 +478,14 @@ export default function DashboardPage() {
     setEditingMetric(metric.id);
     setEditValue(metric.value);
     setEditUnit(metric.unit);
+    // Format created_at for datetime-local input in local timezone
+    const date = new Date(metric.created_at);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    setEditDate(`${year}-${month}-${day}T${hours}:${minutes}`);
   };
 
   const saveMetricEdit = async (id: string) => {
@@ -485,9 +494,13 @@ export default function DashboardPage() {
       return;
     }
     try {
+      const updateData: any = { value: editValue, unit: editUnit };
+      if (editDate) {
+        updateData.created_at = new Date(editDate).toISOString();
+      }
       const { error } = await supabase
         .from('baby_metrics')
-        .update({ value: editValue, unit: editUnit })
+        .update(updateData)
         .eq('id', id);
 
       if (!error) {
@@ -732,34 +745,45 @@ export default function DashboardPage() {
             {metrics.slice(0, 15).map((metric) => (
               <div key={metric.id}>
                 {editingMetric === metric.id ? (
-                  <div className="flex gap-2 items-center py-3 px-4 bg-yellow-50 rounded border border-yellow-300">
-                    <span className="capitalize font-medium text-sm flex-1">{metric.metric_type}</span>
-                    <input
-                      type="text"
-                      value={editValue}
-                      onChange={(e) => setEditValue(e.target.value)}
-                      className="border rounded px-2 py-1 text-sm w-20"
-                      placeholder="Value"
-                    />
-                    <input
-                      type="text"
-                      value={editUnit}
-                      onChange={(e) => setEditUnit(e.target.value)}
-                      className="border rounded px-2 py-1 text-sm w-16"
-                      placeholder="Unit"
-                    />
-                    <button
-                      onClick={() => saveMetricEdit(metric.id)}
-                      className="bg-green-600 text-white px-2 py-1 rounded text-sm font-semibold hover:bg-green-700"
-                    >
-                      ✓
-                    </button>
-                    <button
-                      onClick={() => setEditingMetric(null)}
-                      className="bg-gray-400 text-white px-2 py-1 rounded text-sm hover:bg-gray-500"
-                    >
-                      ✕
-                    </button>
+                  <div className="space-y-2 py-3 px-4 bg-yellow-50 rounded border border-yellow-300">
+                    <div>
+                      <label className="text-xs text-gray-600">Date & Time</label>
+                      <input
+                        type="datetime-local"
+                        value={editDate}
+                        onChange={(e) => setEditDate(e.target.value)}
+                        className="w-full border rounded px-2 py-1 text-sm"
+                      />
+                    </div>
+                    <div className="flex gap-2 items-center">
+                      <span className="capitalize font-medium text-sm flex-1">{metric.metric_type}</span>
+                      <input
+                        type="text"
+                        value={editValue}
+                        onChange={(e) => setEditValue(e.target.value)}
+                        className="border rounded px-2 py-1 text-sm w-20"
+                        placeholder="Value"
+                      />
+                      <input
+                        type="text"
+                        value={editUnit}
+                        onChange={(e) => setEditUnit(e.target.value)}
+                        className="border rounded px-2 py-1 text-sm w-16"
+                        placeholder="Unit"
+                      />
+                      <button
+                        onClick={() => saveMetricEdit(metric.id)}
+                        className="bg-green-600 text-white px-2 py-1 rounded text-sm font-semibold hover:bg-green-700"
+                      >
+                        ✓
+                      </button>
+                      <button
+                        onClick={() => setEditingMetric(null)}
+                        className="bg-gray-400 text-white px-2 py-1 rounded text-sm hover:bg-gray-500"
+                      >
+                        ✕
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   <div className="flex justify-between items-center py-3 px-4 bg-gray-50 rounded border border-gray-200 hover:bg-gray-100">

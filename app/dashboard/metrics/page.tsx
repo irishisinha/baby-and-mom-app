@@ -47,9 +47,14 @@ export default function MetricsPage() {
 
   const handleEdit = (metric: any) => {
     setEditingId(metric.id);
-    // Format created_at for datetime-local input (YYYY-MM-DDTHH:mm)
+    // Format created_at for datetime-local input in local timezone
     const date = new Date(metric.created_at);
-    const formattedDate = date.toISOString().slice(0, 16);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const formattedDate = `${year}-${month}-${day}T${hours}:${minutes}`;
     setEditData({
       value: metric.value,
       unit: metric.unit,
