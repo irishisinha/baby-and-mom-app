@@ -123,7 +123,7 @@ export default function MetricsPage() {
 
       const { data, error } = await supabase
         .from('baby_metrics')
-        .insert([{ metric_type: type, value: medicineName, unit: 'given', notes: '' }])
+        .insert([{ metric_type: type, value: 1, unit: 'dose', notes: medicineName.trim().toLowerCase() }])
         .select();
 
       if (!error && data) {
@@ -224,15 +224,15 @@ export default function MetricsPage() {
                       displayValue = `${m.value}x`;
                     } else if (yesNoTypes.includes(m.metric_type)) {
                       displayValue = `${m.value}`;
-                    } else if (m.metric_type === 'medicine') {
-                      displayValue = m.value;
+                    } else if (m.metric_type === 'medicine' || m.metric_type === 'food') {
+                      displayValue = m.notes || String(m.value);
                     } else {
                       displayValue = `${m.value}${m.unit ? ' ' + m.unit : ''}`;
                     }
                     return <p className="font-bold">{label}: {displayValue}</p>;
                   })()}
                   <p className="text-xs text-gray-500">{new Date(m.created_at).toLocaleString('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })}</p>
-                  {m.notes && <p className="text-sm text-gray-600">Notes: {m.notes}</p>}
+                  {m.notes && m.metric_type !== 'medicine' && m.metric_type !== 'food' && <p className="text-sm text-gray-600">Notes: {m.notes}</p>}
                 </div>
                 <div className="flex gap-2 ml-2">
                   <button onClick={() => handleEdit(m)} className="px-2 py-1 bg-blue-600 text-white rounded text-sm whitespace-nowrap">Edit</button>

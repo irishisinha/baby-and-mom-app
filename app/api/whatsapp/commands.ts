@@ -314,7 +314,7 @@ async function cmdMedsReport(familyId: string): Promise<string> {
       const result: Record<string, Record<string, number>> = {}
       meds?.forEach(m => {
         const person = m.person_type || 'baby'
-        const medicine = m.value.toLowerCase()
+        const medicine = String(m.notes || m.value).toLowerCase()
         if (!result[person]) result[person] = {}
         result[person][medicine] = (result[person][medicine] || 0) + 1
       })

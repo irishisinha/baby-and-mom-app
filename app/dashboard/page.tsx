@@ -16,6 +16,7 @@ interface Metric {
   unit: string;
   created_at: string;
   person_type?: string;
+  notes?: string | null;
 }
 
 interface Appointment {
@@ -789,7 +790,7 @@ export default function DashboardPage() {
                   <div className="flex justify-between items-center py-3 px-4 bg-gray-50 rounded border border-gray-200 hover:bg-gray-100">
                     <div className="flex-1">
                       <span className="capitalize font-medium">{metric.metric_type}</span>
-                      <span className="text-gray-600 ml-2">{metric.value} {metric.unit}</span>
+                      <span className="text-gray-600 ml-2">{metric.notes ? metric.notes : `${metric.value} ${metric.unit}`}</span>
                     </div>
                     <div className="flex items-center gap-3">
                       <span className="text-xs text-gray-400">{formatLondonTime(metric.created_at)}</span>
