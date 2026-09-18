@@ -170,7 +170,10 @@ function parseAppointmentMessage(text: string): any {
     `)\\s*(?:at\\s+)?(\\d{1,2})(?:[:.](\\d{2}))?\\s*(am|pm|a\\.m\\.|p\\.m\\.)?\\s*(.*)$`,
     'i'
   ));
-  if (!naturalMatch) return null;
+  if (!naturalMatch) {
+    // Message contains "appointment" but didn't match any format - return error
+    return { error: true, message: 'Format: appt [day] [month] [time] [person] [title]\nExample: appt 28 sept 1430 rishi physio\nOr: Appointment- checkup 15 sept 2:30pm doctor name' };
+  }
 
   const [, leadingTitle, middleTitle, day1, month1, month2, day2, hourStr, minuteStr, ampmRaw, rest] = naturalMatch;
   const day = day1 || day2;
