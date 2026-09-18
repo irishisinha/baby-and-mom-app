@@ -98,8 +98,9 @@ function parseAppointmentMessage(text: string): any {
   const trimmed = text.trim();
 
   // Simple format: "appt [day] [month] [HHMM or H:MM] [person] [title...]"
-  // e.g. "appt 18 sept 1330 rishi checkup" or "appt 18 sept 2pm mom vaccine"
-  const simpleMatch = trimmed.match(/^appt\s+(\d{1,2})\s+(\w+)\s+([\d:]+)\s+(?:(am|pm)\s+)?(\w+)\s+(.+)$/i);
+  // Also accepts: "Appointment [day] [month] [time] [person] [title]"
+  // e.g. "appt 18 sept 1330 rishi checkup" or "Appointment 28 sept 1430 rishi physio"
+  const simpleMatch = trimmed.match(/^(?:appt|Appointment)\s+(\d{1,2})\s+(\w+)\s+([\d:]+)\s+(?:(am|pm)\s+)?(\w+)\s+(.+)$/i);
   if (simpleMatch) {
     const [, day, month, timeStr, ampm, person, title] = simpleMatch;
     const monthNum = MONTH_MAP[month.toLowerCase()];
@@ -132,13 +133,13 @@ function parseAppointmentMessage(text: string): any {
     return buildAppointment(title.trim(), description, day, monthNum, hours, minutes);
   }
 
-  // Detect if user tried appt format but got it wrong
-  if (trimmed.match(/^appt\s+/i)) {
+  // Detect if user tried appt/Appointment format but got it wrong
+  if (trimmed.match(/^(?:appt|Appointment)\s+/i)) {
     const parts = trimmed.split(/\s+/);
     if (parts.length < 6) {
-      return { error: true, message: 'Missing title.\nFormat: appt [day] [month] [time] [person] [title]\nExample: appt 12 sept 4:10 pm shiva checkup' };
+      return { error: true, message: 'Missing title.\nFormat: appt [day] [month] [time] [person] [title]\nExample: appt 28 sept 1430 rishi physio' };
     }
-    return { error: true, message: 'Format: appt [day] [month] [time] [person] [title]\nExample: appt 12 sept 4:10 pm shiva checkup' };
+    return { error: true, message: 'Format: appt [day] [month] [time] [person] [title]\nExample: appt 28 sept 1430 rishi physio' };
   }
 
   // Legacy format: "Appointment- [desc] [day] [month] [HH:MM am/pm] [title]"
