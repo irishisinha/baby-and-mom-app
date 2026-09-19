@@ -650,6 +650,9 @@ Total: 300ml</Message></Response>`, { status: 200, headers: { 'Content-Type': 'a
 
     const metricData = parseMetric(messageBody);
     console.log('[PARSE-METRIC]', { messageBody, metricData });
+    if (metricData && metricData.error) {
+      return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${escapeXml(metricData.message)}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
+    }
     if (metricData && metricData.isMetric) {
       try {
         const { text: cleanedText, daysOffset } = extractDateOffset(messageBody);
