@@ -295,7 +295,7 @@ async function cmdMedsReport(familyId: string): Promise<string> {
   try {
     const { data: todayMeds } = await supabaseAdmin
       .from('baby_metrics')
-      .select('metric_type, value, person_type')
+      .select('metric_type, value, notes, person_type')
       .eq('family_id', familyId)
       .eq('metric_type', 'medicine')
       .gte('created_at', todayStart.toISOString())
@@ -303,7 +303,7 @@ async function cmdMedsReport(familyId: string): Promise<string> {
 
     const { data: yesterdayMeds } = await supabaseAdmin
       .from('baby_metrics')
-      .select('metric_type, value, person_type')
+      .select('metric_type, value, notes, person_type')
       .eq('family_id', familyId)
       .eq('metric_type', 'medicine')
       .gte('created_at', yesterdayStart.toISOString())
@@ -316,7 +316,7 @@ async function cmdMedsReport(familyId: string): Promise<string> {
         const person = m.person_type || 'baby'
         const medicine = String(m.notes || m.value).toLowerCase()
         if (!result[person]) result[person] = {}
-        result[person][medicine] = (result[person][medicine] || 0) + 1
+        result[person][medicine] = (result[person][medicine] || 0) + (parseFloat(m.value) || 1)
       })
       return result
     }
