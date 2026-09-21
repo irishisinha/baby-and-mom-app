@@ -607,6 +607,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Handle food command
+    if (messageBody.toLowerCase().trim() === 'food') {
+      const foodList = await handleCommand(messageBody, fromPhone, FAMILY_ID);
+      if (foodList) {
+        return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${escapeXml(foodList)}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
+      }
+    }
+
     // Handle report command
     if (messageBody.toLowerCase().trim() === 'report') {
       const report = await handleCommand(messageBody, fromPhone, FAMILY_ID);
