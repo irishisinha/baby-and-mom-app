@@ -25,15 +25,35 @@ async function cmdReport(familyId: string): Promise<string> {
     day: '2-digit',
     timeZone: 'Europe/London'
   })
-  
+
   const [year, month, day] = formatter.format(now).split('-')
-  const todayStart = new Date(`${year}-${month}-${day}T00:00:00Z`)
+
+  // Calculate timezone offset (BST/GMT)
+  const monthIndex = parseInt(month) - 1
+  const dayNum = parseInt(day)
+  const isInBST = (monthIndex > 2 && monthIndex < 9) ||
+                  (monthIndex === 2 && dayNum > 24) ||
+                  (monthIndex === 9 && dayNum < 24)
+  const offsetHours = isInBST ? 1 : 0
+  const offsetMs = offsetHours * 60 * 60000
+
+  const todayStart = new Date(Date.UTC(parseInt(year), parseInt(month) - 1, parseInt(day), 0, 0, 0) - offsetMs)
   const todayEnd = new Date(todayStart.getTime() + 86400000)
-  
+
   const yesterday = new Date(now)
   yesterday.setDate(yesterday.getDate() - 1)
   const [yYear, yMonth, yDay] = formatter.format(yesterday).split('-')
-  const yesterdayStart = new Date(`${yYear}-${yMonth}-${yDay}T00:00:00Z`)
+
+  // Same offset calculation for yesterday
+  const yMonthIndex = parseInt(yMonth) - 1
+  const yDayNum = parseInt(yDay)
+  const yIsInBST = (yMonthIndex > 2 && yMonthIndex < 9) ||
+                   (yMonthIndex === 2 && yDayNum > 24) ||
+                   (yMonthIndex === 9 && yDayNum < 24)
+  const yOffsetHours = yIsInBST ? 1 : 0
+  const yOffsetMs = yOffsetHours * 60 * 60000
+
+  const yesterdayStart = new Date(Date.UTC(parseInt(yYear), parseInt(yMonth) - 1, parseInt(yDay), 0, 0, 0) - yOffsetMs)
   const yesterdayEnd = new Date(yesterdayStart.getTime() + 86400000)
   
   // For sleep calculations, extend range to include overnight sleep end events (next morning)
