@@ -2,13 +2,14 @@ import { supabaseAdmin } from '@/lib/supabase'
 
 export async function handleCommand(text: string, phone: string, familyId: string): Promise<string | null> {
   const cmd = text.toLowerCase().trim()
-  if (!cmd.match(/^(today|report|appt|feed|medsreport)$/)) return null
+  if (!cmd.match(/^(today|report|appt|feed|food|medsreport)$/)) return null
 
   try {
     if (cmd === 'today') return 'Send metrics to log today activities'
     if (cmd === 'report') return await cmdReport(familyId)
     if (cmd === 'appt') return await cmdAppt(familyId)
     if (cmd === 'feed') return await cmdFeed(familyId)
+    if (cmd === 'food') return await cmdFood(familyId)
     if (cmd === 'medsreport') return await cmdMedsReport(familyId)
     return null
   } catch (err) {
@@ -277,6 +278,83 @@ Summary:
   } catch (e: any) {
     console.error('[FEED-CMD-ERR]', e)
     return 'Error fetching feeds'
+  }
+}
+
+async function cmdFood(familyId: string): Promise<string> {
+  const now = new Date()
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    timeZone: 'Europe/London'
+  })
+  const todayStr = formatter.format(now)
+  const [year, month, day] = todayStr.split('-')
+
+  // Calculate today's range in Europe/London timezone
+  const monthIndex = parseInt(month) - 1 // 0-11
+  const dayNum = parseInt(day)
+  const isInBST = (monthIndex > 2 && monthIndex < 9) ||
+                  (monthIndex === 2 && dayNum > 24) ||
+                  (monthIndex === 9 && dayNum < 24)
+  const offsetHours = isInBST ? 1 : 0
+  const offsetMs = offsetHours * 60 * 60000
+
+  const todayStart = new Date(Date.UTC(parseInt(year), parseInt(month) - 1, parseInt(day), 0, 0, 0) - offsetMs)
+  const todayEnd = new Date(todayStart.getTime() + 86400000)
+
+  let response = `🍽️ Today's Food - ${todayStr}
+
+`
+
+  try {
+    const { data: metrics, error } = await supabaseAdmin
+      .from('baby_metrics')
+      .select('metric_type, value, notes, created_at')
+      .eq('family_id', familyId)
+      .eq('metric_type', 'food')
+      .gte('created_at', todayStart.toISOString())
+      .lt('created_at', todayEnd.toISOString())
+      .order('created_at', { ascending: true })
+
+    if (error) {
+      console.error('[FOOD-CMD-ERR]', error)
+      return 'Error fetching food logs'
+    }
+
+    if (!metrics || metrics.length === 0) {
+      return `No food logged today`
+    }
+
+    let foodCount = 0
+    const foodItems: Set<string> = new Set()
+
+    metrics.forEach((m: any) => {
+      foodCount++
+      const time = new Date(m.created_at).toLocaleTimeString('en-GB', {
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: 'Europe/London'
+      })
+      const foodName = m.notes || 'unknown'
+      foodItems.add(foodName)
+      response += `${foodCount}. ${foodName} at ${time}
+`
+    })
+
+    response += `
+Summary:
+`
+    response += `  Total items: ${foodCount}
+`
+    response += `  Unique foods: ${foodItems.size}
+`
+
+    return response
+  } catch (e: any) {
+    console.error('[FOOD-CMD-ERR]', e)
+    return 'Error fetching food logs'
   }
 }
 

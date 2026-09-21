@@ -41,7 +41,7 @@ const COMMANDS_HELP = `ðŸ“‹ AVAILABLE COMMANDS:
 ðŸ’¶ BABY METRICS (default person if not specified):
 • Formula: "30ml formula" or "formula 30"
 • Breastmilk: "20ml breast milk" or "pumped 20"
-• Food: "food banana", "0900 food rice", "food roti and dal"
+• Food: "food banana", "10:00 banana avocado", "10:00 - rice and dal"
 • Weight: "5.5kg" or "weight 5.5"
 • Medicine: "baby paracetamol", "baby nebulization 2", "paracetamol" (baby is default)
 • Vaccine: "vaccine"
@@ -75,7 +75,8 @@ Same format as MOM: "rishi steps 5000" or "ichi mood happy"
 
 ðŸ” COMMANDS:
 • "appt" - Show upcoming appointments
-• "feed" - Show today's feed logs
+• "feed" - Show today's feed logs (formula & breastmilk)
+• "food" - Show today's food logs
 • "report" - Show today vs yesterday summary
 • "medsreport" - Show medicines today vs yesterday (baby & mom)`;
 
