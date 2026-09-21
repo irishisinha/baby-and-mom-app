@@ -433,12 +433,13 @@ function parseMetric(text: string): any {
     }
   }
 
-  // Second: try time-prefixed food (e.g., "10:00 - banana plus sweet potato")
+  // Second: try time-prefixed food (e.g., "10:00 - banana plus sweet potato", "10:00 banana", "1000 banana")
   // Only if it has a time prefix and no other metric keyword is found
-  const hasTimePrefix = /^(\d{1,4})\s*(am|pm|a\.m\.|p\.m\.)?\s*?[-:\s]/.test(cleanText);
+  // Matches: "HHMM banana", "HH:MM banana", "H:MM banana", "10 am banana", "10:00 - banana", etc.
+  const hasTimePrefix = /^(\d{1,2}):?(\d{2})?\s*(am|pm|a\.m\.|p\.m\.)?\s*[-\s]/.test(cleanText);
   if (hasTimePrefix) {
     // Remove time prefix to check remaining text
-    const textWithoutTime = cleanText.replace(/^(\d{1,4})\s*(am|pm|a\.m\.|p\.m\.)?\s*?[-:\s]/, '').trim();
+    const textWithoutTime = cleanText.replace(/^(\d{1,2}):?(\d{2})?\s*(am|pm|a\.m\.|p\.m\.)?\s*[-\s]/, '').trim();
 
     // Check if text looks like food (not medicine, not other metrics)
     // Food items are typically words separated by spaces or "and"
