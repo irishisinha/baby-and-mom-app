@@ -80,24 +80,41 @@ async function cmdReport(familyId: string): Promise<string> {
     let sleepCount = 0
     let overnightCount = 0
     let startTime: Date | null = null
+    let startDate: string | null = null
 
     sleepEvents.forEach((event: any) => {
       if (event.value === '1' || event.value === 1) {
         // Sleep start
         startTime = new Date(event.created_at)
+        // Extract date in Europe/London timezone for overnight detection
+        const formatter = new Intl.DateTimeFormat('en-CA', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          timeZone: 'Europe/London'
+        })
+        startDate = formatter.format(startTime)
       } else if ((event.value === '0' || event.value === 0) && startTime) {
         // Sleep end - calculate duration
         const endTime = new Date(event.created_at)
         const durationMinutes = (endTime.getTime() - startTime.getTime()) / 60000
         const durationHours = durationMinutes / 60
 
-        // Overnight sleep: spans > 8 hours (e.g., 11pm to 8am)
-        const isOvernight = durationHours > 8
+        // Overnight sleep detection: check if sleep spans day boundary (different dates) OR duration > 8 hours
+        const formatter = new Intl.DateTimeFormat('en-CA', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          timeZone: 'Europe/London'
+        })
+        const endDate = formatter.format(endTime)
+        const isOvernight = startDate !== endDate || durationHours > 8
         if (isOvernight) overnightCount++
 
         totalMinutes += durationMinutes
         sleepCount++
         startTime = null
+        startDate = null
       }
     })
 
