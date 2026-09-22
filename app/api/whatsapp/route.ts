@@ -77,7 +77,8 @@ Same format as MOM: "rishi steps 5000" or "ichi mood happy"
 • "appt" - Show upcoming appointments
 • "feed" - Show today's feed logs
 • "report" - Show today vs yesterday summary
-• "medsreport" - Show medicines today vs yesterday (baby & mom)`;
+• "medsreport" - Show medicines today vs yesterday (baby & mom)
+• "foodreport" - Show food eaten today vs yesterday`;
 
 
 function buildAppointment(title: string, description: string, day: string, monthNum: number, hours: number, minutes: number): any {
@@ -595,6 +596,14 @@ export async function POST(request: NextRequest) {
       const medsReport = await handleCommand(messageBody, fromPhone, FAMILY_ID);
       if (medsReport) {
         return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${escapeXml(medsReport)}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
+      }
+    }
+
+    // Handle foodreport command
+    if (messageBody.toLowerCase().trim() === 'foodreport') {
+      const foodList = await handleCommand(messageBody, fromPhone, FAMILY_ID);
+      if (foodList) {
+        return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${escapeXml(foodList)}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
       }
     }
 

@@ -2,7 +2,7 @@ import { supabaseAdmin } from '@/lib/supabase'
 
 export async function handleCommand(text: string, phone: string, familyId: string): Promise<string | null> {
   const cmd = text.toLowerCase().trim()
-  if (!cmd.match(/^(today|report|appt|feed|medsreport)$/)) return null
+  if (!cmd.match(/^(today|report|appt|feed|medsreport|foodreport)$/)) return null
 
   try {
     if (cmd === 'today') return 'Send metrics to log today activities'
@@ -10,6 +10,7 @@ export async function handleCommand(text: string, phone: string, familyId: strin
     if (cmd === 'appt') return await cmdAppt(familyId)
     if (cmd === 'feed') return await cmdFeed(familyId)
     if (cmd === 'medsreport') return await cmdMedsReport(familyId)
+    if (cmd === 'foodreport') return await cmdFoodReport(familyId)
     return null
   } catch (err) {
     console.error('Command error:', err)
@@ -280,6 +281,51 @@ Summary:
   } catch (e: any) {
     console.error('[FEED-CMD-ERR]', e)
     return 'Error fetching feeds'
+  }
+}
+
+async function cmdFoodReport(familyId: string): Promise<string> {
+  const now = new Date()
+  const formatter = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'Europe/London' })
+  const [year, month, day] = formatter.format(now).split('-')
+  const monthIndex = parseInt(month) - 1
+  const dayNum = parseInt(day)
+  const isInBST = (monthIndex > 2 && monthIndex < 9) || (monthIndex === 2 && dayNum > 24) || (monthIndex === 9 && dayNum < 24)
+  const offsetMs = (isInBST ? 1 : 0) * 60 * 60000
+  const todayStart = new Date(Date.UTC(parseInt(year), parseInt(month) - 1, parseInt(day), 0, 0, 0) - offsetMs)
+  const todayEnd = new Date(todayStart.getTime() + 86400000)
+  const yesterdayStart = new Date(todayStart.getTime() - 86400000)
+
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('baby_metrics')
+      .select('notes, person_type, created_at')
+      .eq('family_id', familyId)
+      .eq('metric_type', 'food')
+      .gte('created_at', yesterdayStart.toISOString())
+      .lt('created_at', todayEnd.toISOString())
+      .order('created_at', { ascending: true })
+    if (error) { console.error('[FOODREPORT-ERR]', error); return 'Error fetching food log' }
+
+    const timeFmt = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })
+    const section = (label: string, rows: any[]) => {
+      if (!rows.length) return `${label}: none\n`
+      const byPerson: Record<string, string[]> = {}
+      rows.forEach(r => {
+        const p = r.person_type === 'baby' ? '👶 Baby' : '👩 Mom'
+        ;(byPerson[p] = byPerson[p] || []).push(`  ${timeFmt.format(new Date(r.created_at))} - ${r.notes || 'food'}`)
+      })
+      let out = `${label} (${rows.length}):\n`
+      Object.keys(byPerson).forEach(p => { out += `${p}\n${byPerson[p].join('\n')}\n` })
+      return out
+    }
+    const all = data || []
+    const todayRows = all.filter(r => new Date(r.created_at) >= todayStart)
+    const yRows = all.filter(r => new Date(r.created_at) < todayStart)
+    return `🍽️ Food Report\n\n${section('Today', todayRows)}\n${section('Yesterday', yRows)}`.trimEnd()
+  } catch (err) {
+    console.error('[FOODREPORT-ERR]', err)
+    return 'Error fetching food log'
   }
 }
 
