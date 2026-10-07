@@ -78,6 +78,14 @@ function getLondonDate(): Date {
   return d;
 }
 
+function getMetricDisplayName(metricType: string): string {
+  const displayNames: Record<string, string> = {
+    'formula': 'Milk',
+    'breastmilk': 'Milk',
+  };
+  return displayNames[metricType] || metricType.charAt(0).toUpperCase() + metricType.slice(1);
+}
+
 export default function DashboardPage() {
   const [metrics, setMetrics] = useState<Metric[]>([]);
   const [motherMetrics, setMotherMetrics] = useState<Metric[]>([]);
@@ -224,7 +232,7 @@ export default function DashboardPage() {
     });
 
     const stats: SummaryStats = {};
-    const DAILY_TOTAL_TYPES = ['formula', 'breastmilk'];
+    const DAILY_TOTAL_TYPES = ['formula', 'food'];
 
     const calculateMetricStats = (entries: Metric[]) => {
       const grouped = entries.reduce((acc, m) => {
@@ -330,7 +338,7 @@ export default function DashboardPage() {
 
     const comparison: DayComparison = {};
     const nonAdditiveMetrics = ["weight"];
-    const alwaysShowMetrics = ['formula', 'breastmilk'];
+    const alwaysShowMetrics = ['formula', 'food'];
 
     // Separate sleep metrics for special handling
     // Include sleep events from today and tomorrow (for sleep that starts today but ends tomorrow)
@@ -597,7 +605,7 @@ export default function DashboardPage() {
               return (
                 <div key={type} className="bg-gradient-to-br from-red-50 to-pink-50 rounded-lg p-4 border border-red-200 hover:shadow-md transition-shadow">
                   <div className="flex justify-between items-start mb-2">
-                    <p className="text-sm text-gray-600 capitalize font-medium">{type}</p>
+                    <p className="text-sm text-gray-600 font-medium">{getMetricDisplayName(type)}</p>
                     <span className={`text-xs font-semibold px-2 py-1 rounded ${increase ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                       {increase ? '↑' : '↓'} {Math.abs(data.today - data.yesterday).toFixed(isSleep ? 1 : 0)}
                     </span>
@@ -630,12 +638,12 @@ export default function DashboardPage() {
             {Object.entries(summaryStats).map(([type, data]) => (
               <div key={type} className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-4 border border-green-200 hover:shadow-md transition-shadow">
                 <div className="flex justify-between items-start mb-2">
-                  <p className="text-sm text-gray-600 capitalize font-medium">{type}</p>
+                  <p className="text-sm text-gray-600 font-medium">{getMetricDisplayName(type)}</p>
                   <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">avg</span>
                 </div>
                 <p className="text-2xl font-bold text-green-600 mb-2">{data.avg}</p>
                 <p className="text-xs text-gray-500">
-                  {data.count} {['formula', 'breastmilk'].includes(type) ? 'days' : 'entries'}
+                  {data.count} {['formula', 'food'].includes(type) ? 'days' : 'entries'}
                 </p>
                 {data.change !== undefined && (
                   <p className={`text-xs font-semibold mt-2 pt-2 border-t border-green-200 ${data.change > 0 ? 'text-green-600' : data.change < 0 ? 'text-red-600' : 'text-gray-500'}`}>
