@@ -41,7 +41,7 @@ const COMMANDS_HELP = `ðŸ“‹ AVAILABLE COMMANDS:
 ðŸ’¶ BABY METRICS (default person if not specified):
 • Formula: "30ml formula" or "formula 30"
 • Breastmilk: "20ml breast milk" or "pumped 20"
-• Food: "food banana", "0900 food rice", "food roti and dal"
+• Food: "food banana", "10:00 banana avocado", "10:00 - rice and dal"
 • Weight: "5.5kg" or "weight 5.5"
 • Medicine: "baby paracetamol", "baby nebulization 2", "paracetamol" (baby is default)
 • Vaccine: "vaccine"
@@ -75,10 +75,10 @@ Same format as MOM: "rishi steps 5000" or "ichi mood happy"
 
 ðŸ” COMMANDS:
 • "appt" - Show upcoming appointments
-• "feed" - Show today's feed logs
+• "feed" - Show today's feed logs (formula & breastmilk)
+• "food" - Show today's food logs
 • "report" - Show today vs yesterday summary
-• "medsreport" - Show medicines today vs yesterday (baby & mom)
-• "foodreport" - Show food eaten today vs yesterday`;
+• "medsreport" - Show medicines today vs yesterday (baby & mom)`;
 
 
 function buildAppointment(title: string, description: string, day: string, monthNum: number, hours: number, minutes: number): any {
@@ -99,9 +99,8 @@ function parseAppointmentMessage(text: string): any {
   const trimmed = text.trim();
 
   // Simple format: "appt [day] [month] [HHMM or H:MM] [person] [title...]"
-  // Also accepts: "Appointment [day] [month] [time] [person] [title]"
-  // e.g. "appt 18 sept 1330 rishi checkup" or "Appointment 28 sept 1430 rishi physio"
-  const simpleMatch = trimmed.match(/^(?:appt|Appointment)\s+(\d{1,2})\s+(\w+)\s+([\d:]+)\s+(?:(am|pm)\s+)?(\w+)\s+(.+)$/i);
+  // e.g. "appt 18 sept 1330 rishi checkup" or "appt 18 sept 2pm mom vaccine"
+  const simpleMatch = trimmed.match(/^appt\s+(\d{1,2})\s+(\w+)\s+([\d:]+)\s+(?:(am|pm)\s+)?(\w+)\s+(.+)$/i);
   if (simpleMatch) {
     const [, day, month, timeStr, ampm, person, title] = simpleMatch;
     const monthNum = MONTH_MAP[month.toLowerCase()];
@@ -134,13 +133,13 @@ function parseAppointmentMessage(text: string): any {
     return buildAppointment(title.trim(), description, day, monthNum, hours, minutes);
   }
 
-  // Detect if user tried appt/Appointment format but got it wrong
-  if (trimmed.match(/^(?:appt|Appointment)\s+/i)) {
+  // Detect if user tried appt format but got it wrong
+  if (trimmed.match(/^appt\s+/i)) {
     const parts = trimmed.split(/\s+/);
     if (parts.length < 6) {
-      return { error: true, message: 'Missing title.\nFormat: appt [day] [month] [time] [person] [title]\nExample: appt 28 sept 1430 rishi physio' };
+      return { error: true, message: 'Missing title.\nFormat: appt [day] [month] [time] [person] [title]\nExample: appt 12 sept 4:10 pm shiva checkup' };
     }
-    return { error: true, message: 'Format: appt [day] [month] [time] [person] [title]\nExample: appt 28 sept 1430 rishi physio' };
+    return { error: true, message: 'Format: appt [day] [month] [time] [person] [title]\nExample: appt 12 sept 4:10 pm shiva checkup' };
   }
 
   // Legacy format: "Appointment- [desc] [day] [month] [HH:MM am/pm] [title]"
@@ -171,10 +170,7 @@ function parseAppointmentMessage(text: string): any {
     `)\\s*(?:at\\s+)?(\\d{1,2})(?:[:.](\\d{2}))?\\s*(am|pm|a\\.m\\.|p\\.m\\.)?\\s*(.*)$`,
     'i'
   ));
-  if (!naturalMatch) {
-    // Message contains "appointment" but didn't match any format - return error
-    return { error: true, message: 'Format: appt [day] [month] [time] [person] [title]\nExample: appt 28 sept 1430 rishi physio\nOr: Appointment- checkup 15 sept 2:30pm doctor name' };
-  }
+  if (!naturalMatch) return null;
 
   const [, leadingTitle, middleTitle, day1, month1, month2, day2, hourStr, minuteStr, ampmRaw, rest] = naturalMatch;
   const day = day1 || day2;
@@ -398,6 +394,8 @@ function parseMetric(text: string): any {
     cleanText = cleanText.replace(/^(ichi|grandmom|grandma)\s+/i, '').trim();
   }
   
+<<<<<<< Updated upstream
+=======
   // Medicine (any person) - "paracetamol", "baby paracetamol 2", "mom ibuprofen", "0810- paracetamol"
   const medicinePerson = personType;
   const medicineText = cleanText;
@@ -413,20 +411,20 @@ function parseMetric(text: string): any {
   }
 
 
-  // Food (any person): "food banana", "12:30 food rice", "food roti and dal"
+  // Food (any person): "food banana", "12:30 food rice", "10:00 - banana plus sweet potato"
+  // Support both explicit "food" keyword and time-prefixed food entries
+
+  // First try explicit "food" keyword
   if (/\bfood\b/i.test(text)) {
-    // Extract food name after "food" keyword (allow zero chars to validate empty)
     const foodMatch = text.match(/\bfood\b[\s.]*(.*)$/i);
     if (foodMatch) {
       let foodName = foodMatch[1].trim().toLowerCase();
-      // Limit food name to reasonable length and sanitize
       if (foodName.length > 100) {
-        return { error: true, message: 'Food name too long. Max 100 characters.\nExample: "food banana"' };
+        return { error: true, message: 'Food name too long. Max 100 characters.\nExample: "food banana" or "10:00 banana"' };
       }
       if (foodName.length === 0) {
-        return { error: true, message: 'Food name required.\nExample: "food banana" or "12:30 food rice and dal"' };
+        return { error: true, message: 'Food name required.\nExample: "food banana" or "12:30 rice and dal"' };
       }
-      // Remove any special characters that might cause database issues
       foodName = foodName.replace(/[^\w\s\-()]/g, '');
       if (foodName.trim().length === 0) {
         return { error: true, message: 'Food name contains invalid characters.\nExample: "food banana"' };
@@ -435,11 +433,38 @@ function parseMetric(text: string): any {
     }
   }
 
+  // Second: try time-prefixed food (e.g., "10:00 - banana plus sweet potato", "10:00 banana", "1000 banana")
+  // Only if it has a time prefix and no other metric keyword is found
+  // Matches: "HHMM banana", "HH:MM banana", "H:MM banana", "10 am banana", "10:00 - banana", etc.
+  const hasTimePrefix = /^(\d{1,2}):?(\d{2})?\s*(am|pm|a\.m\.|p\.m\.)?\s*[-\s]/.test(cleanText);
+  if (hasTimePrefix) {
+    // Remove time prefix to check remaining text
+    const textWithoutTime = cleanText.replace(/^(\d{1,2}):?(\d{2})?\s*(am|pm|a\.m\.|p\.m\.)?\s*[-\s]/, '').trim();
+
+    // Check if text looks like food (not medicine, not other metrics)
+    // Food items are typically words separated by spaces or "and"
+    const hasMetricKeyword = /formula|breast|milk|pumped|weight|kg|vaccine|diaper|nappy|bath|potty|oil|sleep|sleeping|chest|waist|hips|bust|cm|medicine|paracetamol|ibuprofen|calpol|aspirin|antibiotic|nebulization|cough|fever|mood|steps|energy|pain|exercise|yoga|running|walking|cycling|gym|swimming|pilates|dance|cardio|strength|stretching|hiking|medication/.test(textWithoutTime);
+
+    // If no metric keyword found and remaining text has food-like pattern (words/phrases)
+    if (!hasMetricKeyword && textWithoutTime.length > 0 && textWithoutTime.length < 100) {
+      // Basic validation: should contain at least one letter (not just numbers/symbols)
+      if (/[a-z]/i.test(textWithoutTime)) {
+        let foodName = textWithoutTime.toLowerCase();
+        // Remove special characters but keep spaces and hyphens
+        foodName = foodName.replace(/[^\w\s\-()]/g, '');
+        if (foodName.trim().length > 0) {
+          return { metric_type: 'food', value: '1', unit: 'serving', notes: foodName.trim(), isMetric: true, personType };
+        }
+      }
+    }
+  }
+
+
   // Wellness metrics
   if (personType !== 'baby') {
     if (cleanText.includes('mood')) {
       const moodVal = cleanText.replace(/mood/i, '').trim().split(/\s+/)[0] || 'logged';
-      return { metric_type: 'wellness_mood', value: '1', unit: 'mood', notes: moodVal, isMetric: true, personType };
+      return { metric_type: 'wellness_mood', value: moodVal, unit: 'text', isMetric: true, personType };
     }
     if (cleanText.includes('steps')) {
       const match = cleanText.match(/(\d+)/);
@@ -498,12 +523,12 @@ function parseMetric(text: string): any {
   let match = text.match(/formula[\s.]*(\d+)[\s.]*(ml)?/i) || text.match(/(\d+)[\s.]*(ml)[\s.]*formula/i);
   if (match) return { metric_type: 'formula', value: match[1], unit: 'ml', isMetric: true, personType };
 
-  // Breastmilk - "pumped 20ml", "20ml pumped", "breast milk 20"  
-  match = text.match(/pumped[\s.]*(\d+)[\s.]*(ml)?/i) || 
+  // Breastmilk - "pumped 20ml", "20ml pumped", "breast milk 20"
+  match = text.match(/pumped[\s.]*(\d+)[\s.]*(ml)?/i) ||
           text.match(/(\d+)[\s.]*(ml)[\s.]*pumped/i) ||
-          text.match(/breast[\s.]*milk[\s.]*(\d+)[\s.]*(ml)?/i) || 
+          text.match(/breast[\s.]*milk[\s.]*(\d+)[\s.]*(ml)?/i) ||
           text.match(/(\d+)[\s.]*(ml)[\s.]*breast[\s.]*milk/i) ||
-          text.match(/breastmilk[\s.]*(\d+)[\s.]*(ml)?/i) || 
+          text.match(/breastmilk[\s.]*(\d+)[\s.]*(ml)?/i) ||
           text.match(/(\d+)[\s.]*(ml)[\s.]*breastmilk/i);
   if (match) return { metric_type: 'breastmilk', value: match[1], unit: 'ml', isMetric: true, personType };
 
@@ -583,6 +608,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Handle food command
+    if (messageBody.toLowerCase().trim() === 'food') {
+      const foodList = await handleCommand(messageBody, fromPhone, FAMILY_ID);
+      if (foodList) {
+        return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${escapeXml(foodList)}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
+      }
+    }
+
     // Handle report command
     if (messageBody.toLowerCase().trim() === 'report') {
       const report = await handleCommand(messageBody, fromPhone, FAMILY_ID);
@@ -596,14 +629,6 @@ export async function POST(request: NextRequest) {
       const medsReport = await handleCommand(messageBody, fromPhone, FAMILY_ID);
       if (medsReport) {
         return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${escapeXml(medsReport)}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
-      }
-    }
-
-    // Handle foodreport command
-    if (messageBody.toLowerCase().trim() === 'foodreport') {
-      const foodList = await handleCommand(messageBody, fromPhone, FAMILY_ID);
-      if (foodList) {
-        return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${escapeXml(foodList)}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
       }
     }
 
@@ -677,7 +702,7 @@ Total: 300ml</Message></Response>`, { status: 200, headers: { 'Content-Type': 'a
           notes: metricData.notes || null,
           created_at: extractedTime ? extractedTime.toISOString() : new Date().toISOString()
         };
-        
+
         // Only add baby_id for baby metrics
         if (metricData.personType === 'baby') {
           insertData.baby_id = BABY_ID;
@@ -686,19 +711,28 @@ Total: 300ml</Message></Response>`, { status: 200, headers: { 'Content-Type': 'a
         // Deduplication: check for identical metric with same timestamp logged recently
         // Use the insertData.created_at (extracted time) to find duplicates
         const metricTimestamp = insertData.created_at;
-        const { data: recentDuplicates } = await supabase
+        const dupQuery = supabase
           .from('baby_metrics')
           .select('id')
           .eq('family_id', FAMILY_ID)
           .eq('metric_type', metricData.metric_type)
           .eq('value', metricData.value)
           .eq('person_type', metricData.personType)
-          .eq('created_at', metricTimestamp)
-          .limit(1);
+          .eq('created_at', metricTimestamp);
+
+        // Also check notes field for food and medicine metrics
+        if (metricData.notes) {
+          dupQuery.eq('notes', metricData.notes);
+        }
+
+        const { data: recentDuplicates } = await dupQuery.limit(1);
 
         if (recentDuplicates && recentDuplicates.length > 0) {
           console.log('[DUPLICATE-METRIC]', { metricData, insertData, duplicateFound: true });
-          return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>[OK] ${metricData.value}${metricData.unit} ${metricData.metric_type}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
+          const responseMsg = metricData.notes
+            ? `[OK] ${metricData.metric_type}: ${metricData.notes}`
+            : `[OK] ${metricData.value}${metricData.unit} ${metricData.metric_type}`;
+          return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${escapeXml(responseMsg)}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });
         }
 
         const { data, error } = await supabase.from('baby_metrics').insert([insertData]).select();
@@ -707,9 +741,9 @@ Total: 300ml</Message></Response>`, { status: 200, headers: { 'Content-Type': 'a
           console.error('[INSERT-ERR]', { error: error.message, insertData });
           throw error;
         }
-        
+
         const responseMsg = metricData.notes
-          ? `[OK] ${metricData.metric_type}: ${metricData.notes}${metricData.metric_type === 'medicine' && metricData.value !== '1' ? ` x${metricData.value}` : ''}`
+          ? `[OK] ${metricData.metric_type}: ${metricData.notes}`
           : `[OK] ${metricData.value}${metricData.unit} ${metricData.metric_type}`;
         console.log('[METRIC-SUCCESS]', { responseMsg, metricData });
         return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${escapeXml(responseMsg)}</Message></Response>`, { status: 200, headers: { 'Content-Type': 'application/xml' } });

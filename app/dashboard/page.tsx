@@ -281,22 +281,40 @@ export default function DashboardPage() {
     let sleepCount = 0;
     let overnightCount = 0;
     let startTime: Date | null = null;
+    let startDate: string | null = null;
 
     sorted.forEach((event) => {
       const val = parseFloat(event.value);
       if (val === 1) {
         startTime = new Date(event.created_at);
+        // Extract date in Europe/London timezone
+        const formatter = new Intl.DateTimeFormat('en-CA', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          timeZone: 'Europe/London'
+        });
+        startDate = formatter.format(startTime);
       } else if (val === 0 && startTime) {
         const endTime = new Date(event.created_at);
         const durationMinutes = (endTime.getTime() - startTime.getTime()) / 60000;
         const durationHours = durationMinutes / 60;
 
-        // Overnight sleep: spans > 8 hours (e.g., 11pm to 8am)
-        if (durationHours > 8) overnightCount++;
+        // Overnight sleep detection: check if sleep spans day boundary OR duration > 8 hours
+        const formatter = new Intl.DateTimeFormat('en-CA', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          timeZone: 'Europe/London'
+        });
+        const endDate = formatter.format(endTime);
+        const isOvernight = startDate !== endDate || durationHours > 8;
+        if (isOvernight) overnightCount++;
 
         totalMinutes += durationMinutes;
         sleepCount++;
         startTime = null;
+        startDate = null;
       }
     });
 
@@ -315,14 +333,23 @@ export default function DashboardPage() {
     const alwaysShowMetrics = ['formula', 'breastmilk'];
 
     // Separate sleep metrics for special handling
-    const todaySleepEvents = metricsData.filter((m) =>
-      m.metric_type === 'sleep' &&
-      new Date(m.created_at).toLocaleDateString('en-CA', { timeZone: 'Europe/London' }) === todayStr
-    );
-    const yesterdaySleepEvents = metricsData.filter((m) =>
-      m.metric_type === 'sleep' &&
-      new Date(m.created_at).toLocaleDateString('en-CA', { timeZone: 'Europe/London' }) === yesterdayStr
-    );
+    // Include sleep events from today and tomorrow (for sleep that starts today but ends tomorrow)
+    const tomorrowDate = new Date(now);
+    tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+    const tomorrowStr = tomorrowDate.toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
+
+    const todaySleepEvents = metricsData.filter((m) => {
+      if (m.metric_type !== 'sleep') return false;
+      const eventDate = new Date(m.created_at).toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
+      return eventDate === todayStr || eventDate === tomorrowStr;
+    });
+
+    // Include sleep events from yesterday and today (for sleep that starts yesterday but ends today)
+    const yesterdaySleepEvents = metricsData.filter((m) => {
+      if (m.metric_type !== 'sleep') return false;
+      const eventDate = new Date(m.created_at).toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
+      return eventDate === yesterdayStr || eventDate === todayStr;
+    });
 
     if (todaySleepEvents.length > 0 || yesterdaySleepEvents.length > 0) {
       const todaySleep = calculateSleepDuration(todaySleepEvents);

@@ -2,13 +2,14 @@ import { supabaseAdmin } from '@/lib/supabase'
 
 export async function handleCommand(text: string, phone: string, familyId: string): Promise<string | null> {
   const cmd = text.toLowerCase().trim()
-  if (!cmd.match(/^(today|report|appt|feed|medsreport|foodreport)$/)) return null
+  if (!cmd.match(/^(today|report|appt|feed|food|medsreport|foodreport)$/)) return null
 
   try {
     if (cmd === 'today') return 'Send metrics to log today activities'
     if (cmd === 'report') return await cmdReport(familyId)
     if (cmd === 'appt') return await cmdAppt(familyId)
     if (cmd === 'feed') return await cmdFeed(familyId)
+    if (cmd === 'food') return await cmdFood(familyId)
     if (cmd === 'medsreport') return await cmdMedsReport(familyId)
     if (cmd === 'foodreport') return await cmdFoodReport(familyId)
     return null
@@ -101,24 +102,41 @@ async function cmdReport(familyId: string): Promise<string> {
     let sleepCount = 0
     let overnightCount = 0
     let startTime: Date | null = null
+    let startDate: string | null = null
 
     sleepEvents.forEach((event: any) => {
       if (event.value === '1' || event.value === 1) {
         // Sleep start
         startTime = new Date(event.created_at)
+        // Extract date in Europe/London timezone for overnight detection
+        const formatter = new Intl.DateTimeFormat('en-CA', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          timeZone: 'Europe/London'
+        })
+        startDate = formatter.format(startTime)
       } else if ((event.value === '0' || event.value === 0) && startTime) {
         // Sleep end - calculate duration
         const endTime = new Date(event.created_at)
         const durationMinutes = (endTime.getTime() - startTime.getTime()) / 60000
         const durationHours = durationMinutes / 60
 
-        // Overnight sleep: spans > 8 hours (e.g., 11pm to 8am)
-        const isOvernight = durationHours > 8
+        // Overnight sleep detection: check if sleep spans day boundary (different dates) OR duration > 8 hours
+        const formatter = new Intl.DateTimeFormat('en-CA', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          timeZone: 'Europe/London'
+        })
+        const endDate = formatter.format(endTime)
+        const isOvernight = startDate !== endDate || durationHours > 8
         if (isOvernight) overnightCount++
 
         totalMinutes += durationMinutes
         sleepCount++
         startTime = null
+        startDate = null
       }
     })
 
@@ -284,6 +302,7 @@ Summary:
   }
 }
 
+<<<<<<< HEAD
 async function cmdFoodReport(familyId: string): Promise<string> {
   const now = new Date()
   const formatter = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'Europe/London' })
@@ -326,6 +345,82 @@ async function cmdFoodReport(familyId: string): Promise<string> {
   } catch (err) {
     console.error('[FOODREPORT-ERR]', err)
     return 'Error fetching food log'
+=======
+async function cmdFood(familyId: string): Promise<string> {
+  const now = new Date()
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    timeZone: 'Europe/London'
+  })
+  const todayStr = formatter.format(now)
+  const [year, month, day] = todayStr.split('-')
+
+  // Calculate today's range in Europe/London timezone
+  const monthIndex = parseInt(month) - 1 // 0-11
+  const dayNum = parseInt(day)
+  const isInBST = (monthIndex > 2 && monthIndex < 9) ||
+                  (monthIndex === 2 && dayNum > 24) ||
+                  (monthIndex === 9 && dayNum < 24)
+  const offsetHours = isInBST ? 1 : 0
+  const offsetMs = offsetHours * 60 * 60000
+
+  const todayStart = new Date(Date.UTC(parseInt(year), parseInt(month) - 1, parseInt(day), 0, 0, 0) - offsetMs)
+  const todayEnd = new Date(todayStart.getTime() + 86400000)
+
+  let response = `🍽️ Today's Food - ${todayStr}
+
+`
+
+  try {
+    const { data: metrics, error } = await supabaseAdmin
+      .from('baby_metrics')
+      .select('metric_type, value, notes, created_at')
+      .eq('family_id', familyId)
+      .eq('metric_type', 'food')
+      .gte('created_at', todayStart.toISOString())
+      .lt('created_at', todayEnd.toISOString())
+      .order('created_at', { ascending: true })
+
+    if (error) {
+      console.error('[FOOD-CMD-ERR]', error)
+      return 'Error fetching food logs'
+    }
+
+    if (!metrics || metrics.length === 0) {
+      return `No food logged today`
+    }
+
+    let foodCount = 0
+    const foodItems: Set<string> = new Set()
+
+    metrics.forEach((m: any) => {
+      foodCount++
+      const time = new Date(m.created_at).toLocaleTimeString('en-GB', {
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: 'Europe/London'
+      })
+      const foodName = m.notes || 'unknown'
+      foodItems.add(foodName)
+      response += `${foodCount}. ${foodName} at ${time}
+`
+    })
+
+    response += `
+Summary:
+`
+    response += `  Total items: ${foodCount}
+`
+    response += `  Unique foods: ${foodItems.size}
+`
+
+    return response
+  } catch (e: any) {
+    console.error('[FOOD-CMD-ERR]', e)
+    return 'Error fetching food logs'
+>>>>>>> claude/message-timestamp-handling-f1u5s0
   }
 }
 
