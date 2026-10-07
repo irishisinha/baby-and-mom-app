@@ -302,7 +302,6 @@ Summary:
   }
 }
 
-<<<<<<< HEAD
 async function cmdFoodReport(familyId: string): Promise<string> {
   const now = new Date()
   const formatter = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'Europe/London' })
@@ -345,7 +344,9 @@ async function cmdFoodReport(familyId: string): Promise<string> {
   } catch (err) {
     console.error('[FOODREPORT-ERR]', err)
     return 'Error fetching food log'
-=======
+  }
+}
+
 async function cmdFood(familyId: string): Promise<string> {
   const now = new Date()
   const formatter = new Intl.DateTimeFormat('en-CA', {
@@ -420,7 +421,6 @@ Summary:
   } catch (e: any) {
     console.error('[FOOD-CMD-ERR]', e)
     return 'Error fetching food logs'
->>>>>>> claude/message-timestamp-handling-f1u5s0
   }
 }
 

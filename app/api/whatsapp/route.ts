@@ -394,8 +394,6 @@ function parseMetric(text: string): any {
     cleanText = cleanText.replace(/^(ichi|grandmom|grandma)\s+/i, '').trim();
   }
   
-<<<<<<< Updated upstream
-=======
   // Medicine (any person) - "paracetamol", "baby paracetamol 2", "mom ibuprofen", "0810- paracetamol"
   const medicinePerson = personType;
   const medicineText = cleanText;
