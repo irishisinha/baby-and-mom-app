@@ -393,9 +393,7 @@ function parseMetric(text: string): any {
     personType = 'grandmom';
     cleanText = cleanText.replace(/^(ichi|grandmom|grandma)\s+/i, '').trim();
   }
-  
-<<<<<<< Updated upstream
-=======
+
   // Medicine (any person) - "paracetamol", "baby paracetamol 2", "mom ibuprofen", "0810- paracetamol"
   const medicinePerson = personType;
   const medicineText = cleanText;
@@ -520,7 +518,7 @@ function parseMetric(text: string): any {
   }
 
   // Baby metrics
-  let match = text.match(/formula[\s.]*(\d+)[\s.]*(ml)?/i) || text.match(/(\d+)[\s.]*(ml)[\s.]*formula/i);
+  let match = text.match(/formula[\s.]*(\d+)[\s.]*(ml)?/i) || text.match(/(\d+)[\s.]*(ml)[\s.]*formula/i) || text.match(/milk[\s.]*(\d+)[\s.]*(ml)?/i) || text.match(/(\d+)[\s.]*(ml)[\s.]*milk/i);
   if (match) return { metric_type: 'formula', value: match[1], unit: 'ml', isMetric: true, personType };
 
   // Breastmilk - "pumped 20ml", "20ml pumped", "breast milk 20"
