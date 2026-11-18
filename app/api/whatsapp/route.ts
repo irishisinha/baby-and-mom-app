@@ -137,6 +137,12 @@ function parseAppointmentMessage(text: string): any {
   // Detect if user tried appt format but got it wrong
   if (trimmed.match(/^appt\s+/i)) {
     const parts = trimmed.split(/\s+/);
+
+    // Check for ordinal suffix (23rd, 1st, 2nd, etc.)
+    if (parts[1] && parts[1].match(/^\d+(st|nd|rd|th)$/i)) {
+      return { error: true, message: 'Remove ordinal suffix from day number.\nFormat: appt 23 oct 1030 jaian bloods (not "23rd")\nExample: appt 12 sept 4:10 pm shiva checkup' };
+    }
+
     if (parts.length < 6) {
       return { error: true, message: 'Missing title.\nFormat: appt [day] [month] [time] [person] [title]\nExample: appt 12 sept 4:10 pm shiva checkup' };
     }
