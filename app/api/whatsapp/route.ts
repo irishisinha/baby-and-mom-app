@@ -39,7 +39,7 @@ const WORD_BOUNDARY = /\b/.source;
 const COMMANDS_HELP = `ðŸ“‹ AVAILABLE COMMANDS:
 
 ðŸ’¶ BABY METRICS (default person if not specified):
-• Formula: "30ml formula" or "formula 30"
+• Milk: "30ml milk" or "milk 30" (also accepts "formula")
 • Breastmilk: "20ml breast milk" or "pumped 20"
 • Food: "food banana", "10:00 banana avocado", "10:00 - rice and dal"
 • Weight: "5.5kg" or "weight 5.5"
@@ -50,7 +50,7 @@ const COMMANDS_HELP = `ðŸ“‹ AVAILABLE COMMANDS:
 • Potty: "0530 potty" (with time) or "potty"
 • Oil: "oil"
 • Sleep: "1 pm sleep" or "1 pm sleeping" (start), "2:30 pm sleep end" or "2:30 pm sleeping end" (end), or legacy "sleep 2 hours"
-• Time format: "0640 pm - 90ml formula" or "0500 baby nebulization"
+• Time format: "0640 pm - 90ml milk" or "0500 baby nebulization"
 
 ðŸ‘© MOM/SHIVA METRICS (start with "shiva", "mom", or "mother"):
 • Weight: "shiva weight 65kg"
@@ -75,7 +75,7 @@ Same format as MOM: "rishi steps 5000" or "ichi mood happy"
 
 ðŸ” COMMANDS:
 • "appt" - Show upcoming appointments
-• "feed" - Show today's feed logs (formula & breastmilk)
+• "feed" - Show today's feed logs (milk & breastmilk)
 • "food" - Show today's food logs
 • "report" - Show today vs yesterday summary
 • "medsreport" - Show medicines today vs yesterday (baby & mom)
@@ -518,9 +518,9 @@ function parseMetric(text: string): any {
     return null;
   }
 
-  // Baby metrics
+  // Baby metrics - Milk (supports 'formula' or 'milk' keywords)
   let match = text.match(/formula[\s.]*(\d+)[\s.]*(ml)?/i) || text.match(/(\d+)[\s.]*(ml)[\s.]*formula/i) || text.match(/milk[\s.]*(\d+)[\s.]*(ml)?/i) || text.match(/(\d+)[\s.]*(ml)[\s.]*milk/i);
-  if (match) return { metric_type: 'formula', value: match[1], unit: 'ml', isMetric: true, personType };
+  if (match) return { metric_type: 'milk', value: match[1], unit: 'ml', isMetric: true, personType };
 
   // Breastmilk - "pumped 20ml", "20ml pumped", "breast milk 20"
   match = text.match(/pumped[\s.]*(\d+)[\s.]*(ml)?/i) ||
