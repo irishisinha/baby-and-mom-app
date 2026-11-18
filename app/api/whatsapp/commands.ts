@@ -166,7 +166,13 @@ async function cmdReport(familyId: string): Promise<string> {
   }
 
   let msg = `📊 Jaian (Baby) - Today vs Yesterday\n\nToday (${year}-${month}-${day}):\n`
-  const types = ['formula', 'breastmilk', 'vaccine', 'potty', 'bath']
+
+  // Combine milk and formula into single "milk" total
+  const milkToday = (todayTotals['milk'] || 0) + (todayTotals['formula'] || 0)
+  const milkYesterday = (yesterdayTotals['milk'] || 0) + (yesterdayTotals['formula'] || 0)
+  msg += `  milk: ${milkToday} (yesterday: ${milkYesterday})\n`
+
+  const types = ['breastmilk', 'vaccine', 'potty', 'bath']
   types.forEach((t) => {
     const tv = todayTotals[t] || 0
     const yv = yesterdayTotals[t] || 0
@@ -247,7 +253,7 @@ async function cmdFeed(familyId: string): Promise<string> {
       .from('baby_metrics')
       .select('metric_type, value, unit, created_at')
       .eq('family_id', familyId)
-      .in('metric_type', ['formula', 'breastmilk'])
+      .in('metric_type', ['milk', 'formula', 'breastmilk'])
       .gte('created_at', todayStart.toISOString())
       .lt('created_at', todayEnd.toISOString())
       .order('created_at', { ascending: true })
@@ -261,10 +267,10 @@ async function cmdFeed(familyId: string): Promise<string> {
       return `No feeds logged today`
     }
     
-    let totalFormula = 0
+    let totalMilk = 0
     let totalBreastmilk = 0
     let feedCount = 0
-    
+
     metrics.forEach((m: any) => {
       feedCount++
       const time = m.metric_time || new Date(m.created_at).toLocaleTimeString('en-GB', {
@@ -273,10 +279,10 @@ async function cmdFeed(familyId: string): Promise<string> {
         timeZone: 'Europe/London'
       })
       const value = parseFloat(m.value) || 0
-      
-      if (m.metric_type === 'formula') {
-        totalFormula += value
-        response += `${feedCount}. Formula: ${m.value}${m.unit} at ${time}
+
+      if (m.metric_type === 'milk' || m.metric_type === 'formula') {
+        totalMilk += value
+        response += `${feedCount}. Milk: ${m.value}${m.unit} at ${time}
 `
       } else if (m.metric_type === 'breastmilk') {
         totalBreastmilk += value
@@ -288,7 +294,7 @@ async function cmdFeed(familyId: string): Promise<string> {
     response += `
 Summary:
 `
-    if (totalFormula > 0) response += `  Formula: ${totalFormula}${metrics[0]?.unit || 'ml'}
+    if (totalMilk > 0) response += `  Milk: ${totalMilk}${metrics[0]?.unit || 'ml'}
 `
     if (totalBreastmilk > 0) response += `  Breastmilk: ${totalBreastmilk}${metrics[0]?.unit || 'ml'}
 `
